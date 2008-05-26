@@ -1,0 +1,3 @@
+cd ..
+cvs -d :ext:pagx@freebsd.unix-center.net:/home/a/s/pagx/cvsroot export -r HEAD  btload
+
