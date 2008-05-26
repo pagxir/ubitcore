@@ -1,0 +1,15 @@
+int set_announce(const char *url);
+int announce_list_add(const char *url);
+int set_create_date(time_t now);
+int set_comment(const char *description);
+int set_create_by(const char *auth);
+int set_info_name(const char *name);
+int set_info_single_file(const char *path);
+int set_piece_length(int length);
+int info_files_add(const char *route, const char *path);
+int torrent_str_write(const char *buf, int len);
+int write_announce();
+int save_file(const char *path);
+int write_create_date();
+int write_announce_list_element(const char *url);
+int write_announce_list();
