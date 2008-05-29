@@ -6,5 +6,5 @@ public:
   int Abort();
 
 private:
-  PeerProcess *peer;
+  PeerSocket *link;
 };

@@ -11,9 +11,9 @@
 #include "netmgr.h"
 #include "peer.h"
 
-struct peer_less{
-    bool operator()(const PeerProcess *laddr,
-		   	const PeerProcess *raddr)const
+struct socket_less{
+    bool operator()(const PeerSocket *laddr,
+		   	const PeerSocket *raddr)const
    	{
 	   	if (laddr->address!=raddr->address) {
 		   	return laddr->address > raddr->address;
@@ -22,7 +22,7 @@ struct peer_less{
    	}
 };
 
-struct peer_id_less{
+struct peer_less{
     bool operator()(const PeerProcess *laddr,
 		   	const PeerProcess *raddr)const
    	{
@@ -33,9 +33,9 @@ struct peer_id_less{
 static NetMgr __NetMgr;
 static long  __self_address;
 static long  __self_port;
-static std::set<PeerProcess*, peer_less> __peer_list;
-static std::set<PeerProcess*, peer_id_less> __comunicate_peer_list;
-static std::queue<PeerProcess*> __peer_queue;
+static std::set<PeerSocket*, socket_less> __socket_list;
+static std::set<PeerProcess*, peer_less> __comunicate_peer_list;
+static std::queue<PeerSocket*> __socket_queue;
 
 static std::queue<fHandle*> __btlink_queue;
 static int CallAgainNextClient(fHandle * handle, int argc, void *argv)
@@ -76,19 +76,19 @@ int do_speedup()
 int NetMgr::savePeer(unsigned long inaddr, unsigned short port)
 {
     if (port != 0 && inaddr != 0) {
-        PeerProcess *peer = new PeerProcess();
+        PeerSocket *peer = new PeerSocket();
         peer->port = port;
         peer->address = inaddr;
 
-        if (__peer_list.find(peer) == __peer_list.end()){
+        if (__socket_list.find(peer) == __socket_list.end()){
 			/* add new peer */
-			__peer_list.insert(peer);
+			__socket_list.insert(peer);
 		}else{
-			PeerProcess *kill = peer;
-			peer = *__peer_list.find(peer);
+			PeerSocket *kill = peer;
+			peer = *__socket_list.find(peer);
 			delete kill;
 		}
-	   	__peer_queue.push(peer);
+	   	__socket_queue.push(peer);
         WakeupNextClient(1);
     }
     return 0;
@@ -117,9 +117,9 @@ int    NetMgr::NextClient(PeerSocket * userPeer)
     int    error = __NetMgr.fild;
     __NetMgr.fild = -1;
     PeerProcess *peer = __NetMgr.peername;
-    while (error == -1 && !__peer_queue.empty()) {
-        peer = __peer_queue.front();
-        __peer_queue.pop();
+    while (error == -1 && !__socket_queue.empty()) {
+        peer = __socket_queue.front();
+        __socket_queue.pop();
         if (__accept_queue_set.find(peer) == __accept_queue_set.end()) {
             unsigned long    optval = 1;
             error = socket(AF_INET, SOCK_STREAM, 0);
@@ -131,7 +131,7 @@ int    NetMgr::NextClient(PeerSocket * userPeer)
                 error = -1;
             }
         }
-        __peer_list.erase(peer);
+        __socket_list.erase(peer);
     }
     if (error != -1) {
         /* sockaddr_in uuaddr; */
@@ -187,16 +187,16 @@ int getSelfAddress(char *buf, int len)
 int
 setSelfAddress(char *buf, int len)
 {
-    PeerProcess *self_peer;
+    PeerSocket *self_peer;
     if (len == 8) {
         /* unsigned char *addr = (unsigned char*)buf; */
         memcpy(&__self_port, buf + 4, sizeof(__self_port));
         memcpy(&__self_address, buf, sizeof(__self_address));
-		self_peer = new PeerProcess();
+		self_peer = new PeerSocket();
         self_peer->address = __self_address;
         self_peer->port = __self_port;
-        if (__peer_list.find(self_peer) == __peer_list.end()) {
-            __peer_list.insert(self_peer);
+        if (__socket_list.find(self_peer) == __socket_list.end()) {
+            __socket_list.insert(self_peer);
         }else{
 			delete self_peer;
 		}
@@ -250,35 +250,43 @@ AddNodes(const char *value, int port)
     return 0;
 }
 
-PeerProcess *NetMgr::GetNextPeer()
+PeerSocket *NetMgr::GetNextSocket()
 {
-	PeerProcess *peer;
+	PeerSocket *ps;
 	if (__NetMgr.fild != -1){
-		peer = new PeerProcess();
-		peer->fildes = __NetMgr.fild;
-	    peer->address = __NetMgr.peername.sin_addr.s_addr;
-		peer->port = __NetMgr.peername.sin_port;
-		__peer_list.insert(peer);
+		ps = new PeerSocket();
+		ps->fildes = __NetMgr.fild;
+	    ps->address = __NetMgr.peername.sin_addr.s_addr;
+		ps->port = __NetMgr.peername.sin_port;
+		__socket_list.insert(ps);
 		__NetMgr.fild = -1;
-		return peer;
+		return ps;
 	}
-	while (!__peer_queue.empty()){
-		peer = __peer_queue.front();
-		__peer_queue.pop();
-		if (peer->need_active() == 0){
-			return peer;
+	while (!__socket_queue.empty()){
+		ps = __socket_queue.front();
+		__socket_queue.pop();
+		if (ps->need_active() == 1){
+			return ps;
 		}
 	}
 	SetWaitNewClient(-1);
 	return NULL;
 }
 
-int try_add_peer_id(PeerProcess *peer)
+PeerProcess *attach_peer(PeerSocket *psocket, const char ident[20])
 {
+	PeerProcess *peer = new PeerProcess(ident);
 	if (__comunicate_peer_list.find(peer) == __comunicate_peer_list.end()){
 		__comunicate_peer_list.insert(peer);
+	}else{
+		PeerProcess *kill = peer;
+		peer = *__comunicate_peer_list.find(peer);
+		delete kill;
 	}
-	return 0;
+	if (peer->attach(psocket) == -1){
+		return NULL;
+	}
+	return peer;
 }
 
 int get_comunicate_count()

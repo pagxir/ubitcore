@@ -6,14 +6,13 @@ public:
     NetMgr();
     int savePeer(unsigned long inaddr, unsigned short port);
     int SetActivePeer(int fild, sockaddr_in * addr, int addrlen);
-    static int NextClient(PeerSocket * peerSocket);
-	static PeerProcess *GetNextPeer();
+	static PeerSocket *GetNextSocket();
 private:
     int fild;
     sockaddr_in peername;
 };
 int get_comunicate_count();
-int try_add_peer_id(PeerProcess *peer);
+PeerProcess *attach_peer(PeerSocket *psocket, const char ident[20]);
 int loadPeers(char *buf, int len);
 int SetWaitNewClient(int code);
 int getSelfAddress(char *buf, int len);

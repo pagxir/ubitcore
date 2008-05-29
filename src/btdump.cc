@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <queue>
+#include <dht_throttle.h>
 #include "sha1.h"
 
 FILE *__static_file = NULL;
@@ -125,7 +126,7 @@ static const char *btcheck(const char *btbuf, const char *btend)
 }
 #undef BTCHECK
 
-static int btload_int(const char *btbuf, const char *btend)
+int btload_int(const char *btbuf, const char *btend)
 {
     int count = 0;
     if (btbuf<btend && *btbuf++!='i') {
@@ -142,7 +143,7 @@ static int btload_int(const char *btbuf, const char *btend)
     return -1;
 }
 
-static const char *btload_str(const char *btbuf,
+const char *btload_str(const char *btbuf,
                               const char *btend, int *plen)
 {
     int count = 0;
@@ -158,7 +159,7 @@ static const char *btload_str(const char *btbuf,
     return btend+1;
 }
 
-static const char *btstr_dup(const char *btstr, const char *btend)
+const char *btstr_dup(const char *btstr, const char *btend)
 {
     int len;
     const char *str = btload_str(btstr, btend, &len);
@@ -171,7 +172,7 @@ static const char *btstr_dup(const char *btstr, const char *btend)
     return NULL;
 }
 
-static const char *btload_list(const char *btbuf,
+const char *btload_list(const char *btbuf,
                                const char *btend, int index)
 {
     int count = 0;
@@ -188,7 +189,7 @@ static const char *btload_list(const char *btbuf,
     return btend+1;
 }
 
-static const char *btload_dict(const char *btbuf,
+const char *btload_dict(const char *btbuf,
                                const char *btend, const char *name)
 {
     if (btbuf<btend && *btbuf++=='d') {
@@ -203,7 +204,7 @@ static const char *btload_dict(const char *btbuf,
     return btend+1;
 }
 
-static int tfdump_info_hash(const char *buf, int count)
+int tfdump_info_hash(const char *buf, int count)
 {
     const char *btend = buf+count;
     const char *info = btload_dict(buf, btend, "4:info");
@@ -453,6 +454,11 @@ const char *get_info_hash()
 static char __protocol[68] = {
     "\0BitTorrent protocol\0\0\0\0\0\0\0\0"
 };
+const char *get_bin_info_hash()
+{
+    return __protocol+28;
+}
+
 int get_hand_shake(char *buf, int len)
 {
     if (len < 68) {
@@ -607,6 +613,30 @@ static int load_file_length(const char *btbuf, const char *btend,
     return 0;
 }
 
+static int load_dht_node(const char *node, const char *node_end)
+{
+    const char *address = btload_list(node, node_end, 0);
+    const char *port = btload_list(node, node_end, 1);
+    const char *daddress = btstr_dup(address, node_end);
+    const int iport = btload_int(port, node_end);
+    if (daddress != NULL && iport != -1){
+       dht_add_node(daddress, iport);
+    }
+    delete[] daddress;
+    return 0;
+}
+
+static int load_nodes(const char *nodes, const char *nodes_end)
+{ 
+   int i = 0;
+   const char *node = btload_list(nodes, nodes_end, i++);
+   while (node < nodes_end) {
+       node = btload_list(nodes, nodes_end, i++);
+       load_dht_node(node, nodes_end);
+    }
+    return 0;
+}
+
 static unsigned char *__static_block_hash;
 int load_torrent(const char *path)
 {
@@ -708,6 +738,11 @@ int load_torrent(const char *path)
         if (count != __piece_count*20) {
             assert(0&&"bad hash table");
         }
+    }
+    const char *nodes = btload_dict(__static_torrent_base,
+	 torrent_limited, "5:nodes");
+    if (nodes < torrent_limited){
+	load_nodes(nodes, torrent_limited);
     }
     return 0;
 }

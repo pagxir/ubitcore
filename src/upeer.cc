@@ -16,6 +16,43 @@
  * 开始算法处理工作!
  *
  */
+PeerSocket::PeerSocket()
+{
+	fildes = -1;
+	peer = NULL;
+	state = 0;
+	caller = NULL;
+}
+
+int get_hand_shake(char *buf, int len);
+int PeerSocket::set_hand_shake(const char *buf, int len)
+{
+    if (len == 68) {
+        if (buf[0] != 0x13) {
+            return -1;
+        }
+        if (strncmp(buf + 1, "BitTorrent protocol", 0x13)) {
+            return -1;
+        }
+#if 1
+        int i;
+        hand_shake_time = time(NULL);
+        //static HandShakeManager hsManager;
+        printf(" en peer_id=");
+        for (i = 0; i < 20; i++) {
+            printf("%02x", buf[48 + i] & 0xff);
+        }
+        //hsManager.AddPeerId(buf+48);
+        memcpy(peer_ident, buf+48, 20);
+        peer = attach_peer(this, peer_ident);
+		if (peer == NULL){
+			return -1;
+		}
+#endif
+        return 0;
+    }
+    return -1;
+}
 
 int PeerSocket::Attach(int fild, sockaddr_in *addr, int addrlen, int wait)
 {
@@ -34,7 +71,6 @@ int PeerSocket::Attach(int fild, sockaddr_in *addr, int addrlen, int wait)
         break;
     }
     file = fild;
-    address = *addr;
 
     rCount = 0;
     tOffset = 0;
@@ -182,6 +218,91 @@ again:
 
 int PeerSocket::display()
 {
-	printf("o=%p, w=%p\n", owner, writer);
+	return 0;
+}
+
+int PeerSocket::dosomething()
+{
+	int error;
+	char buffer[512];
+   	if (state==2 && peer!=NULL){
+	   	return peer->RunActive();
+   	}
+	int len;
+   int wait = 1;
+   struct sockaddr_in iaddr;
+   if (fildes==-1){
+	   fildes = socket(AF_INET, SOCK_STREAM, 0);
+	   ioctlsocket(fildes, FIONBIO, NULL);
+	   iaddr.sin_family = AF_INET;
+	   iaddr.sin_port = port;
+	   iaddr.sin_addr.s_addr = address;
+	   wait = connect(fildes, (sockaddr*)&iaddr, sizeof(iaddr));
+	   if (wait==-1 && WSAGetLastError()!=EINPROGRESS){
+		   perror("connect");
+		   closesocket(fildes);
+		   fildes = -1;
+		   return 0;
+	   }
+	   Attach(fildes, &iaddr, sizeof(iaddr), wait);
+   }
+
+   if (Connected() == -1){
+	   return -1;
+   }
+
+   printf("ready!\n");
+
+   if (state == 0){
+	   if (isPassive()) {
+		   error = Recv(buffer, 68);
+		   if (error != -1 && set_hand_shake(buffer, error) == -1) {
+			   return 0;
+		   }
+	   } else {
+		   len = get_hand_shake(buffer, sizeof(buffer));
+		   error = Send(buffer, len);
+	   }
+	   state += (error!=-1);
+   }
+   if (state == 1){
+	   if (!isPassive()) {
+		   error = Recv(buffer, 68);
+		   if (error != -1 && set_hand_shake(buffer, error) == -1) {
+			   return 0;
+		   }
+	   } else {
+		   len = get_hand_shake(buffer, sizeof(buffer));
+		   error = Send(buffer, len);
+	   }
+	   state += (error!=-1);
+   }
+
+   if (state==2 && peer!=NULL){
+	  error = peer->RunActive();
+   }
+
+   return error;
+}
+
+int PeerSocket::Abort()
+{
+	state = 0;
+	if (peer != NULL){
+		peer->detach();
+		peer = NULL;
+	}
+	return 0;
+}
+
+int PeerSocket::detach()
+{ 
+	if (peer != NULL){
+	   	peer->detach();
+	   	peer = NULL;
+   	}
+	fildes = -1;
+	Close();
+   	caller = NULL;
 	return 0;
 }

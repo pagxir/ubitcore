@@ -3,6 +3,7 @@ class fSocket
 public:
     int rCount;
     fSocket();
+    fSocket(int type);
     int isPassive();
     int Connected();
     int setBlockopt(int block);
@@ -16,6 +17,8 @@ public:
     int WaitExcept(fHandle * handle);
 	virtual int display(){ return 0; }
     static int Select(int timeout);
+protected:
+    int sock_type;
 protected:
     int file;
 	const char *msg;

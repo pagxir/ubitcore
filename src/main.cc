@@ -3,6 +3,7 @@
 #include <winsock.h>
 #include <assert.h>
 #include <queue>
+#include "dht_throttle.h"
 #include "fhandle.h"
 #include "fsocket.h"
 #include "upeer.h"
@@ -44,9 +45,10 @@ int main(int argc, char *argv[])
     }
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, request_cancel);
-    WakeupListener();
-    WakeupTracke();
+    //WakeupListener();
+    //WakeupTracke();
     WakeupSpeedup();
+    dht_throttle_start();
     fHandle *handle = NULL;
     while (-1!=fHandle::getNextReady(&handle)
             && __cancel_request==0) {

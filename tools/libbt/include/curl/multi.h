@@ -20,7 +20,7 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: multi.h,v 1.1.1.1 2008/05/07 17:36:40 pagx Exp $
+ * $Id: multi.h,v 1.1.1.1 2008/05/26 09:30:18 pagx Exp $
  ***************************************************************************/
 /*
   This is meant to be the "external" header file. Don't give away any

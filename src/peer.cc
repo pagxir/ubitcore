@@ -44,22 +44,21 @@ static int WakeupNextPacket()
     return 0;
 }
 
-PeerProcess::PeerProcess():writeProcess(this)
+PeerProcess::PeerProcess(const char ident[20]):writeProcess(this)
 {
     fildes = -1;
     state = 0;
     queued = 0;
     goodPeer = 0;
-	caller = NULL;
+	memcpy(peer_ident, ident, 20);
     bitField = new char[4+(__piece_count/8)];
     haveField = new char[4+(__piece_count/8)];
-	peerSocket.owner = this;
-	peerSocket.writer = &writeProcess;
+	peer_socket = NULL;
 }
 
-int PeerProcess::Abort()
+int PeerProcess::detach()
 {
-    peerSocket.Close();
+    peer_socket->Close();
     state = 0;
     return 0;
 }
@@ -119,7 +118,7 @@ int PeerProcess::writeNextPacket()
     int i;
     for (i = 0; i < __piece_count; i++) {
         if (!bitfield_test(haveField, i) && bitfield_test(__bitField, i)) {
-            if (-1 == sendMessageHave(&peerSocket, i)) {
+            if (-1 == sendMessageHave(peer_socket, i)) {
                 return -1;
             }
             bitfield_set(haveField, i);
@@ -128,7 +127,7 @@ int PeerProcess::writeNextPacket()
     if (local_chocked != local_next_chocked) {
         /*chocking=0: local chock this peer!*/
         /*chocking=1: local unchock this peer!*/
-        if (-1 == sendMessageInsterest(&peerSocket, local_chocked)) {
+        if (-1 == sendMessageInsterest(peer_socket, local_chocked)) {
             return -1;
         }
         printf("%s %p\n", local_chocking?"chock":"unchock", this);
@@ -157,7 +156,7 @@ int PeerProcess::writeNextPacket()
                 }
             }
             if (local_interested != local_interesting) {
-                if (-1 == sendMessageInsterest(&peerSocket, 
+                if (-1 == sendMessageInsterest(peer_socket, 
                             local_interested+2)) {
                     return -1;
                 }
@@ -168,7 +167,7 @@ int PeerProcess::writeNextPacket()
                 reassign_segment(bitField);
                 break;
             }
-            if (-1 == sendRequest(&peerSocket, segment.seg_piece,
+            if (-1 == sendRequest(peer_socket, segment.seg_piece,
                            segment.seg_offset, segment.seg_length)) {
                 return -1;
             }
@@ -189,7 +188,7 @@ add_transfer_peer(this);
             mRequests.pop();
             continue;
         }
-        if (-1 == sendSegment(&peerSocket, &request, buffer)) {
+        if (-1 == sendSegment(peer_socket, &request, buffer)) {
             return -1;
         }
         fprintf(stderr, "\rsend buf: piece(%d) start(%d) length(%d)",
@@ -197,34 +196,6 @@ add_transfer_peer(this);
         mRequests.pop();
     }
     SetCallAgainHandle(CallAgainNextPacket, 1, this);
-    return -1;
-}
-int get_hand_shake(char *buf, int len);
-int PeerProcess::dumpHandShake(char *buf, int len)
-{
-    if (len == 68) {
-        if (buf[0] != 0x13) {
-            return -1;
-        }
-        if (strncmp(buf + 1, "BitTorrent protocol", 0x13)) {
-            return -1;
-        }
-#if 1
-        int i;
-        hand_shake_time = time(NULL);
-        //static HandShakeManager hsManager;
-        printf(" en peer_id=");
-        for (i = 0; i < 20; i++) {
-            printf("%02x", buf[48 + i] & 0xff);
-        }
-        //hsManager.AddPeerId(buf+48);
-        memcpy(peer_ident, buf+48, 20);
-        try_add_peer_id(this);
-        printf("\n");
-
-#endif
-        return 0;
-    }
     return -1;
 }
 
@@ -259,17 +230,6 @@ int PeerProcess::Unchock()
 
 int PeerProcess::dumpPeerInfo()
 {
-    if (goodPeer == 1) {
-        if (peer_ident[0]==0x2d
-                && peer_ident[1]==0x58
-                && peer_ident[2]==0x4c) {
-            printf("迅雷: %d\n", time(NULL)-hand_shake_time);
-        } else {
-            printf("unkown: %d\n", time(NULL)-hand_shake_time);
-        }
-        //printf("remote chock: %d\n", chocked);
-        //printf("remote insterested: %d\n", insterested);
-    }
     return 0;
 }
 
@@ -295,6 +255,40 @@ void PeerProcess::cancel_request(request_t *request)
 extern int __piece_size;
 extern int __last_piece_size;
 int PeerProcess::totalReceive = 0;
+int PeerProcess::attach(PeerSocket *psocket)
+{
+	if (peer_socket!=NULL
+		   	&& psocket!=peer_socket){
+		return -1;
+	}
+	int i;
+	peer_socket = psocket;
+   	connectTime=0;
+   	queued = 0;
+   	local_chocked = 0;
+   	local_chocking = 1;
+   	local_next_chocked = 0;
+   	local_interested = 0;
+   	local_interesting = 0;
+   	remote_chocked = 1;
+   	remote_insterested = 0;
+   	readCount = 0;
+   	lastRead = 0;
+   	local_total_time = 0;
+   	local_send_time = 0;
+   	remote_total_time = 0;
+   	remote_send_time = 0;
+
+	timeRing = 0;
+   	for (i=0; i<128; i++) {
+	   	timeUsed[i] = 0;
+	   	readBytes[i] = 0;
+   	}
+   	memset(bitField, 0, 
+			(__piece_count+(__last_piece_size>0)+7)/8);
+	return 0;
+}
+
 int PeerProcess::RunActive()
 {
     int i;
@@ -307,73 +301,11 @@ int PeerProcess::RunActive()
     while (error != -1) {
         state = nextState++;
         switch (state) {
-        case 0:
-            wait = 1;
-            if (fildes == -1){
-                fildes = socket(AF_INET, SOCK_STREAM, 0);
-                ioctlsocket(fildes, FIONBIO, NULL);
-                iaddr.sin_family = AF_INET;
-                iaddr.sin_port = port;
-                iaddr.sin_addr.s_addr = address;
-                wait = connect(fildes, (sockaddr*)&iaddr, sizeof(iaddr));
-                if (wait==-1 && WSAGetLastError()!=EINPROGRESS){
-                    perror("connect");
-                    closesocket(fildes);
-                    fildes = -1;
-                    return 0;
-                }
-            }
-            peerSocket.Attach(fildes, &iaddr, sizeof(iaddr), wait);
-            fildes = -1;
-            break;
+		case 0:
         case 1:
-            connectTime=0;
-            queued = 0;
-            local_chocked = 0;
-            local_chocking = 1;
-            local_next_chocked = 0;
-            local_interested = 0;
-            local_interesting = 0;
-            remote_chocked = 1;
-            remote_insterested = 0;
-            readCount = 0;
-            lastRead = 0;
-            local_total_time = 0;
-            local_send_time = 0;
-            remote_total_time = 0;
-            remote_send_time = 0;
-
-            timeRing = 0;
-            for (i=0; i<128; i++) {
-                timeUsed[i] = 0;
-                readBytes[i] = 0;
-            }
-            memset(bitField, 0, 
-                    (__piece_count+(__last_piece_size>0)+7)/8);
-            error = peerSocket.Connected();
-            break;
-        case 2:
-            if (peerSocket.isPassive()) {
-                error = peerSocket.Recv(buffer, 68);
-                if (error != -1 && dumpHandShake(buffer, error) == -1) {
-                    nextState = 9;
-                }
-            } else {
-                len = get_hand_shake(buffer, sizeof(buffer));
-                error = peerSocket.Send(buffer, len);
-            }
-            break;
-        case 3:
-            if (!peerSocket.isPassive()) {
-                error = peerSocket.Recv(buffer, 68);
-                if (error != -1 && dumpHandShake(buffer, error) == -1) {
-                    nextState = 9;
-                }
-            } else {
-                len = get_hand_shake(buffer, sizeof(buffer));
-                error = peerSocket.Send(buffer, len);
-            }
-            break;
+		case 2:
+		case 3:
+			break;
         case 4:
 #if 1
             len = __last_piece_size?__piece_count+1:__piece_count;
@@ -381,7 +313,7 @@ int PeerProcess::RunActive()
             buffer[0] = 0x5;
             memcpy(buffer+1, __bitField, len);
             memcpy(haveField, __bitField, len);
-            if (-1 != peerSocket.SendPacket(buffer, len + 1)) {
+            if (-1 != peer_socket->SendPacket(buffer, len + 1)) {
                 printf("bit field send ok!\n");
             }
             local_chocked = 1;
@@ -390,7 +322,7 @@ int PeerProcess::RunActive()
 #endif
             break;
         case 5:
-            error = peerSocket.RecvPacket(buffer, sizeof(buffer));
+            error = peer_socket->RecvPacket(buffer, sizeof(buffer));
             break;
         case 6:
             goodPeer = 1;
@@ -432,13 +364,13 @@ int PeerProcess::RunActive()
                     memcpy(&request, buffer+1, sizeof(request));
                     if (ntohl(request.q_piece)<0 
                             || ntohl(request.q_piece)>=__piece_count) {
-                        Abort();
+						return 0;
                     } else if (ntohl(request.q_length)>(1<<17) 
                             || ntohl(request.q_length)<16*1024) {
-                        Abort();
+						return 0;
                     } else if (ntohl(request.q_start)<0
                                || ntohl(request.q_start)+ntohl(request.q_length)>__piece_size) {
-                           Abort();
+						return 0;
                     } else {
                         if (local_chocking==0 || add_transfer_peer(this)){
 add_transfer_peer(this);
@@ -494,7 +426,7 @@ add_transfer_peer(this);
         default:
             reassign_segment(bitField);
             dumpPeerInfo();
-            peerSocket.Close();
+            peer_socket->Close();
             goodPeer = 0;
             state = 0;
             return 0;

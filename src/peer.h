@@ -12,26 +12,14 @@ private:
     PeerProcess * peerProcess;
 };
 
-class PeerProcess:public fHandle  {
+class PeerProcess  {
 public:
 	int fildes;
     char peer_ident[20];
 	unsigned long address;
 	unsigned short port;
 
-	int attach(fHandle *handle){
-		if (caller == NULL || caller==handle){
-		   	caller = handle;
-			return 0;
-		}
-		return -1;
-	}
-
-	int detach(){
-		caller = NULL;
-	}
-
-    PeerProcess();
+    PeerProcess(const char ident[20]);
     int writeNextPacket();
     int RunActive();
     int Chock();
@@ -68,16 +56,16 @@ public:
         return connectTime;
     }
     int getSpeed();
-    int Abort();
+    int detach();
+	int attach(PeerSocket *psocket);
 private:
-	fHandle *caller;
     int connectTime;
     int state;
     char *bitField;
     char *haveField;
     PeerWriteProcess writeProcess;
     sockaddr_in peerName;
-    PeerSocket peerSocket;
+    PeerSocket *peer_socket;
 private:
     std::queue < request_t > mRequests;
 private:
@@ -94,7 +82,6 @@ private:
 
     static int totalReceive;
 private:
-    int hand_shake_time;
     int saveAddress(char *buffer, int length);
     int dumpHandShake(char *buf, int len);
     int dumpPeerInfo();

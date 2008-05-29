@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -I. -g -DUTF_8
 LDLIBS = 
 
-SRC =  fsocket.cc tracker.cc peer.cc upeer.cc zpiece.cc sha1.cc fhandle.cc listener.cc main.cc netmgr.cc speedup.cc handshake.cc btdump.cc btlink.cc
+SRC =  fsocket.cc tracker.cc peer.cc upeer.cc zpiece.cc sha1.cc fhandle.cc listener.cc main.cc netmgr.cc speedup.cc handshake.cc btdump.cc btlink.cc dht_throttle.cc
 
 OBJECTS = ${SRC:.cc=.o}
 

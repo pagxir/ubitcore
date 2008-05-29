@@ -102,7 +102,7 @@ int do_speedup1()
             __insched.erase(p);
         }
     }
-    static PeerProcess __static_marker;
+    static PeerProcess __static_marker("marker");
     __schedlist.push(&__static_marker);
     PeerProcess *p = __schedlist.front();
     __schedlist.pop();
@@ -158,7 +158,7 @@ int do_speedup2()
             int limit = chock->IsRemoteChock()?3*1024:1024;
             if (chock->IsInterest()==0 || chock->getSpeed()<limit ) {
                 if (active_count>70) {
-                    chock->Abort();
+                    chock->detach();
                     active_count--;
                 }
             }

@@ -12,10 +12,22 @@
 
 static std::queue<fSocket*> __block_queue;
 
+fSocket::fSocket(int type)
+{
+   fSocket();
+   sock_type = type;
+   if (sock_type == SOCK_DGRAM){
+      file = socket(AF_INET, sock_type, 0);
+      ioctlsocket(file, FIONBIO, &blkOptval);
+      flags = DEQUEUE;
+   }
+}
+
 fSocket::fSocket()
 {
     file = -1;
-	msg = "OK";
+    msg = "OK";
+    sock_type = SOCK_STREAM;
     sock_close = -1;
     flags = DEQUEUE;
     blkOptval = 0;
@@ -51,7 +63,7 @@ int fSocket::Connect(sockaddr * addr, int addrsize)
     connected = 1;
     passiveMode = 0;
     sock_close = 0;
-    file = socket(AF_INET, SOCK_STREAM, 0);
+    file = socket(AF_INET, sock_type, 0);
     ioctlsocket(file, FIONBIO, &blkOptval);
     error = connect(file, addr, addrsize);
     if (error == -1) {
@@ -204,7 +216,6 @@ int fSocket::Recv(char *buf, int len, int flag)
 		}
 		sock_close++;
 		msg = "sockclose";
-		printf("sockclose: %p\n", this);
 	}
     return SetWaitRead(this, error);
 }
