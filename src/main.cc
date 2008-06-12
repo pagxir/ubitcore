@@ -45,8 +45,8 @@ int main(int argc, char *argv[])
     }
     signal(SIGPIPE, SIG_IGN);
     signal(SIGINT, request_cancel);
-    //WakeupListener();
-    //WakeupTracke();
+    WakeupListener();
+    WakeupTracke();
     WakeupSpeedup();
     dht_throttle_start();
     fHandle *handle = NULL;

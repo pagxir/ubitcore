@@ -1,50 +1,34 @@
 #include <time.h>
 #include <stdio.h>
+#include <assert.h>
 #include <queue>
 
 #include "bthread.h"
+#include "biothread.h"
 #include "bsocket.h"
 
 class biothread: public bthread
 {
     public:
+        biothread();
         virtual int bdocall(time_t timeout);
 };
 
-static std::queue<bsocket*> __b_sockets;
 
-int biothread::bdocall(time_t outtime)
+biothread::biothread()
 {
-    int maxfd = -1;
-    timeval tval;
-    tval.tv_sec = outtime-time(NULL);
-    tval.tv_usec = 0;
-    fd_set readfds, writefds;
-    FD_ZERO(&readfds);
-    FD_ZERO(&writefds);
+    bsocket::global_init();
+}
 
-    printf("bselect\n");
-    if (__b_sockets.empty()){
-	return btime_wait(time(NULL)+5);
-    }
-
-    while (__b_sockets.empty()){
-        bsocket *bs = __b_sockets.front();
-        __b_sockets.pop();
-        maxfd = bs->bpoll(maxfd, &readfds, &writefds);
-    }
-
-    int count = select(maxfd+1, &readfds, &writefds, NULL, &tval);
-    printf("select: %d\n", count);
-
-    bwakeup();
-    
+int biothread::bdocall(time_t timeout)
+{
+    bsocket::bselect(timeout);
     return 0;
 }
 
 static biothread __iothread;
 
-int bioinit()
+int biorun()
 {
     __iothread.bwakeup();
     return 0;
