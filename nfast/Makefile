@@ -1,5 +1,5 @@
 CXXFLAGS = -O2
-SRCS = main.cc bthread.cc bsocket.cc biothread.cc
+SRCS = main.cc bthread.cc bsocket.cc biothread.cc bhttpd.cc
 OBJS = ${SRCS:.cc=.o}
 
 bmain: $(OBJS)

@@ -20,6 +20,8 @@ class bsocket
         int enqueue();
         int q_read();
         int q_write();
+        int ok_read();
+        int ok_write();
         static int is_busy();
 
     private:

@@ -124,7 +124,8 @@ bthread::bwakeup()
     return 0;
 }
 
-int bthread::bpoll(bthread ** pu, time_t *timeout)
+int
+bthread::bpoll(bthread ** pu, time_t *timeout)
 {
     bthread *item;
     if (__q_timer.empty()) {

@@ -20,7 +20,8 @@ biothread::biothread()
     bsocket::global_init();
 }
 
-int biothread::bdocall(time_t timeout)
+int
+biothread::bdocall(time_t timeout)
 {
     bsocket::bselect(timeout);
     return 0;
@@ -28,7 +29,8 @@ int biothread::bdocall(time_t timeout)
 
 static biothread __iothread;
 
-int biorun()
+int
+biorun()
 {
     __iothread.bwakeup();
     return 0;
