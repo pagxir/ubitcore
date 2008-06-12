@@ -47,6 +47,7 @@ bsocket::bsocket()
 {
     b_fd = -1;
     b_flag = 0;
+    f_flag = 0;
     b_jwr = NULL;
     b_jrd = NULL;
 }
@@ -78,24 +79,43 @@ bsocket::bpoll(int count)
 {
     int flag = b_flag;
     b_flag = 0;
+    if (BSF_CONN&flag){
+        if (count>0 && ok_read()){
+            b_jrd->bwakeup();
+            flag &= ~BSF_CONN;
+            count--;
+        }
+        if (count>0 && ok_write()){
+            b_jwr->bwakeup();
+            flag &= ~BSF_CONN;
+            count--;
+        }
+        if (flag & BSF_CONN){
+            q_read(b_jrd);
+            q_write(b_jwr);
+            b_flag |= BSF_CONN;
+        }else{
+            b_jwr = NULL;
+            b_jrd = NULL;
+        }
+        return count;
+    }
     if (BSF_READ&flag){
         if (count>0 && ok_read()){
-            assert(b_jrd != NULL);
             b_jrd->bwakeup();
             b_jrd = NULL;
             count --;
         }else{
-            q_read(b_jrd);
+            //q_read(b_jrd);
         }
     }
     if (BSF_WRITE&flag){
         if (count>0 && ok_write()){
-            assert(b_jwr != NULL);
             b_jwr->bwakeup();
             b_jwr = NULL;
             count --;
         }else{
-            q_write(b_jwr);
+            //q_write(b_jwr);
         }
     }
     return count;
@@ -158,6 +178,7 @@ bsocket::enqueue()
     maxfd = std::max(maxfd, b_fd);
     b_flag |= BSF_QUEUE;
     bqueue.push(this);
+    printf("enqueue!\n");
     biorun();
     return 0;
 }
@@ -197,6 +218,9 @@ bsocket::bconnect()
     int fflag;
     const char host[] = "www.baidu.com";
     sockaddr_in siaddr;
+    if (f_flag & FF_NOCONNECT){
+        return (f_flag&FF_MASK);
+    }
     assert(b_fd == -1);
     siaddr.sin_family = AF_INET;
     siaddr.sin_port = htons(80);
@@ -217,6 +241,7 @@ bsocket::bconnect()
 #endif
     error = connect(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
     if (error==-1){
+        f_flag |= FF_NOCONNECT;
         bwait_connect();
     }
     return error;

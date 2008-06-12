@@ -6,6 +6,10 @@
 #define BSF_QUEUE 0x1000
 #define BSF_WRITE 0x2000
 #define BSF_READ  0x4000
+#define BSF_CONN  0x8000
+
+#define FF_MASK      0x00FF
+#define FF_NOCONNECT 0x1000
 
 struct nextfds;
 
@@ -32,6 +36,7 @@ class bsocket
     private:
         int b_fd;
         int b_flag;
+        int f_flag;
         bthread *b_jwr, *b_jrd;
 
         static int maxfd;

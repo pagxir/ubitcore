@@ -48,7 +48,6 @@ bclock::bdocall(time_t timeout)
 int
 main(int argc, char *argv[])
 {
-    biorun();
     bhttpd_start();
     bclock c("SYS", 4), d("DDD", 9), k("UFO", 9), e("XDD", 7), f("ODD", 3);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
