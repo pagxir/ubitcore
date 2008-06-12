@@ -23,6 +23,7 @@ biothread::biothread()
 int
 biothread::bdocall(time_t timeout)
 {
+    printf("bsocket::bselect!\n");
     bsocket::bselect(timeout);
     return 0;
 }

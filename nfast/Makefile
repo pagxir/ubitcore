@@ -1,4 +1,4 @@
-CXXFLAGS = -O2
+CXXFLAGS = -g
 SRCS = main.cc bthread.cc bsocket.cc biothread.cc bhttpd.cc
 OBJS = ${SRCS:.cc=.o}
 
