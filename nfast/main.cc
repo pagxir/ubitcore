@@ -3,10 +3,15 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "bthread.h"
 #include "biothread.h"
 #include "bhttpd.h"
+
+#ifndef NDEBUG
+#include "bsocket.h"
+#endif
 
 class bclock: public bthread
 {
@@ -57,6 +62,8 @@ main(int argc, char *argv[])
         bwait_cancel();
         if (-1 == j->bdocall(timeout)){
             j->bwait();
+#ifndef NDEBUG
+#endif
         }
     }
     return 0;

@@ -33,6 +33,9 @@ class bsocket
         int bwait_send();
         int bwait_connect();
         int bwait_receive();
+#ifndef NDEBUG
+    public:
+#endif
         static int is_busy();
         static int __bwait_send(bthread *job, int argc, void *argv);
         static int __bwait_receive(bthread *job, int argc, void *argv);

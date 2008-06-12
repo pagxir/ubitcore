@@ -71,6 +71,7 @@ struct btimer
     int bwait() const
     {
         if (time(NULL) < tt_tick){
+            printf("waiting\n");
             sleep(tt_tick - time(NULL));
         }
         return 0;

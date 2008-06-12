@@ -138,7 +138,7 @@ bsocket::bpoll(int count)
             b_jrd = NULL;
             count --;
         }else{
-            //q_read(b_jrd);
+            q_read(b_jrd);
         }
     }
     if (BSF_WRITE&flag){
@@ -147,7 +147,7 @@ bsocket::bpoll(int count)
             b_jwr = NULL;
             count --;
         }else{
-            //q_write(b_jwr);
+            q_write(b_jwr);
         }
     }
     return count;
@@ -246,7 +246,10 @@ bsocket::bconnect()
 {
     int error;
     int fflag;
-    const char host[] = "www.baidu.com";
+#if 0
+    ftp.nl.freebsd.org
+#endif
+    const char host[] = "ftp.nl.freebsd.org";
     sockaddr_in siaddr;
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;
