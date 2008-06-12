@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include "bthread.h"
 #include "bsocket.h"
@@ -24,8 +25,10 @@ bhttpd::bhttpd()
 int
 bhttpd::bdocall(time_t timeout)
 {
-    int error = 0;
+    int error=0;
     int state = b_state;
+    char buffer[8192];
+    const char title[] = "GET / HTTP/1.0\r\n\r\n";
     while(error != -1){
         b_state = state++;
         switch(b_state){
@@ -33,7 +36,19 @@ bhttpd::bdocall(time_t timeout)
                 error = b_listener.bconnect();
                 break;
             case 1:
-                error = b_listener.bsend();
+                error = b_listener.bsend(title, strlen(title));
+                break;
+            case 2:
+                error = b_listener.breceive(buffer, sizeof(buffer)-1);
+                break;
+            case 3:
+                if (error == 0){
+                    printf("\n");
+                    return 0;
+                }
+                buffer[error] = 0;
+                printf("%s", buffer);
+                state = 2;
                 break;
             default:
                 error = -1;

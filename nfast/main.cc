@@ -49,7 +49,7 @@ int
 main(int argc, char *argv[])
 {
     bhttpd_start();
-    bclock c("SYS", 4), d("DDD", 9), k("UFO", 9), e("XDD", 7), f("ODD", 3);
+    bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
     bthread *j;
     time_t timeout;

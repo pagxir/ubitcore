@@ -43,6 +43,24 @@ bsocket::bwait_connect()
     return 0;
 }
 
+int
+bsocket::bwait_receive()
+{
+    if (errno == EAGAIN){
+        bthread_waiter(bsocket::__bwait_receive, 0, this);
+    }
+    return 0;
+}
+
+int
+bsocket::bwait_send()
+{
+    if (errno == EAGAIN){
+        bthread_waiter(bsocket::__bwait_send, 0, this);
+    }
+    return 0;
+}
+
 bsocket::bsocket()
 {
     b_fd = -1;
@@ -53,9 +71,23 @@ bsocket::bsocket()
 }
 
 int
-bsocket::bsend()
+bsocket::bsend(const char *buf, size_t len)
 {
-    return 0;
+    int error = send(b_fd, buf, len, 0);
+    if (error == -1){
+        bwait_send();
+    }
+    return error;
+}
+
+int
+bsocket::breceive(char *buf, size_t len)
+{
+    int error = recv(b_fd, buf, len, 0);
+    if (error == -1){
+        bwait_receive();
+    }
+    return error;
 }
 
 int
@@ -178,7 +210,6 @@ bsocket::enqueue()
     maxfd = std::max(maxfd, b_fd);
     b_flag |= BSF_QUEUE;
     bqueue.push(this);
-    printf("enqueue!\n");
     biorun();
     return 0;
 }
@@ -195,7 +226,6 @@ bsocket::bselect(time_t outtime)
     if (is_busy()){
         count = select(maxfd+1, &b_nextfds->readfds,
                 &b_nextfds->writefds, NULL, &tval);
-        printf("CC: %d\n", count);
         b_nextfds = b_nextfds->next;
         FD_ZERO(&b_nextfds->readfds);
         FD_ZERO(&b_nextfds->writefds);
@@ -219,6 +249,7 @@ bsocket::bconnect()
     const char host[] = "www.baidu.com";
     sockaddr_in siaddr;
     if (f_flag & FF_NOCONNECT){
+        f_flag &= ~FF_NOCONNECT;
         return (f_flag&FF_MASK);
     }
     assert(b_fd == -1);
@@ -254,6 +285,22 @@ bsocket::__bwait_connect(bthread* job, int argc, void *argv)
     bps->q_read(job);
     bps->q_write(job);
     printf("__bwait_connect: wait connect: %p!\n", job);
+    return 0;
+}
+
+int
+bsocket::__bwait_receive(bthread* job, int argc, void *argv)
+{
+    bsocket *bps = (bsocket*)argv;
+    bps->q_read(job);
+    return 0;
+}
+
+int
+bsocket::__bwait_send(bthread* job, int argc, void *argv)
+{
+    bsocket *bps = (bsocket*)argv;
+    bps->q_write(job);
     return 0;
 }
 

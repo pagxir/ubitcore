@@ -17,8 +17,9 @@ class bsocket
 {
     public:
         bsocket();
-        int bsend();
         int bconnect();
+        int bsend(const char *buf, size_t len);
+        int breceive(char *buf, size_t len);
         static int global_init();
         static int bselect(time_t timeout);
    
@@ -29,8 +30,12 @@ class bsocket
         int q_write(bthread *job);
         int ok_read();
         int ok_write();
+        int bwait_send();
         int bwait_connect();
+        int bwait_receive();
         static int is_busy();
+        static int __bwait_send(bthread *job, int argc, void *argv);
+        static int __bwait_receive(bthread *job, int argc, void *argv);
         static int __bwait_connect(bthread *job, int argc, void *argv);
 
     private:
