@@ -17,6 +17,7 @@ class biothread: public bthread
 
 biothread::biothread()
 {
+    b_ident = "biothread";
     bsocket::global_init();
 }
 

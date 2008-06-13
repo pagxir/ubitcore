@@ -20,8 +20,14 @@ static std::queue<bthread*> __q_conflict;
 class conflict: public bthread
 {
     public:
+        conflict();
         virtual int bdocall(time_t timeout);
 };
+
+conflict::conflict()
+{
+    b_ident = "conflict";
+}
 
 int conflict::bdocall(time_t timeout)
 {
@@ -48,6 +54,8 @@ bsocket::bwait_receive()
 {
     if (errno == EAGAIN){
         bthread_waiter(bsocket::__bwait_receive, 0, this);
+    }else{
+        perror("bad bwait_receive");
     }
     return 0;
 }
@@ -57,6 +65,8 @@ bsocket::bwait_send()
 {
     if (errno == EAGAIN){
         bthread_waiter(bsocket::__bwait_send, 0, this);
+    }else{
+        perror("bad bwait_send");
     }
     return 0;
 }
@@ -225,7 +235,8 @@ bsocket::bselect(time_t outtime)
 
     if (is_busy()){
         count = select(maxfd+1, &b_nextfds->readfds,
-                &b_nextfds->writefds, NULL, &tval);
+                &b_nextfds->writefds, NULL, outtime==-1?NULL:&tval);
+        assert(count != -1);
         b_nextfds = b_nextfds->next;
         FD_ZERO(&b_nextfds->readfds);
         FD_ZERO(&b_nextfds->writefds);
@@ -242,14 +253,13 @@ bsocket::bselect(time_t outtime)
 }
 
 int
-bsocket::bconnect()
+bsocket::bconnect(const char *host)
 {
     int error;
     int fflag;
 #if 0
     ftp.nl.freebsd.org
 #endif
-    const char host[] = "ftp.nl.freebsd.org";
     sockaddr_in siaddr;
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;

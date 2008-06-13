@@ -21,14 +21,15 @@ class bclock: public bthread
         virtual int bdocall(time_t timeout);
 
     private:
-        int second;
+        int b_second;
         int last_time;
         const char *ident_text;
 };
 
 bclock::bclock(const char *text, int second)
 {
-    this->second = second;
+    b_ident = "bclock";
+    b_second = second;
     last_time = time(NULL);
     ident_text = strdup(text);
 }
@@ -43,8 +44,8 @@ bclock::bdocall(time_t timeout)
 {
     time_t now;
     time(&now);
-    printf("bcall(%s): %s", ident_text, ctime(&now));
-    while(-1 != btime_wait(last_time+second)){
+    fprintf(stderr, "\rbcall(%s): %s", ident_text, ctime(&now));
+    while(-1 != btime_wait(last_time+b_second)){
         last_time = time(NULL);
     }
     return -1;

@@ -12,6 +12,7 @@ static j_caller __thread_caller = NULL;
 
 bthread::bthread()
 {
+    b_ident = "bthread";
     b_flag = 0;
 }
 
@@ -62,24 +63,32 @@ struct btimer
 {
     bool operator()(btimer const & t1, btimer const &t2)
     {
-        if (t1.tt_tick == t2.tt_tick){
-            return t1.tt_seed<t2.tt_seed;
+        if (t1.btick() == t2.btick()){
+            return t1.bseed()<t2.bseed();
         }
-        return t1.tt_tick<t2.tt_tick;
+        return t1.btick()<t2.btick();
     }
 
     int bwait() const
     {
-        if (time(NULL) < tt_tick){
+        if (time(NULL) < btick()){
             printf("waiting\n");
-            sleep(tt_tick - time(NULL));
+            sleep(btick() - time(NULL));
         }
         return 0;
     }
 
+    time_t btick() const
+    {
+        return tt_thread->b_tick;
+    }
+
+    int bseed() const
+    {
+        return tt_thread->b_seed;
+    }
+
     int tt_flag;
-    int tt_seed;
-    time_t tt_tick;
     bthread *tt_thread;
 };
 
@@ -88,18 +97,7 @@ static std::set<btimer, btimer>__q_timer;
 static int
 __btime_wait(bthread *job, int t, void *argv)
 {
-    static int __generator = 0;
-    btimer __timer;
-    if (t < time(NULL)) {
-        job->bwakeup();
-        return 0;
-    }
-    __timer.tt_seed = __generator++;
-    __timer.tt_tick = t;
-    __timer.tt_thread = job;
-    __timer.tt_flag = job->flag();
-    assert(__q_timer.find(__timer) == __q_timer.end());
-    __q_timer.insert(__timer);
+    job->benqueue(t);
     return 0;
 }
 
@@ -114,14 +112,32 @@ btime_wait(int t)
 }
 
 int
-bthread::bwakeup()
+bthread::benqueue(time_t timeout)
 {
+    btimer __timer;
+    __timer.tt_thread = this;
+    __timer.tt_flag = flag();
+    static int __generator = 0;
     if (b_flag&BF_ACTIVE) {
-        return 0;
+        printf("dup wakeup: %p %s\n", this, b_ident);
+        assert(!__q_timer.empty());
+        if (timeout>__timer.btick()){
+            return 0;
+        }
+        __q_timer.erase(__timer);
     }
     b_flag |= BF_ACTIVE;
-    b_flag &= ~(BF_IDLE);
-    __btime_wait(this, time(NULL), NULL);
+    b_tick = timeout;
+    b_seed  = __generator++;
+    assert(__q_timer.find(__timer) == __q_timer.end());
+    __q_timer.insert(__timer);
+    return 0;
+}
+
+int
+bthread::bwakeup()
+{
+    benqueue(time(NULL));
     return 0;
 }
 
@@ -147,7 +163,7 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
         *timeout = -1;
         return 0;
     }
-    *timeout = THEADER->tt_tick;
+    *timeout = THEADER->btick();
 #undef THEADER
     return 0;
 }

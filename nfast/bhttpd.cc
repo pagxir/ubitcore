@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
@@ -23,10 +24,14 @@ static time_t __time = 0;
 static int __current = 0;
 static int __together = 0;
 static int __total[0x10] = { 0 };
+#define URL_FULL "http://ftp.daum.net/ubuntu-releases/feisty/ubuntu-7.04-desktop-i386.iso"
+#define URL_PATH "/ubuntu-releases/feisty/ubuntu-7.04-desktop-i386.iso"
+#define URL_HOST "ftp.daum.net"
 #endif
 
 bhttpd::bhttpd()
 {
+    b_ident = "bhttpd";
     b_state = 0;
 #ifndef NDEBUG
     __time = time(NULL);
@@ -39,12 +44,16 @@ bhttpd::bdocall(time_t timeout)
     int error=0;
     int state = b_state;
     char buffer[81920];
-    const char title[] = "GET /os/FreeBSD/snapshots/200805/8.0-CURRENT-200805-i386-disc1.iso HTTP/1.0\r\n\r\n";
+    const char title[] = "GET "URL_PATH" HTTP/1.0\r\n"
+        "Host: "URL_HOST"\r\n"
+        "Connection: Close\r\n"
+        "\r\n"
+        ;
     while(error != -1){
         b_state = state++;
         switch(b_state){
             case 0:
-                error = b_listener.bconnect();
+                error = b_listener.bconnect(URL_HOST);
                 break;
             case 1:
                 error = b_listener.bsend(title, strlen(title));
@@ -53,31 +62,33 @@ bhttpd::bdocall(time_t timeout)
                 error = b_listener.breceive(buffer, sizeof(buffer));
                 break;
             case 3:
-                if (error == 0){
-                    printf("connection close\n");
-                    return 0;
-                }
+                if (error > 0){
 #ifndef NDEBUG
-                __together += error;
-                __total[__current&0xF] += error;
-                if (time(NULL) != __time){
-                    int total = 0;
-                    for (int i=0; i<0x10; i++){
-                        total += __total[i];
+                    __together += error;
+                    __total[__current&0xF] += error;
+                    if (time(NULL) != __time){
+                        int total = 0;
+                        for (int i=0; i<0x10; i++){
+                            total += __total[i];
+                        }
+                        fprintf(stderr, "\r%9d %3d.%02d %s", __together,
+                                (total>>14), ((total&0x3FFF)*25)>>12, URL_FULL);
+                        __current++;
+                        __time = time(NULL);
+                        __total[__current&0xF] = 0;
                     }
-                    fprintf(stderr, "\r%5d %d", total>>4, __together);
-                    __current++;
-                    __time = time(NULL);
-                    __total[__current&0xF] = 0;
-                }
+                    state = 2;
 #endif
-                state = 2;
+                }
                 break;
             default:
-                error = -1;
-                break;
+                printf("connection is close by remote peer!\n");
+                return 0;
         }
     }
+#ifndef NDEBUG
+    assert(error==-1);
+#endif
     return error;
 }
 
