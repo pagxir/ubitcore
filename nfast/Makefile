@@ -1,9 +1,14 @@
+CXX = g++
 CXXFLAGS = -g
-SRCS = main.cc bthread.cc bsocket.cc biothread.cc bhttpd.cc
+LDLIBS = -lsocket -lnsl
+SRCS = bthread.cc bsocket.cc biothread.cc bhttpd.cc main.cc
 OBJS = ${SRCS:.cc=.o}
 
 bmain: $(OBJS)
 	$(CXX) $(LDFLAGS) -o bmain $(OBJS) $(LDLIBS)
+
+.cc.o:
+	$(CXX) -c $< -o $@
 
 clean:
 	rm -f $(OBJS)

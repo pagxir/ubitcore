@@ -11,6 +11,10 @@
 #include "biothread.h"
 #include "bsocket.h"
 
+#ifndef INADDR_NONE
+#define INADDR_NONE -1
+#endif
+
 struct nextfds
 {
     struct nextfds *next;
