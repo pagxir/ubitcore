@@ -24,9 +24,9 @@ static time_t __time = 0;
 static int __current = 0;
 static int __together = 0;
 static int __total[0x10] = { 0 };
-#define URL_FULL "http://ftp.daum.net/ubuntu-releases/feisty/ubuntu-7.04-desktop-i386.iso"
-#define URL_PATH "/ubuntu-releases/feisty/ubuntu-7.04-desktop-i386.iso"
-#define URL_HOST "ftp.daum.net"
+#define URL_FULL "http://ftp.cdut.edu.cn/pub/slackware/10.1/slackware-10.1-install-d1.iso"
+#define URL_PATH "/pub/slackware/10.1/slackware-10.1-install-d1.iso"
+#define URL_HOST "ftp.cdut.edu.cn"
 #endif
 
 bhttpd::bhttpd()
