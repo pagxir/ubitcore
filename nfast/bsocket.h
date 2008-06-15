@@ -17,6 +17,7 @@ class bsocket
 {
     public:
         bsocket();
+        ~bsocket();
         int bconnect(const char *host, int port);
         int bsend(const char *buf, size_t len);
         int breceive(char *buf, size_t len);

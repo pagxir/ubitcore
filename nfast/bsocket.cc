@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -14,6 +15,12 @@
 #ifndef INADDR_NONE
 #define INADDR_NONE -1
 #endif
+
+/*
+ * NOTICE: If connection not finish, donot minitor read or write.
+ * In this case, It would be not work correctly now!
+ * NOTICE: Is using FD_ZERO better than using FD_CLR?
+ */
 
 struct nextfds
 {
@@ -322,6 +329,14 @@ int
 bsocket::is_busy()
 {
     return !bqueue.empty();
+}
+
+bsocket::~bsocket()
+{
+    if (b_fd != -1){
+        close(b_fd);
+        b_fd = -1;
+    }
 }
 
 int bsocket::maxfd = -1;
