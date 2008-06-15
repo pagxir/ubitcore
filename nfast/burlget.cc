@@ -14,11 +14,10 @@ class burlget_wrapper: public burlget
         burlget_wrapper();
         virtual int boutbind(boutfile *bfile);
         virtual int burlbind(const char *url);
-        virtual int bdopoll(time_t timeout);
+        virtual int bpolldata(char *buf, int len);
 
     private:
         bsocket b_connect;
-        boutfile *b_file;
         int b_len;
         int b_state;
         int b_urlport;
@@ -62,7 +61,6 @@ burlget_wrapper::burlget_wrapper()
 int
 burlget_wrapper::boutbind(boutfile *bfile)
 {
-    b_file = bfile;
 }
 
 int
@@ -102,13 +100,12 @@ burlget_wrapper::burlbind(const char *url)
 }
 
 int
-burlget_wrapper::bdopoll(time_t timeout)
+burlget_wrapper::bpolldata(char *buffer, int size)
 {
     int i;
     int error=0;
     int state = b_state;
     const char match[5]="\r\n\r\n";
-    char buffer[81920];
     while(error != -1){
         b_state = state++;
         switch(b_state){
@@ -116,17 +113,12 @@ burlget_wrapper::bdopoll(time_t timeout)
                 error = b_connect.bconnect(b_urlhost, b_urlport);
                 break;
             case 1:
-                if (b_file != NULL){
-                    b_file->bopen();
-                }
-                break;
-            case 2:
                 error = b_connect.bsend(b_bufhead, strlen(b_bufhead));
                 break;
-            case 3:
-                error = b_connect.breceive(buffer, sizeof(buffer));
+            case 2:
+                error = b_connect.breceive(buffer, size);
                 break;
-            case 4:
+            case 3:
                 for (i=0; i<error&&b_len<4; i++){
                     if (buffer[i] == match[b_len]){
                         b_len ++;
@@ -135,21 +127,26 @@ burlget_wrapper::bdopoll(time_t timeout)
                     }
                 }
                 if (error > 0 && b_len<4){
-                    state = 3;
+                    printf("not finish: %s\n", buffer);
+                    state = 2;
                     break;
                 }
-                if (b_file != NULL){
-                    b_file->bwrite(buffer+i, error-i);
+                if (error > i){
+                    memmove(buffer, buffer+i, error-i);
                 }
+                error-=i;
+                break;
+            case 4:
                 break;
             case 5:
-                error = b_connect.breceive(buffer, sizeof(buffer));
+                if (error > 0){
+                    return error;
+                }
+                error = b_connect.breceive(buffer, size);
                 break;
             case 6:
                 if (error > 0){
-                    if (b_file != NULL){
-                        b_file->bwrite(buffer, error);
-                    }
+                    state = 5;
 #ifndef NDEBUG
                     __together += error;
                     __total[__current&0xF] += error;
@@ -165,20 +162,13 @@ burlget_wrapper::bdopoll(time_t timeout)
                         __time = time(NULL);
                         __total[__current&0xF] = 0;
                     }
-                    state = 5;
 #endif
                 }
                 break;
             default:
-                if (b_file != NULL){
-                    b_file->bclose();
-                }
-                printf("\nremote close: %s !\n", b_urlfull);
+                printf("remote close: %s %d !\n", b_urlfull, error);
                 return error;
         }
     }
-#ifndef NDEBUG
-    assert(error==-1);
-#endif
     return error;
 }

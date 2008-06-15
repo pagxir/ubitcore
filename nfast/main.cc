@@ -66,6 +66,7 @@ burlthread::bdocall(time_t timeout)
 {
     int error = 0;
     int state = b_state;
+    char buffer[81920];
     while(error != -1){
         b_state = state++;
         switch(b_state){
@@ -74,17 +75,25 @@ burlthread::bdocall(time_t timeout)
                 assert(b_get != NULL);
                 b_file = boutfile::get();
                 b_file->bpathbind(b_path);
-                b_get->boutbind(b_file);
+                b_file->bopen();
                 error = b_get->burlbind(b_url);
                 break;
             case 1:
-                error = b_get->bdopoll(timeout);
+                error = b_get->bpolldata(buffer, sizeof(buffer));
                 break;
             case 2:
+                if (error > 0){
+                    b_file->bwrite(buffer, error);
+                    state = 1;
+                    break;
+                }
+                b_file->bclose();
+                break;
+            case 3:
                 assert(error==0);
                 error = btime_wait(last_time+b_second);
                 break;
-            case 3:
+            case 4:
                 last_time = time(NULL);
                 delete b_get;
                 b_get = NULL;

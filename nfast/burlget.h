@@ -5,9 +5,8 @@ class burlget
 {
     public:
         static burlget *get();
-        virtual int boutbind(boutfile *bfile)=0;
         virtual int burlbind(const char *url)=0;
-        virtual int bdopoll(time_t timeout)=0;
+        virtual int bpolldata(char *buf, int len)=0;
         virtual ~burlget();
 };
 #endif
