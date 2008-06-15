@@ -6,18 +6,27 @@
 
 #include "bthread.h"
 #include "bsocket.h"
-#include "bhttpd.h"
+#include "burlget.h"
 
-class bhttpd: public bthread
+class burlget_wrapper: public burlget
 {
     public:
-        bhttpd();
-        virtual int bdocall(time_t timeout);
+        burlget_wrapper();
+        int bdopoll(time_t timeout);
 
     private:
-        bsocket b_listener;
+        bsocket b_connect;
         int b_state;
 };
+
+burlget *burlget::get()
+{
+    return new burlget_wrapper();
+}
+
+burlget::~burlget()
+{
+}
 
 #ifndef NDEBUG
 static time_t __time = 0;
@@ -29,9 +38,8 @@ static int __total[0x10] = { 0 };
 #define URL_HOST "ftp.cdut.edu.cn"
 #endif
 
-bhttpd::bhttpd()
+burlget_wrapper::burlget_wrapper()
 {
-    b_ident = "bhttpd";
     b_state = 0;
 #ifndef NDEBUG
     __time = time(NULL);
@@ -39,7 +47,7 @@ bhttpd::bhttpd()
 }
 
 int
-bhttpd::bdocall(time_t timeout)
+burlget_wrapper::bdopoll(time_t timeout)
 {
     int error=0;
     int state = b_state;
@@ -53,13 +61,13 @@ bhttpd::bdocall(time_t timeout)
         b_state = state++;
         switch(b_state){
             case 0:
-                error = b_listener.bconnect(URL_HOST);
+                error = b_connect.bconnect(URL_HOST);
                 break;
             case 1:
-                error = b_listener.bsend(title, strlen(title));
+                error = b_connect.bsend(title, strlen(title));
                 break;
             case 2:
-                error = b_listener.breceive(buffer, sizeof(buffer));
+                error = b_connect.breceive(buffer, sizeof(buffer));
                 break;
             case 3:
                 if (error > 0){
@@ -83,20 +91,11 @@ bhttpd::bdocall(time_t timeout)
                 break;
             default:
                 printf("connection is close by remote peer!\n");
-                return 0;
+                return error;
         }
     }
 #ifndef NDEBUG
     assert(error==-1);
 #endif
     return error;
-}
-
-static bhttpd __httpd;
-
-int
-bhttpd_start()
-{
-    __httpd.bwakeup();
-    return 0;
 }

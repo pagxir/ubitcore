@@ -119,7 +119,9 @@ bthread::benqueue(time_t timeout)
     __timer.tt_flag = flag();
     static int __generator = 0;
     if (b_flag&BF_ACTIVE) {
+#if 0
         printf("dup wakeup: %p %s\n", this, b_ident);
+#endif
         assert(!__q_timer.empty());
         if (timeout>__timer.btick()){
             return 0;

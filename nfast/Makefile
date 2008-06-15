@@ -1,7 +1,6 @@
 CXX = g++
 CXXFLAGS = -g
-LDLIBS = -lsocket -lnsl
-SRCS = bthread.cc bsocket.cc biothread.cc bhttpd.cc main.cc
+SRCS = bthread.cc bsocket.cc biothread.cc burlget.cc main.cc 
 OBJS = ${SRCS:.cc=.o}
 
 bmain: $(OBJS)
