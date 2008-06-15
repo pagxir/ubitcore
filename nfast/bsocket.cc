@@ -34,7 +34,8 @@ conflict::conflict()
     b_ident = "conflict";
 }
 
-int conflict::bdocall(time_t timeout)
+int
+conflict::bdocall(time_t timeout)
 {
     while(!__q_conflict.empty()){
         __q_conflict.front()->bwakeup();
@@ -258,13 +259,10 @@ bsocket::bselect(time_t outtime)
 }
 
 int
-bsocket::bconnect(const char *host)
+bsocket::bconnect(const char *host, int port)
 {
     int error;
     int fflag;
-#if 0
-    ftp.nl.freebsd.org
-#endif
     sockaddr_in siaddr;
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;
@@ -272,7 +270,7 @@ bsocket::bconnect(const char *host)
     }
     assert(b_fd == -1);
     siaddr.sin_family = AF_INET;
-    siaddr.sin_port = htons(80);
+    siaddr.sin_port = htons(port);
     siaddr.sin_addr.s_addr = inet_addr(host);
     if (inet_addr(host) == INADDR_NONE){
         hostent *phost = gethostbyname(host);
@@ -283,11 +281,9 @@ bsocket::bconnect(const char *host)
         fprintf(stderr, "IP: %s\n", inet_ntoa(siaddr.sin_addr));
     }
     b_fd = socket(AF_INET, SOCK_STREAM, 0);
-#if 1
     fflag = fcntl(b_fd, F_GETFL);
     fflag |= O_NONBLOCK;
     fcntl(b_fd, F_SETFL, fflag);
-#endif
     error = connect(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
     if (error==-1){
         f_flag |= FF_NOCONNECT;

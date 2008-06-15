@@ -13,10 +13,15 @@
 #include "bsocket.h"
 #endif
 
+#define K0 "http://ftp.cdut.edu.cn/pub/slackware/10.1/slackware-10.1-install-d1.iso"
+#define K1 "http://debian.nctu.edu.tw/ubuntu-releases/8.04/ubuntu-8.04-desktop-i386.iso"
+#define K2 "http://ftp.cse.yzu.edu.tw/pub/Linux/Ubuntu/ubuntu-cd/8.04/ubuntu-8.04-desktop-i386.iso"
+#define K3 "http://mirror.datapipe.net/gentoo/releases/x86/2008.0_beta2/livecd/livecd-i686-installer-2008.0_beta2-r1.iso"
+
 class burlthread: public bthread
 {
     public:
-        burlthread(int second);
+        burlthread(const char *url, int second);
         virtual int bdocall(time_t timeout);
         ~burlthread();
 
@@ -24,18 +29,21 @@ class burlthread: public bthread
         int b_state;
         int b_second;
         int last_time;
+        char *b_url;
         burlget *b_get;
 };
 
-burlthread::burlthread(int second)
+burlthread::burlthread(const char *url, int second)
 {
+    b_url = strdup(url);
     b_get = NULL;
     b_state = 0;
     b_second = second;
     last_time = time(NULL);
 }
 
-int burlthread::bdocall(time_t timeout)
+int
+burlthread::bdocall(time_t timeout)
 {
     int error = 0;
     int state = b_state;
@@ -45,6 +53,7 @@ int burlthread::bdocall(time_t timeout)
             case 0:
                 b_get = burlget::get();
                 assert(b_get != NULL);
+                error = b_get->burlbind(b_url);
                 break;
             case 1:
                 error = b_get->bdopoll(timeout);
@@ -66,6 +75,10 @@ burlthread::~burlthread()
     if (b_get != NULL){
         delete b_get;
         b_get = NULL;
+    }
+    if (b_url != NULL){
+        free(b_url);
+        b_url = NULL;
     }
 }
 
@@ -110,7 +123,7 @@ bclock::bdocall(time_t timeout)
 int
 main(int argc, char *argv[])
 {
-    burlthread urla(10), urlb(20), urlc(30), urld(40);
+    burlthread urla(K0, 10), urlb(K1, 20), urlc(K2, 30), urld(K3, 40);
     urla.bwakeup();  urlb.bwakeup();  urlc.bwakeup(); urld.bwakeup();
     bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
