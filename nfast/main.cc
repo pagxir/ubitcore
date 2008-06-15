@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <queue>
 
 #include "bthread.h"
 #include "biothread.h"
@@ -30,16 +31,34 @@ class burlthread: public bthread
         int b_second;
         int last_time;
         char *b_url;
+        char b_path[512];
         burlget *b_get;
+        boutfile *b_file;
 };
 
 burlthread::burlthread(const char *url, int second)
 {
     b_url = strdup(url);
     b_get = NULL;
+    b_file = NULL;
     b_state = 0;
     b_second = second;
     last_time = time(NULL);
+
+    int i = 0;
+    const char *dot = url;
+    while (*dot && *dot!='?'){
+        b_path[i++] = *dot;
+        if (*dot == '/'){
+            i = 0;
+        }
+        dot++;
+    }
+    if (i == 0){
+        strcpy(b_path, "a.out");
+    }else{
+        b_path[i] = 0;
+    }
 }
 
 int
@@ -53,6 +72,9 @@ burlthread::bdocall(time_t timeout)
             case 0:
                 b_get = burlget::get();
                 assert(b_get != NULL);
+                b_file = boutfile::get();
+                b_file->bpathbind(b_path);
+                b_get->boutbind(b_file);
                 error = b_get->burlbind(b_url);
                 break;
             case 1:
@@ -66,6 +88,8 @@ burlthread::bdocall(time_t timeout)
                 last_time = time(NULL);
                 delete b_get;
                 b_get = NULL;
+                delete b_file;
+                b_file = NULL;
                 state = 0;
                 break;
         }
@@ -82,6 +106,10 @@ burlthread::~burlthread()
     if (b_url != NULL){
         free(b_url);
         b_url = NULL;
+    }
+    if (b_file != NULL){
+        delete b_file;
+        b_file = NULL;
     }
 }
 
@@ -128,8 +156,13 @@ bclock::bdocall(time_t timeout)
 int
 main(int argc, char *argv[])
 {
-    burlthread urla(K0, 10), urlb(K1, 20), urlc(K2, 30), urld(K3, 40);
-    urla.bwakeup();  urlb.bwakeup();  urlc.bwakeup(); urld.bwakeup();
+    int i;
+    std::queue<burlthread*> burlqueue;
+    for (i=1; i<argc; i++){
+        burlthread *get = new burlthread(argv[i], 30);
+        burlqueue.push(get);
+        get->bwakeup();
+    }
     bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
     bthread *j;
@@ -138,9 +171,11 @@ main(int argc, char *argv[])
         bwait_cancel();
         if (-1 == j->bdocall(timeout)){
             j->bwait();
-#ifndef NDEBUG
-#endif
         }
+    }
+    while (!burlqueue.empty()){
+        delete burlqueue.front();
+        burlqueue.pop();
     }
     return 0;
 }

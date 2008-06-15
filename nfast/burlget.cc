@@ -12,11 +12,13 @@ class burlget_wrapper: public burlget
 {
     public:
         burlget_wrapper();
+        virtual int boutbind(boutfile *bfile);
         virtual int burlbind(const char *url);
         virtual int bdopoll(time_t timeout);
 
     private:
         bsocket b_connect;
+        boutfile *b_file;
         int b_state;
         int b_urlport;
         char b_urlhost[128];
@@ -53,6 +55,12 @@ burlget_wrapper::burlget_wrapper()
 #ifndef NDEBUG
     __time = time(NULL);
 #endif
+}
+
+int
+burlget_wrapper::boutbind(boutfile *bfile)
+{
+    b_file = bfile;
 }
 
 int
@@ -104,13 +112,21 @@ burlget_wrapper::bdopoll(time_t timeout)
                 error = b_connect.bconnect(b_urlhost, b_urlport);
                 break;
             case 1:
-                error = b_connect.bsend(b_bufhead, strlen(b_bufhead));
+                if (b_file != NULL){
+                    b_file->bopen();
+                }
                 break;
             case 2:
-                error = b_connect.breceive(buffer, sizeof(buffer));
+                error = b_connect.bsend(b_bufhead, strlen(b_bufhead));
                 break;
             case 3:
+                error = b_connect.breceive(buffer, sizeof(buffer));
+                break;
+            case 4:
                 if (error > 0){
+                    if (b_file != NULL){
+                        b_file->bwrite(buffer, error);
+                    }
 #ifndef NDEBUG
                     __together += error;
                     __total[__current&0xF] += error;
@@ -126,11 +142,14 @@ burlget_wrapper::bdopoll(time_t timeout)
                         __time = time(NULL);
                         __total[__current&0xF] = 0;
                     }
-                    state = 2;
+                    state = 3;
 #endif
                 }
                 break;
             default:
+                if (b_file != NULL){
+                    b_file->bclose();
+                }
                 printf("\nremote close: %s !\n", b_urlfull);
                 return error;
         }
