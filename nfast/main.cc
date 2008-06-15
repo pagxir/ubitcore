@@ -14,9 +14,9 @@
 #endif
 
 #define K0 "http://ftp.cdut.edu.cn/pub/slackware/10.1/slackware-10.1-install-d1.iso"
+#define K3 "http://www.cfan.com.cn/school/adfadsfzcxvxb4sf2007-23.rar"
 #define K1 "http://debian.nctu.edu.tw/ubuntu-releases/8.04/ubuntu-8.04-desktop-i386.iso"
-#define K2 "http://ftp.cse.yzu.edu.tw/pub/Linux/Ubuntu/ubuntu-cd/8.04/ubuntu-8.04-desktop-i386.iso"
-#define K3 "http://mirror.datapipe.net/gentoo/releases/x86/2008.0_beta2/livecd/livecd-i686-installer-2008.0_beta2-r1.iso"
+#define K2 "http://www.cfan.com.cn/school/nmgjha2006-12.rar"
 
 class burlthread: public bthread
 {
@@ -59,11 +59,14 @@ burlthread::bdocall(time_t timeout)
                 error = b_get->bdopoll(timeout);
                 break;
             case 2:
-                if (error == 0){
-                    delete b_get;
-                    b_get = NULL;
-                    state = 0;
-                }
+                assert(error==0);
+                error = btime_wait(last_time+b_second);
+                break;
+            case 3:
+                last_time = time(NULL);
+                delete b_get;
+                b_get = NULL;
+                state = 0;
                 break;
         }
     }
@@ -113,7 +116,9 @@ bclock::bdocall(time_t timeout)
 {
     time_t now;
     time(&now);
+#if 0
     fprintf(stderr, "\rbcall(%s): %s", ident_text, ctime(&now));
+#endif
     while(-1 != btime_wait(last_time+b_second)){
         last_time = time(NULL);
     }

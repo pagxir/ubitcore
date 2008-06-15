@@ -127,7 +127,7 @@ burlget_wrapper::bdopoll(time_t timeout)
                 }
                 break;
             default:
-                printf("connection is close by remote peer!\n");
+                printf("\nremote close: %s !\n", b_urlfull);
                 return error;
         }
     }
