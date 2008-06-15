@@ -19,6 +19,7 @@ class burlget_wrapper: public burlget
     private:
         bsocket b_connect;
         boutfile *b_file;
+        int b_len;
         int b_state;
         int b_urlport;
         char b_urlhost[128];
@@ -50,6 +51,7 @@ static int __total[0x10] = { 0 };
 
 burlget_wrapper::burlget_wrapper()
 {
+    b_len = 0;
     b_state = 0;
     b_urlport = 80;
 #ifndef NDEBUG
@@ -102,8 +104,10 @@ burlget_wrapper::burlbind(const char *url)
 int
 burlget_wrapper::bdopoll(time_t timeout)
 {
+    int i;
     int error=0;
     int state = b_state;
+    const char match[5]="\r\n\r\n";
     char buffer[81920];
     while(error != -1){
         b_state = state++;
@@ -123,6 +127,25 @@ burlget_wrapper::bdopoll(time_t timeout)
                 error = b_connect.breceive(buffer, sizeof(buffer));
                 break;
             case 4:
+                for (i=0; i<error&&b_len<4; i++){
+                    if (buffer[i] == match[b_len]){
+                        b_len ++;
+                    }else{
+                        b_len = (buffer[i]=='\r');
+                    }
+                }
+                if (error > 0 && b_len<4){
+                    state = 3;
+                    break;
+                }
+                if (b_file != NULL){
+                    b_file->bwrite(buffer+i, error-i);
+                }
+                break;
+            case 5:
+                error = b_connect.breceive(buffer, sizeof(buffer));
+                break;
+            case 6:
                 if (error > 0){
                     if (b_file != NULL){
                         b_file->bwrite(buffer, error);
@@ -142,7 +165,7 @@ burlget_wrapper::bdopoll(time_t timeout)
                         __time = time(NULL);
                         __total[__current&0xF] = 0;
                     }
-                    state = 3;
+                    state = 5;
 #endif
                 }
                 break;
