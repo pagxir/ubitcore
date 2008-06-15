@@ -43,6 +43,8 @@ static int __total[0x10] = { 0 };
 
 #define URL_PATH "%s"
 #define URL_HOST "%s"
+#define USER_AGENT "url-get/0.1"
+#define ACCEPT_TYPE "*/*"
 
 burlget_wrapper::burlget_wrapper()
 {
@@ -60,6 +62,8 @@ burlget_wrapper::burlbind(const char *url)
     const char *urlpath = url+7;
     const char title[] = "GET "URL_PATH" HTTP/1.0\r\n"
         "Host: "URL_HOST"\r\n"
+        "User-Agent: "USER_AGENT"\r\n"
+        "Accept: "ACCEPT_TYPE"\r\n"
         "Connection: Close\r\n"
         "\r\n"
         ;
