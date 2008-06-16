@@ -300,6 +300,45 @@ bsocket::bconnect(const char *host, int port)
 }
 
 int
+bsocket::bsendto(const char* buffer, size_t len,
+        unsigned long host, unsigned short port)
+{
+    int fflag;
+    sockaddr_in siaddr;
+    if (b_fd == -1){
+        b_fd = socket(AF_INET, SOCK_DGRAM, 0);
+        fflag = fcntl(b_fd, F_GETFL);
+        fflag |= O_NONBLOCK;
+        fcntl(b_fd, F_SETFL, fflag);
+    }
+    siaddr.sin_family = AF_INET;
+    siaddr.sin_port = htons(port);
+    siaddr.sin_addr.s_addr = host;
+    return sendto(b_fd, buffer, len, 0, (sockaddr*)&siaddr, sizeof(siaddr));
+}
+
+int
+bsocket::brecvfrom(char* buffer, size_t len,
+        unsigned long *host, unsigned short *port)
+{
+    assert(b_fd != -1);
+    sockaddr_in siaddr;
+    socklen_t silen = sizeof(siaddr);
+    int error = recvfrom(b_fd, buffer, len, 0, (sockaddr*)&siaddr, &silen);
+    if (error == -1){
+        bwait_receive();
+        return -1;
+    }
+    if (host != NULL){
+        *host = siaddr.sin_addr.s_addr;
+    }
+    if (port != NULL){
+        *port = htons(siaddr.sin_port);
+    }
+    return error;
+}
+
+int
 bsocket::__bwait_connect(bthread* job, int argc, void *argv)
 {
     bsocket *bps = (bsocket*)argv;

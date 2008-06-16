@@ -21,7 +21,7 @@ class burlget_wrapper: public burlget
         int b_len;
         int b_state;
         int b_urlport;
-        char b_urlhost[128];
+        char b_urlhost[256];
         char b_urlfull[512];
         char b_bufhead[1024];
 };
@@ -166,7 +166,7 @@ burlget_wrapper::bpolldata(char *buffer, int size)
                 }
                 break;
             default:
-                printf("remote close: %s %d !\n", b_urlfull, error);
+                printf("remote close: %s!\n", b_urlfull);
                 return error;
         }
     }

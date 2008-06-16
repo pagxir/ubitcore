@@ -21,6 +21,10 @@ class bsocket
         int bconnect(const char *host, int port);
         int bsend(const char *buf, size_t len);
         int breceive(char *buf, size_t len);
+        int bsendto(const char *buf, size_t len,
+                unsigned long host, unsigned short port);
+        int brecvfrom(char *buf, size_t len,
+                unsigned long *host, unsigned short *port);
         static int global_init();
         static int bselect(time_t timeout);
    

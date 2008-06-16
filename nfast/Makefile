@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -g
-SRCS = bthread.cc bsocket.cc biothread.cc burlget.cc main.cc boutfile.cc
+SRCS = bthread.cc bsocket.cc biothread.cc burlget.cc main.cc boutfile.cc bdhtnet.cc
 OBJS = ${SRCS:.cc=.o}
 
 bmain: $(OBJS)

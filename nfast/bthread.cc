@@ -2,20 +2,24 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
+#include <queue>
 #include <set>
 
 #include "bthread.h"
 
-static int __thread_argc = 0;
-static void *__thread_argv = NULL;
-static j_caller __thread_caller = NULL;
+struct bresume{
+    int br_argc;
+    void *br_argv;
+    j_caller br_caller;
+};
+
+std::queue<bresume> __q_bresume;
 
 bthread::bthread()
 {
     b_ident = "bthread";
     b_flag = 0;
 }
-
 
 int
 bthread::bdocall(time_t timeout)
@@ -34,27 +38,41 @@ bthread::bfailed()
 int
 bthread::bwait()
 {
-    if (__thread_caller == NULL) {
+    if (__q_bresume.empty()) {
         return bfailed();
     }
-    return (*__thread_caller)(this,
-            __thread_argc,
-            __thread_argv);
+#ifndef NDEBUG
+    if (__q_bresume.size() > 2){
+        printf("dupit wakeup!\n");
+    }
+#endif
+    while (!__q_bresume.empty()){
+        bresume bt = __q_bresume.front();
+        __q_bresume.pop();
+        (*bt.br_caller)(this,
+                bt.br_argc,
+                bt.br_argv);
+    }
+    return 0;
 }
 
 int
 bwait_cancel()
 {
-    __thread_caller = NULL;
+    while(!__q_bresume.empty()){
+        __q_bresume.pop();
+    }
     return 0;
 }
 
 int
 bthread_waiter(j_caller caller, int argc, void *argv)
 {
-    __thread_caller = caller;
-    __thread_argv = argv;
-    __thread_argc = argc;
+    bresume resume;
+    resume.br_argc = argc;
+    resume.br_argv = argv;
+    resume.br_caller = caller;
+    __q_bresume.push(resume);
     return 0;
 }
 

@@ -9,6 +9,7 @@
 #include "bthread.h"
 #include "biothread.h"
 #include "burlget.h"
+#include "bdhtnet.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -83,11 +84,14 @@ burlthread::bdocall(time_t timeout)
                 break;
             case 2:
                 if (error > 0){
+                    printf("poll data\n");
                     b_file->bwrite(buffer, error);
                     state = 1;
                     break;
                 }
                 b_file->bclose();
+                delete b_file;
+                b_file = NULL;
                 break;
             case 3:
                 assert(error==0);
@@ -97,8 +101,6 @@ burlthread::bdocall(time_t timeout)
                 last_time = time(NULL);
                 delete b_get;
                 b_get = NULL;
-                delete b_file;
-                b_file = NULL;
                 state = 0;
                 break;
         }
