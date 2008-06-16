@@ -41,7 +41,7 @@ bthread::bwait()
     if (__q_bresume.empty()) {
         return bfailed();
     }
-#ifndef NDEBUG
+#if 0
     if (__q_bresume.size() > 2){
         printf("dupit wakeup!\n");
     }

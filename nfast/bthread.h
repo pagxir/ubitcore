@@ -1,5 +1,6 @@
-#ifndef __UJOB_H__
-#define __UJOB_H__
+#ifndef __BTHREAD_H__
+#define __BTHREAD_H__
+#include <string>
 
 #define BF_SELECT 0x1000
 #define BF_ACTIVE 0x2000
@@ -21,7 +22,7 @@ public:
     time_t b_tick;
 
 protected:
-    const char *b_ident;
+    std::string b_ident;
     int b_flag;
 };
 

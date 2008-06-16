@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string>
 #include <queue>
 
 #include "bthread.h"
@@ -31,15 +32,15 @@ class burlthread: public bthread
         int b_state;
         int b_second;
         int last_time;
-        char *b_url;
+        std::string b_url;
         char b_path[512];
         burlget *b_get;
         boutfile *b_file;
 };
 
-burlthread::burlthread(const char *url, int second)
+burlthread::burlthread(const char *url, int second):
+    b_url(url)
 {
-    b_url = strdup(url);
     b_get = NULL;
     b_file = NULL;
     b_state = 0;
@@ -77,14 +78,13 @@ burlthread::bdocall(time_t timeout)
                 b_file = boutfile::get();
                 b_file->bpathbind(b_path);
                 b_file->bopen();
-                error = b_get->burlbind(b_url);
+                error = b_get->burlbind(b_url.c_str());
                 break;
             case 1:
                 error = b_get->bpolldata(buffer, sizeof(buffer));
                 break;
             case 2:
                 if (error > 0){
-                    printf("poll data\n");
                     b_file->bwrite(buffer, error);
                     state = 1;
                     break;
@@ -114,10 +114,6 @@ burlthread::~burlthread()
         delete b_get;
         b_get = NULL;
     }
-    if (b_url != NULL){
-        free(b_url);
-        b_url = NULL;
-    }
     if (b_file != NULL){
         delete b_file;
         b_file = NULL;
@@ -134,12 +130,12 @@ class bclock: public bthread
     private:
         int b_second;
         int last_time;
-        const char *ident_text;
+        std::string ident_text;
 };
 
-bclock::bclock(const char *text, int second)
+bclock::bclock(const char *text, int second):
+    ident_text("bclock")
 {
-    b_ident = "bclock";
     b_second = second;
     last_time = time(NULL);
     ident_text = strdup(text);
@@ -147,7 +143,6 @@ bclock::bclock(const char *text, int second)
 
 bclock::~bclock()
 {
-    free((void*)ident_text);
 }
 
 int
@@ -174,6 +169,14 @@ main(int argc, char *argv[])
         burlqueue.push(get);
         get->bwakeup();
     }
+    bdhtnet_node("208.72.193.175", 6881);
+    bdhtnet_node("195.56.193.72",40148);
+    bdhtnet_node("90.154.212.140",10383);
+    bdhtnet_node("151.205.102.164",50590);
+    bdhtnet_node("86.220.27.202",45454);
+    bdhtnet_node("122.107.166.67",11597);
+    bdhtnet_node("222.186.13.91",27781);
+
     bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
     bthread *j;

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string>
 #include "boutfile.h"
 
 class bdistoutfile: public boutfile
@@ -16,7 +17,7 @@ class bdistoutfile: public boutfile
 
     private:
         FILE *b_file;
-        char *b_path;
+        std::string b_path;
 };
 
 boutfile *boutfile::get()
@@ -31,23 +32,19 @@ boutfile::~boutfile()
 bdistoutfile::bdistoutfile()
 {
     b_file = NULL;
-    b_path = NULL;
 }
 
 int bdistoutfile::bpathbind(const char *path)
 {
-    if (b_path != NULL){
-        free(b_path);
-    }
-    b_path = strdup(path);
+    b_path = path;
     return 0;
 }
 
 int bdistoutfile::bopen()
 {
-    assert(b_path != NULL);
+    assert(!b_path.empty());
     if (b_file == NULL){
-        b_file = fopen(b_path, "wb");
+        b_file = fopen(b_path.c_str(), "wb");
     }
     return 0;
 }
@@ -69,9 +66,5 @@ int bdistoutfile::bclose()
 
 bdistoutfile::~bdistoutfile()
 {
-    if (b_path != NULL){
-        free(b_path);
-        b_path = NULL;
-    }
     bclose();
 }
