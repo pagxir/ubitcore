@@ -77,23 +77,35 @@ bdhtnet::bdocall(time_t timeout)
 			   	}
                 break;
             case 1:
-				if(b_count > 0){
-				   	error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
-				   	if (error==-1 && btime_wait(b_last+1)!=-1){
-					   	printf("ping time out!\n");
-					   	state = error = 0;
-					   	__q_peers.push(__q_wait.front());
-					   	__q_wait.pop();
-					   	b_count--;
-				   	}
-				}
+                error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
+                if (error==-1 && btime_wait(b_last+1)!=-1){
+                    if (b_count > 0){
+                        state = error = 0;
+                        if (!__q_wait.empty()){
+                            if (__q_wait.front().b_flag > 0){
+                                __q_wait.front().b_flag --;
+                                __q_peers.push(__q_wait.front());
+                            }
+                            __q_wait.pop();
+                        }
+                        b_count--;
+                    }else{
+                        /* Time to update bluck! */
+                        printf("Time to update bluck\n");
+                        state = error = 0;
+                        b_last = time(NULL)+15;
+                    }
+                }
                 break;
             case 2:
+                printf("Hello World: %s:%d!\n", inet_ntoa(*(in_addr*)&host), port);
                 if (error>=0 && b_count>0){
-                    printf("Hello World: %s:%d!\n", inet_ntoa(*(in_addr*)&host), port);
 					__q_wait.pop();
 					b_count--;
 					state = 0;
+                }else{
+                    b_last = time(NULL)+15;
+                    state = 1;
                 }
                 break;
 #if 0
@@ -122,6 +134,7 @@ int
 bdhtnet_node(const char *host, int port)
 {
 	d_peer peer;
+    peer.b_flag = 3;
 	peer.b_host = inet_addr(host);
 	peer.b_port = port;
 	__q_peers.push(peer);
