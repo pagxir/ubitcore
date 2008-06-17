@@ -14,6 +14,7 @@ struct d_peer{
 };
 
 std::queue<d_peer> __q_peers;
+std::queue<d_peer> __q_wait;
 
 class bdhtnet: public bthread
 {
@@ -57,40 +58,52 @@ bdhtnet::bdocall(time_t timeout)
         b_state = state++;
         switch(b_state){
             case 0:
-                b_last = time(NULL);
-				peer = __q_peers.front();
-                error = b_socket.bsendto((char*)__dht_ping, sizeof(__dht_ping),
-                        peer.b_host, peer.b_port);
+				if (b_count == 0){
+				   	if (!__q_peers.empty()){
+					   	peer = __q_peers.front();
+					   	b_last = time(NULL);
+					   	error = b_socket.bsendto((char*)__dht_ping, sizeof(__dht_ping),
+							   	peer.b_host, peer.b_port);
+					   	__q_wait.push(peer);
+					   	__q_peers.pop();
+					   	b_count++;
+#if 0
+					}else if (!can_find_more_node()){
+					   	error = find_more_node();
+				   	}else if (!can_find_more_peer()){
+					   	error = find_more_peer();
+#endif
+					}
+			   	}
                 break;
             case 1:
-                error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
-                if (error==-1 && btime_wait(b_last+1)!=-1){
-                    printf("ping time out!\n");
-                    state = error = 0;
-                }
+				if(b_count > 0){
+				   	error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
+				   	if (error==-1 && btime_wait(b_last+1)!=-1){
+					   	printf("ping time out!\n");
+					   	state = error = 0;
+					   	__q_peers.push(__q_wait.front());
+					   	__q_wait.pop();
+					   	b_count--;
+				   	}
+				}
                 break;
             case 2:
-                if (error >= 0){
+                if (error>=0 && b_count>0){
                     printf("Hello World: %s:%d!\n", inet_ntoa(*(in_addr*)&host), port);
+					__q_wait.pop();
+					b_count--;
+					state = 0;
                 }
                 break;
-            case 3:
-                b_last = time(NULL);
-                error = b_socket.bsendto((char*)__find_nodes, sizeof(__find_nodes),
-                        b_host, b_port);
-                break;
-            case 4:
-                error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
-                if (error==-1 && btime_wait(b_last+1)!=-1){
-                    printf("find node timeout!\n");
-                    state = error = 3;
-                }
-                break;
-            case 5:
-                if (error > 0){
-                    printf("find node: %s:%d %d!\n", inet_ntoa(*(in_addr*)&host), port, error);
-                }
-                break;
+#if 0
+			case 3:
+				error = btime_wait(b_last+15*60);
+				break;
+			case 4:
+				update_bluck();
+				break;
+#endif
             default:
                 error = -1;
                 break;
