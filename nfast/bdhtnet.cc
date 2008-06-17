@@ -1,29 +1,39 @@
 #include <stdio.h>
 #include <time.h>
 #include <arpa/inet.h>
+#include <queue>
+
 #include "bthread.h"
 #include "bsocket.h"
 #include "bdhtnet.h"
 
+struct d_peer{
+	unsigned short b_flag;
+	unsigned short b_port;
+	unsigned long b_host;
+};
+
+std::queue<d_peer> __q_peers;
+
 class bdhtnet: public bthread
 {
     public:
-        bdhtnet(unsigned long host, int port);
+        bdhtnet();
         ~bdhtnet();
         virtual int bdocall(time_t timeout);
     private:
         bsocket b_socket;
         int b_state;
-        int b_port;
-        unsigned long b_host;
+		int b_count;
         time_t b_last;
 };
 
-bdhtnet::bdhtnet(unsigned long host, int port):
-    b_port(port), b_host(host)
+bdhtnet::bdhtnet():
+    b_count(0), b_state(0)
 {
-    b_state = 0;
 }
+
+extern unsigned char __find_nodes[98];
 
 unsigned char __dht_ping[] = {
   0x64, 0x31, 0x3a, 0x61, 0x64, 0x32, 0x3a, 0x69, 0x64, 0x32, 0x30, 0x3a,
@@ -37,6 +47,7 @@ unsigned char __dht_ping[] = {
 int
 bdhtnet::bdocall(time_t timeout)
 {
+	d_peer peer;
     int error = 0;
     int state = b_state;
     unsigned long host = 0;
@@ -47,12 +58,13 @@ bdhtnet::bdocall(time_t timeout)
         switch(b_state){
             case 0:
                 b_last = time(NULL);
+				peer = __q_peers.front();
                 error = b_socket.bsendto((char*)__dht_ping, sizeof(__dht_ping),
-                        b_host, b_port);
+                        peer.b_host, peer.b_port);
                 break;
             case 1:
                 error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
-                if (error==-1 && btime_wait(b_last+10)!=-1){
+                if (error==-1 && btime_wait(b_last+1)!=-1){
                     printf("ping time out!\n");
                     state = error = 0;
                 }
@@ -60,6 +72,23 @@ bdhtnet::bdocall(time_t timeout)
             case 2:
                 if (error >= 0){
                     printf("Hello World: %s:%d!\n", inet_ntoa(*(in_addr*)&host), port);
+                }
+                break;
+            case 3:
+                b_last = time(NULL);
+                error = b_socket.bsendto((char*)__find_nodes, sizeof(__find_nodes),
+                        b_host, b_port);
+                break;
+            case 4:
+                error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
+                if (error==-1 && btime_wait(b_last+1)!=-1){
+                    printf("find node timeout!\n");
+                    state = error = 3;
+                }
+                break;
+            case 5:
+                if (error > 0){
+                    printf("find node: %s:%d %d!\n", inet_ntoa(*(in_addr*)&host), port, error);
                 }
                 break;
             default:
@@ -74,10 +103,26 @@ bdhtnet::~bdhtnet()
 {
 }
 
+static bdhtnet __dhtnet;
+
 int
 bdhtnet_node(const char *host, int port)
 {
-    bdhtnet *bdht = new bdhtnet(inet_addr(host), port);
-    bdht->bwakeup();
+	d_peer peer;
+	peer.b_host = inet_addr(host);
+	peer.b_port = port;
+	__q_peers.push(peer);
+	__dhtnet.bwakeup();
     return 0;
 }
+unsigned char __find_nodes[] = {
+  0x64, 0x31, 0x3a, 0x61, 0x64, 0x32, 0x3a, 0x69, 0x64, 0x32, 0x30, 0x3a,
+  0xd3, 0x86, 0x4b, 0x67, 0x3f, 0xc9, 0x47, 0xe1, 0xa8, 0xd8, 0x55, 0xd7,
+  0x00, 0x32, 0xbc, 0x44, 0x48, 0x56, 0x23, 0xaa, 0x36, 0x3a, 0x74, 0x61,
+  0x72, 0x67, 0x65, 0x74, 0x32, 0x30, 0x3a, 0x7f, 0xff, 0xff, 0xff, 0x7f,
+  0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0x7f,
+  0xff, 0xff, 0xff, 0x65, 0x31, 0x3a, 0x71, 0x39, 0x3a, 0x66, 0x69, 0x6e,
+  0x64, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x31, 0x3a, 0x74, 0x38, 0x3a, 0x79,
+  0x3b, 0x1b, 0x00, 0x01, 0x00, 0x00, 0x00, 0x31, 0x3a, 0x79, 0x31, 0x3a,
+  0x71, 0x65
+};
