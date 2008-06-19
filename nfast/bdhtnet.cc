@@ -74,6 +74,16 @@ unsigned char __dht_ping[] = {
   0x71, 0x65
 };
 
+static int dump_sha1_id(const char buf[], size_t len)
+{
+    int i;
+    printf("peer id: ");
+    for (i=0; i<len; i++)
+        printf("%02x", buf[i]&0xff);
+    printf("\n");
+    return 0;
+}
+
 int
 bdhtnet::brecord(time_t timeout)
 {
@@ -84,10 +94,14 @@ bdhtnet::brecord(time_t timeout)
     while(error != -1){
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
         if (error >= 0){
+            size_t elen;
             btcodec codec;
             codec.bload(buffer, error);
-            codec.bget().bget("hello").bget(9).bget("o");
-            printf("R: %s:%d\n", inet_ntoa(*(in_addr*)&host), port);
+            const char *p1 = codec.bget().bget("y").c_str(&elen);
+            const char *t2 = codec.bget().bget("t").c_str(&elen);
+            printf("R: %c %c %s:%d\n", p1?*p1:'@', t2?*t2:'!', inet_ntoa(*(in_addr*)&host), port);
+            const char *id = codec.bget().bget("r").bget("id").c_str(&elen);
+            dump_sha1_id(id, elen);
             d_peer *marker = new d_peer();
             marker->b_flag = -1;
             __q_wait.push(marker);
@@ -109,7 +123,6 @@ bdhtnet::brecord(time_t timeout)
                 __q_wait.pop();
             }
             if (p == marker){
-                write(1, buffer, error);
                 printf("\n");
                 delete p;
             }
@@ -124,16 +137,19 @@ bdhtnet::bplay(time_t timeout)
     int error = 0;
     unsigned long host = 0;
     unsigned short port = 0;
-    if (!__q_peers.empty()){
+    while (!__q_peers.empty()){
         d_peer *p = __q_peers.front();
         __q_peers.pop();
-        error = b_socket.bsendto((char*)__dht_ping,
-                sizeof(__dht_ping), p->b_host, p->b_port);
-        if (p->b_flag-- > 0){
+        if (p->b_flag > 0){
             __q_peers.push(p);
+            p->b_flag--;
         }else{
             __q_recall.push(p);
+            continue;
         }
+        error = b_socket.bsendto((char*)__dht_ping,
+                sizeof(__dht_ping), p->b_host, p->b_port);
+        break;
     }
     if (error != -1){
         error = btime_wait(time(NULL)+1);
@@ -145,7 +161,7 @@ int
 bdhtnet_node(const char *host, int port)
 {
 	d_peer *peer = new d_peer();
-    peer->b_flag = 3;
+    peer->b_flag = 2;
 	peer->b_host = inet_addr(host);
 	peer->b_port = port;
 	__q_peers.push(peer);

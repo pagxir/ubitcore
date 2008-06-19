@@ -229,7 +229,7 @@ const char *btstr::b_str(size_t *len)
         assert(off<*len && p[off]==':');
         int save = *len;
         *len = atoi(p)+off+1;
-        assert(off+1+*len <= save);
+        assert(*len <= save);
     }
     return p;
 }
