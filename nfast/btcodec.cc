@@ -169,25 +169,52 @@ const char *btload_dict(const char *btbuf,
 
 btcodec::btcodec()
 {
-	b_len = 0;
-	b_text = NULL;
+    b_len = 0;
+    b_text = NULL;
+}
+
+btcodec::~btcodec()
+{
+    delete[] b_text;
 }
 
 int btcodec::bload(const char *buffer, int len)
 {
-	if (b_len < len){
-		delete[] b_text;
-		b_text = new char[len];
-	}
-	b_len = len;
-	assert(b_text != NULL);
-	memcpy(b_text, buffer, len);
-	return 0;
+    if (b_len < len){
+        delete[] b_text;
+        b_text = new char[len];
+    }
+    b_len = len;
+    assert(b_text != NULL);
+    memcpy(b_text, buffer, len);
+    return 0;
 }
 
-int btcodec::bget()
+bentity& btcodec::bget()
 {
-	return __INFINITE;
+    return __INFINITE;
+}
+
+bentity& bentity::bget(int index)
+{
+    return __INFINITE;
+}
+
+bentity& bentity::bget(const char *name)
+{
+    return __INFINITE;
+}
+
+
+
+const char *bentity::b_str(size_t *len)
+{
+    return NULL;
+}
+
+const char *bentity::c_str(size_t *len)
+{
+    return NULL;
 }
 
 bentity __INFINITE;

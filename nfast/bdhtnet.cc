@@ -7,6 +7,7 @@
 #include "bthread.h"
 #include "bsocket.h"
 #include "bdhtnet.h"
+#include "btcodec.h"
 
 struct d_peer{
 	unsigned short b_flag;
@@ -83,6 +84,9 @@ bdhtnet::brecord(time_t timeout)
     while(error != -1){
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
         if (error >= 0){
+            btcodec codec;
+            codec.bload(buffer, error);
+            codec.bget().bget("hello").bget(9).bget("o");
             printf("R: %s:%d\n", inet_ntoa(*(in_addr*)&host), port);
             d_peer *marker = new d_peer();
             marker->b_flag = -1;

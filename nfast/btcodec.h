@@ -3,24 +3,23 @@
 class bentity
 {
     public:
-        virtual int b_len();
-        virtual const char *b_str();
-        virtual int c_len();
-        virtual const char *c_str();
         virtual bentity &bget(int index);
         virtual bentity &bget(const char *name);
+        virtual const char *b_str(size_t *len);
+        virtual const char *c_str(size_t *len);
 };
 
 class btcodec
 {
     public:
-		btcodec();
-		bentity &bget();
-        int bload(char *buffer, int len);
+        btcodec();
+        ~btcodec();
+        bentity &bget();
+        int bload(const char *buffer, int len);
 
-	private:
-		int b_len;
-		char *b_text;
+    private:
+        int b_len;
+        char *b_text;
 };
 
 extern bentity __INFINITE;
