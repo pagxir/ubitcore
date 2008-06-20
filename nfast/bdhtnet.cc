@@ -135,24 +135,35 @@ int
 bdhtnet::bplay(time_t timeout)
 {
     int error = 0;
+    int count = 0;
+    d_peer *marker = NULL;
     unsigned long host = 0;
     unsigned short port = 0;
-    while (!__q_peers.empty()){
+    while (!__q_peers.empty() && count<5){
         d_peer *p = __q_peers.front();
+        if (p == marker){
+            break;
+        }
         __q_peers.pop();
         if (p->b_flag > 0){
             __q_peers.push(p);
             p->b_flag--;
         }else{
+            if (marker == NULL){
+                marker = p;
+            }
             __q_recall.push(p);
             continue;
         }
         error = b_socket.bsendto((char*)__dht_ping,
                 sizeof(__dht_ping), p->b_host, p->b_port);
-        break;
+        assert(error != -1);
+        count ++;
     }
-    if (error != -1){
+    if (error != -1 && count!=0){
         error = btime_wait(time(NULL)+1);
+    }else{
+        printf("finish!\n");
     }
     return error;
 }

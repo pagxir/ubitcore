@@ -13,6 +13,8 @@
         en = &__INFINITE; \
     }
 
+bentity __INFINITE;
+
 class btlist: public bentity
 {
     public:
@@ -189,8 +191,12 @@ const char *btint::b_str(size_t *len)
 int btint::bget(int *ival)
 {
     size_t len;
-    *ival = atoi(b_codec->b_str(b_off+1, &len));
-    return 0;
+    const char *ibuf = 
+        b_codec->b_str(b_off+1, &len);
+    if (ival != NULL){
+        *ival = ibuf?0:-1;
+    }
+    return atoi(ibuf);
 }
 
 btint::btint(btcodec *codec, int off):
@@ -315,6 +321,9 @@ const char *btcodec::b_str(int off, size_t *len)
 
 int bentity::bget(int *ival)
 {
+    if (ival != NULL){
+        *ival = -1;
+    }
     return -1;
 }
 
@@ -342,4 +351,3 @@ const char *bentity::c_str(size_t *len)
     return NULL;
 }
 
-bentity __INFINITE;

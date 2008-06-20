@@ -27,5 +27,4 @@ class btcodec
         bentity *b_entity;
 };
 
-extern bentity __INFINITE;
 #endif
