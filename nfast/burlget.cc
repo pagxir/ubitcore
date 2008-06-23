@@ -1,9 +1,10 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
+#include <string>
 
 #include "bthread.h"
 #include "bsocket.h"
@@ -13,18 +14,19 @@ class burlget_wrapper: public burlget
 {
     public:
         burlget_wrapper();
-        virtual int boutbind(boutfile *bfile);
+        virtual const char* blocation();
         virtual int burlbind(const char *url);
         virtual int bpolldata(char *buf, int len);
 
     private:
         bsocket b_connect;
         int b_len;
+        int b_loc;
         int b_state;
         int b_urlport;
         char b_urlhost[256];
-        char b_urlfull[512];
         char b_bufhead[1024];
+        std::string b_urlfull;
 };
 
 burlget *
@@ -37,13 +39,6 @@ burlget::~burlget()
 {
 }
 
-#ifndef NDEBUG
-static time_t __time = 0;
-static int __current = 0;
-static int __together = 0;
-static int __total[0x10] = { 0 };
-#endif
-
 #define URL_PATH "%s"
 #define URL_HOST "%s"
 #define USER_AGENT "url-get/0.1"
@@ -52,16 +47,18 @@ static int __total[0x10] = { 0 };
 burlget_wrapper::burlget_wrapper()
 {
     b_len = 0;
+    b_loc = 0;
     b_state = 0;
     b_urlport = 80;
-#ifndef NDEBUG
-    __time = time(NULL);
-#endif
 }
 
-int
-burlget_wrapper::boutbind(boutfile *bfile)
+const char*
+burlget_wrapper::blocation()
 {
+    if (b_loc == 13){
+        return b_urlfull.c_str();
+    }
+    return NULL;
 }
 
 int
@@ -77,9 +74,8 @@ burlget_wrapper::burlbind(const char *url)
         "\r\n"
         ;
     assert(url != NULL);
-    assert(strlen(url)+1 < sizeof(b_urlfull));
     assert(strncmp(url, "http://", 7)==0);
-    strcpy(b_urlfull, url);
+    b_urlfull = url;
     while(*urlpath!='/' && *urlpath){
         assert(i+2<sizeof(b_urlhost));
         b_urlhost[i++] = *urlpath++;
@@ -88,10 +84,7 @@ burlget_wrapper::burlbind(const char *url)
     if (*urlpath==0){
         urlpath = "/";
     }
-    sprintf(b_bufhead, title,
-            urlpath,
-            b_urlhost
-           );
+    sprintf(b_bufhead, title, urlpath, b_urlhost);
     char *chdot = strrchr(b_urlhost, ':');
     if (chdot != NULL){
         *chdot = 0;
@@ -107,6 +100,7 @@ burlget_wrapper::bpolldata(char *buffer, int size)
     int error=0;
     int state = b_state;
     const char match[5]="\r\n\r\n";
+    const char mlocate[13]="\r\nLocation: ";
     while(error != -1){
         b_state = state++;
         switch(b_state){
@@ -125,6 +119,23 @@ burlget_wrapper::bpolldata(char *buffer, int size)
                         b_len ++;
                     }else{
                         b_len = (buffer[i]=='\r');
+                    }
+                    if (b_loc < 12){ 
+                        if (buffer[i]==mlocate[b_loc]){
+                            b_loc++;
+                        }else{
+                            b_loc=(buffer[i]=='\r');
+                        }
+                        if (b_loc == 12){
+                            b_urlfull = "";
+                        }
+                    }else if (b_loc == 12){
+                        if (b_len == 0){
+                            b_urlfull += buffer[i];
+                        }else{
+                            assert(b_urlfull.size()>0);
+                            b_loc++;
+                        }
                     }
                 }
                 if (error > 0 && b_len<4){
@@ -148,26 +159,10 @@ burlget_wrapper::bpolldata(char *buffer, int size)
             case 6:
                 if (error > 0){
                     state = 5;
-#ifndef NDEBUG
-                    __together += error;
-                    __total[__current&0xF] += error;
-                    if (time(NULL) != __time){
-                        int total = 0;
-                        for (int i=0; i<0x10; i++){
-                            total += __total[i];
-                        }
-                        fprintf(stderr, "\r%9d %3d.%02d %s", __together,
-                                (total>>14), ((total&0x3FFF)*25)>>12,
-                                b_urlfull);
-                        __current++;
-                        __time = time(NULL);
-                        __total[__current&0xF] = 0;
-                    }
-#endif
                 }
                 break;
             default:
-                printf("remote close: %s!\n", b_urlfull);
+                printf("remote close: %s!\n", b_urlfull.c_str());
                 return error;
         }
     }

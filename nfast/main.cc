@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
@@ -19,11 +19,6 @@
 #ifndef NDEBUG
 #include "bsocket.h"
 #endif
-
-#define K0 "http://ftp.cdut.edu.cn/pub/slackware/10.1/slackware-10.1-install-d1.iso"
-#define K3 "http://www.cfan.com.cn/school/adfadsfzcxvxb4sf2007-23.rar"
-#define K1 "http://debian.nctu.edu.tw/ubuntu-releases/8.04/ubuntu-8.04-desktop-i386.iso"
-#define K2 "http://www.cfan.com.cn/school/nmgjha2006-12.rar"
 
 class burlthread: public bthread
 {
@@ -72,7 +67,9 @@ burlthread::bdocall(time_t timeout)
 {
     int error = 0;
     int state = b_state;
+    std::string redirect;
     char buffer[81920];
+    const char *burl = b_url.c_str();
     while(error != -1){
         b_state = state++;
         switch(b_state){
@@ -82,7 +79,8 @@ burlthread::bdocall(time_t timeout)
                 b_file = boutfile::get();
                 b_file->bpathbind(b_path);
                 b_file->bopen();
-                error = b_get->burlbind(b_url.c_str());
+                printf("URI: %s\n", burl);
+                error = b_get->burlbind(burl);
                 break;
             case 1:
                 error = b_get->bpolldata(buffer, sizeof(buffer));
@@ -98,13 +96,26 @@ burlthread::bdocall(time_t timeout)
                 b_file = NULL;
                 break;
             case 3:
+                burl = b_get->blocation();
+                if (burl!=NULL){
+                    delete b_get;
+                    redirect = burl;
+                    b_get = NULL;
+                    error = state = 0;
+                    burl = redirect.c_str();
+                    printf("TRY: %s", burl);
+                    assert(strlen(burl)>0);
+                }
+                break;
+            case 4:
                 assert(error==0);
                 error = btime_wait(last_time+b_second);
                 break;
-            case 4:
+            case 5:
                 last_time = time(NULL);
                 delete b_get;
                 b_get = NULL;
+                burl = b_url.c_str();
                 state = 0;
                 break;
         }
@@ -166,19 +177,6 @@ bclock::bdocall(time_t timeout)
 int
 bttracker_start(const char *url, const unsigned char info_hash[20], const unsigned char peer_id[20])
 {
-#if 0
-    "http://btfans.3322.org:8080/announce" \
-        "?info_hash=Y%a1%cfU%c8%a6%1c%acFdw%d2%ba%29%a3%a0%83%a3%f3%1d" \
-        "&peer_id=%00%03BS%7b%1ap%9e%fa%bd%09%1a%1d%10%1e%9fUDP0" \
-        "&port=15180"     \
-        "&uploaded=0"     \
-        "&downloaded=0"   \
-        "&left=732854576" \
-        "&event=started"  \
-        "&key=1785265"    \
-        "&compact=1"      \
-        "&numwant=200"
-#endif
     int i;
 
     static const char *http_encode[256] = {
@@ -280,6 +278,7 @@ main(int argc, char *argv[])
     bdhtnet_node("122.107.166.67",11597);
     bdhtnet_node("222.186.13.91",27781);
     bdhtnet_node("91.82.71.148",16844);
+#if 1
     bdhtnet_node("61.92.120.178",55677);
     bdhtnet_node("91.123.159.137",61986);
     bdhtnet_node("88.118.64.253",28996);
@@ -459,6 +458,7 @@ main(int argc, char *argv[])
     bdhtnet_node("217.52.112.130",62332);
     bdhtnet_node("79.206.122.41",27448);
     bdhtnet_node("89.223.193.64",19949);
+#endif
 
     bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();

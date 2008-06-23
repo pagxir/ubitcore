@@ -1,6 +1,7 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <queue>
@@ -11,10 +12,27 @@
 #include "btcodec.h"
 
 struct d_peer{
+    int b_len;
+    char *b_packet;
 	unsigned short b_flag;
 	unsigned short b_port;
 	unsigned long b_host;
 };
+
+
+unsigned char __find_nodes[] = {
+  0x64, 0x31, 0x3a, 0x61, 0x64, 0x32, 0x3a, 0x69, 0x64, 0x32, 0x30, 0x3a,
+  0xd3, 0x86, 0x4b, 0x67, 0x3f, 0xc9, 0x47, 0xe1, 0xa8, 0xd8, 0x55, 0xd7,
+  0x00, 0x32, 0xbc, 0x44, 0x48, 0x56, 0x23, 0xaa, 0x36, 0x3a, 0x74, 0x61,
+  0x72, 0x67, 0x65, 0x74, 0x32, 0x30, 0x3a, 0xd3, 0x86, 0x48, 0x67, 0x3f,
+  0xc9, 0x47, 0xe1, 0xa8, 0xd8, 0x55, 0xd7, 0x00, 0x32, 0xbc, 0x44, 0x48,
+  0x56, 0x23, 0xab, 0x65, 0x31, 0x3a, 0x71, 0x39, 0x3a, 0x66, 0x69, 0x6e,
+  0x64, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x31, 0x3a, 0x74, 0x38, 0x3a, 0x79,
+  0x3b, 0x1b, 0x00, 0x01, 0x00, 0x00, 0x00, 0x31, 0x3a, 0x79, 0x31, 0x3a,
+  0x71, 0x65
+};
+
+static d_peer __bluck[160][8];
 
 std::queue<d_peer*> __q_peers;
 std::queue<d_peer*> __q_wait;
@@ -75,13 +93,78 @@ unsigned char __dht_ping[] = {
   0x71, 0x65
 };
 
-static int dump_sha1_id(const char buf[], size_t len)
+static d_peer __peer;
+static unsigned char __peer_id[20];
+
+static int
+bdht_build(unsigned long host, unsigned short port,
+        const char id[], size_t elen)
 {
     int i;
+    const unsigned char *bundle = (const unsigned char*)id;
     printf("peer id: ");
-    for (i=0; i<len; i++)
-        printf("%02x", buf[i]&0xff);
+    for (i=0; i<elen; i++){
+        printf("%02x", bundle[i]);
+    }
     printf("\n");
+    btcodec codec;
+    size_t idl;
+    codec.bload((char*)__dht_ping, sizeof(__dht_ping));
+    const unsigned char *s_id = (const unsigned char*)
+        codec.bget().bget("a").bget("id").c_str(&idl);
+    for (i=0; i<20; i++){
+        int diff = (s_id[i]^bundle[i])-(s_id[i]^__peer_id[i]);
+        if (diff == 0){
+            continue;
+        }
+        if (diff < 0){
+            memcpy(__peer_id, bundle, 20);
+            __peer.b_host = host;
+            __peer.b_port = port;
+            __peer.b_len = sizeof(__find_nodes);
+            __peer.b_packet = (char*)__find_nodes;
+            if (__peer.b_flag == 0){
+                __q_peers.push(&__peer);
+            }
+            __peer.b_flag = 3;
+            __play.bwakeup();
+            int j;
+            printf("find node: ");
+            for (j=0; j<elen; j++){
+                printf("%02x", bundle[j]);
+            }
+            printf(" ");
+            for (j=0; j<elen; j++){
+                printf("%02x", s_id[j]);
+            }
+            printf("\n");
+        }
+        break;
+    }
+    return 0;
+}
+
+static int
+bdht_decode_nodes(const char *nodes, int eln)
+{
+    int i;
+    unsigned long host;
+    unsigned short port;
+    for (i=0; i<eln; i+=26){
+        assert(i+26<=eln);
+        memcpy(&host, nodes+i+20, 4);
+        memcpy(&port, nodes+i+24, 2);
+        port = htons(port);
+        bdht_build(host, port, nodes+i, 20);
+        printf("add nodes: %s:%d\n",
+                inet_ntoa(*(in_addr*)&host), htons(port));
+    }
+    return 0;
+}
+
+static int
+bdht_decode_peers(const char *values, int eln)
+{
     return 0;
 }
 
@@ -100,9 +183,20 @@ bdhtnet::brecord(time_t timeout)
             codec.bload(buffer, error);
             const char *p1 = codec.bget().bget("y").c_str(&elen);
             const char *t2 = codec.bget().bget("t").c_str(&elen);
-            printf("R: %c %c %s:%d\n", p1?*p1:'@', t2?*t2:'!', inet_ntoa(*(in_addr*)&host), port);
+            printf("R: %c %c %s:%d\n", p1?*p1:'@', t2?*t2:'!',
+                    inet_ntoa(*(in_addr*)&host), port);
             const char *id = codec.bget().bget("r").bget("id").c_str(&elen);
-            dump_sha1_id(id, elen);
+            if (id != NULL){
+                bdht_build(host, port, id, elen);
+            }
+            const char *nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
+            if (nodes != NULL){
+                bdht_decode_nodes(nodes, elen);
+            }
+            const char *peers = codec.bget().bget("r").bget("values").c_str(&elen);
+            if (nodes != NULL){
+                bdht_decode_peers(peers, elen);
+            }
             d_peer *marker = new d_peer();
             marker->b_flag = -1;
             __q_wait.push(marker);
@@ -156,8 +250,8 @@ bdhtnet::bplay(time_t timeout)
             __q_recall.push(p);
             continue;
         }
-        error = b_socket.bsendto((char*)__dht_ping,
-                sizeof(__dht_ping), p->b_host, p->b_port);
+        error = b_socket.bsendto(p->b_packet,
+                p->b_len, p->b_host, p->b_port);
         assert(error != -1);
         count ++;
     }
@@ -176,21 +270,11 @@ bdhtnet_node(const char *host, int port)
     peer->b_flag = 2;
 	peer->b_host = inet_addr(host);
 	peer->b_port = port;
+    peer->b_len = sizeof(__dht_ping);
+    peer->b_packet = (char*)__dht_ping;
 	__q_peers.push(peer);
     __q_wait.push(peer);
     __play.bwakeup();
     __record.bwakeup();
     return 0;
 }
-
-unsigned char __find_nodes[] = {
-  0x64, 0x31, 0x3a, 0x61, 0x64, 0x32, 0x3a, 0x69, 0x64, 0x32, 0x30, 0x3a,
-  0xd3, 0x86, 0x4b, 0x67, 0x3f, 0xc9, 0x47, 0xe1, 0xa8, 0xd8, 0x55, 0xd7,
-  0x00, 0x32, 0xbc, 0x44, 0x48, 0x56, 0x23, 0xaa, 0x36, 0x3a, 0x74, 0x61,
-  0x72, 0x67, 0x65, 0x74, 0x32, 0x30, 0x3a, 0x7f, 0xff, 0xff, 0xff, 0x7f,
-  0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff, 0xff, 0x7f,
-  0xff, 0xff, 0xff, 0x65, 0x31, 0x3a, 0x71, 0x39, 0x3a, 0x66, 0x69, 0x6e,
-  0x64, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x31, 0x3a, 0x74, 0x38, 0x3a, 0x79,
-  0x3b, 0x1b, 0x00, 0x01, 0x00, 0x00, 0x00, 0x31, 0x3a, 0x79, 0x31, 0x3a,
-  0x71, 0x65
-};
