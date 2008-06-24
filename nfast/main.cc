@@ -12,136 +12,14 @@
 #include "sha1.h"
 #include "bthread.h"
 #include "biothread.h"
-#include "burlget.h"
 #include "bdhtnet.h"
 #include "btcodec.h"
-#include "bpeermgr.h"
+#include "btracker.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
 #endif
 
-class burlthread: public bthread
-{
-    public:
-        burlthread(const char *url, int second);
-        virtual int bdocall(time_t timeout);
-        ~burlthread();
-
-    private:
-        int b_state;
-        int b_second;
-        int last_time;
-        char b_path[512];
-        burlget *b_get;
-        std::string b_url;
-        std::string b_data;
-};
-
-burlthread::burlthread(const char *url, int second):
-    b_url(url)
-{
-    b_get = NULL;
-    b_state = 0;
-    b_second = second;
-    last_time = time(NULL);
-
-    int i = 0;
-    const char *dot = url;
-    while (*dot && *dot!='?'){
-        b_path[i++] = *dot;
-        if (*dot == '/'){
-            i = 0;
-        }
-        dot++;
-    }
-    if (i == 0){
-        strcpy(b_path, "a.out");
-    }else{
-        b_path[i] = 0;
-    }
-}
-
-
-int
-burlthread::bdocall(time_t timeout)
-{
-    int error = 0;
-    int state = b_state;
-    char buffer[81920];
-    const char *burl = NULL;
-    while(error != -1){
-        b_state = state++;
-        switch(b_state){
-            case 0:
-                b_get = burlget::get();
-                b_data.clear();
-                assert(b_get != NULL);
-                printf("URI: %s\n", b_url.c_str());
-                error = b_get->burlbind(b_url.c_str());
-                break;
-            case 1:
-                error = b_get->bpolldata(buffer, sizeof(buffer));
-                break;
-            case 2:
-                if (error > 0){
-                    b_data.append(buffer, error);
-                    state = 1;
-                    break;
-                }
-                break;
-            case 3:
-                burl = b_get->blocation();
-                if (burl!=NULL && b_data.empty()){
-                    delete b_get;
-                    b_get = burlget::get();
-                    b_get->burlbind(burl);
-                    printf("TURI: %s\n", burl);
-                    state = 6;
-                }
-                break;
-            case 4:
-                if (!b_data.empty()){
-                    bload_peer(b_data.c_str(), b_data.size());
-                }
-                assert(error==0);
-                error = btime_wait(last_time+b_second);
-                break;
-            case 5:
-                last_time = time(NULL);
-                delete b_get;
-                b_get = NULL;
-                burl = b_url.c_str();
-                state = 0;
-                break;
-            case 6:
-                error = b_get->bpolldata(buffer, sizeof(buffer));
-                break;
-            case 7:
-                if (error > 0){
-                    b_data.append(buffer, error);
-                    state = 6;
-                    break;
-                }
-                break;
-            case 8:
-                state = 4;
-                break;
-            default:
-                assert(0);
-                break;
-        }
-    }
-    return error;
-}
-
-burlthread::~burlthread()
-{
-    if (b_get != NULL){
-        delete b_get;
-        b_get = NULL;
-    }
-}
 
 class bclock: public bthread
 {
