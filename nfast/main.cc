@@ -14,6 +14,7 @@
 #include "biothread.h"
 #include "bdhtnet.h"
 #include "btcodec.h"
+#include "bclock.h"
 #include "btracker.h"
 
 #ifndef NDEBUG
@@ -21,47 +22,9 @@
 #endif
 
 
-class bclock: public bthread
-{
-    public:
-        bclock(const char *text, int second);
-        virtual int bdocall(time_t timeout);
-        ~bclock();
-
-    private:
-        int b_second;
-        int last_time;
-        std::string ident_text;
-};
-
-bclock::bclock(const char *text, int second):
-    ident_text("bclock")
-{
-    b_second = second;
-    last_time = time(NULL);
-    ident_text = strdup(text);
-}
-
-bclock::~bclock()
-{
-}
-
 int
-bclock::bdocall(time_t timeout)
-{
-    time_t now;
-    time(&now);
-#if 0
-    fprintf(stderr, "\rbcall(%s): %s", ident_text, ctime(&now));
-#endif
-    while(-1 != btime_wait(last_time+b_second)){
-        last_time = time(NULL);
-    }
-    return -1;
-}
-
-int
-bttracker_start(const char *url, const unsigned char info_hash[20], const unsigned char peer_id[20])
+bttracker_start(const char *url, const unsigned char info_hash[20],
+        const unsigned char peer_id[20])
 {
     int i;
 

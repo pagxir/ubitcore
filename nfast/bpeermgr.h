@@ -1,3 +1,6 @@
+#ifndef __BPEERMGR_H__
+#define __BPEERMGR_H__
+
 class bpeermgr
 {
 public:
@@ -6,3 +9,5 @@ public:
 };
 
 int bload_peer(const char *buffer, size_t count);
+
+#endif
