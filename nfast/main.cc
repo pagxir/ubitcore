@@ -31,17 +31,16 @@ class burlthread: public bthread
         int b_state;
         int b_second;
         int last_time;
-        std::string b_url;
         char b_path[512];
         burlget *b_get;
-        boutfile *b_file;
+        std::string b_url;
+        std::string b_data;
 };
 
 burlthread::burlthread(const char *url, int second):
     b_url(url)
 {
     b_get = NULL;
-    b_file = NULL;
     b_state = 0;
     b_second = second;
     last_time = time(NULL);
@@ -63,51 +62,77 @@ burlthread::burlthread(const char *url, int second):
 }
 
 int
+bload_peer(const char *buffer, size_t count)
+{
+    int error;
+    size_t size;
+    btcodec codec;
+    codec.bload(buffer, count);
+    int interval = codec.bget().bget("interval").bget(&error);
+    if (error != -1){
+        printf("interval: %d\n", interval);
+    }
+    int done_count = codec.bget().bget("done peers").bget(&error);
+    if (error != -1){
+        printf("done peers: %d\n", done_count);
+    }
+    int num_peers = codec.bget().bget("num peers").bget(&error);
+    if (error != -1){
+        printf("num peers: %d\n", done_count);
+    }
+    int incomplete = codec.bget().bget("incomplete").bget(&error);
+    if (error != -1){
+        printf("incomplete: %d\n", incomplete);
+    }
+    const char *failure = codec.bget().bget("failure reason").c_str(&size);
+    if (failure != NULL){
+        std::string f(failure, size);
+        printf("failure reason: %s\n", f.c_str());
+    }
+    return 0;
+}
+
+int
 burlthread::bdocall(time_t timeout)
 {
     int error = 0;
     int state = b_state;
-    std::string redirect;
     char buffer[81920];
-    const char *burl = b_url.c_str();
+    const char *burl = NULL;
     while(error != -1){
         b_state = state++;
         switch(b_state){
             case 0:
                 b_get = burlget::get();
+                b_data.clear();
                 assert(b_get != NULL);
-                b_file = boutfile::get();
-                b_file->bpathbind(b_path);
-                b_file->bopen();
-                printf("URI: %s\n", burl);
-                error = b_get->burlbind(burl);
+                printf("URI: %s\n", b_url.c_str());
+                error = b_get->burlbind(b_url.c_str());
                 break;
             case 1:
                 error = b_get->bpolldata(buffer, sizeof(buffer));
                 break;
             case 2:
                 if (error > 0){
-                    b_file->bwrite(buffer, error);
+                    b_data.append(buffer, error);
                     state = 1;
                     break;
                 }
-                b_file->bclose();
-                delete b_file;
-                b_file = NULL;
                 break;
             case 3:
                 burl = b_get->blocation();
-                if (burl!=NULL){
+                if (burl!=NULL && b_data.empty()){
                     delete b_get;
-                    redirect = burl;
-                    b_get = NULL;
-                    error = state = 0;
-                    burl = redirect.c_str();
-                    printf("TRY: %s", burl);
-                    assert(strlen(burl)>0);
+                    b_get = burlget::get();
+                    b_get->burlbind(burl);
+                    printf("TURI: %s\n", burl);
+                    state = 6;
                 }
                 break;
             case 4:
+                if (!b_data.empty()){
+                    bload_peer(b_data.c_str(), b_data.size());
+                }
                 assert(error==0);
                 error = btime_wait(last_time+b_second);
                 break;
@@ -117,6 +142,22 @@ burlthread::bdocall(time_t timeout)
                 b_get = NULL;
                 burl = b_url.c_str();
                 state = 0;
+                break;
+            case 6:
+                error = b_get->bpolldata(buffer, sizeof(buffer));
+                break;
+            case 7:
+                if (error > 0){
+                    b_data.append(buffer, error);
+                    state = 6;
+                    break;
+                }
+                break;
+            case 8:
+                state = 4;
+                break;
+            default:
+                assert(0);
                 break;
         }
     }
@@ -128,10 +169,6 @@ burlthread::~burlthread()
     if (b_get != NULL){
         delete b_get;
         b_get = NULL;
-    }
-    if (b_file != NULL){
-        delete b_file;
-        b_file = NULL;
     }
 }
 
@@ -270,6 +307,7 @@ main(int argc, char *argv[])
             btseed_load(btseed.c_str(), btseed.size());
         }
     }
+#if 0
     bdhtnet_node("208.72.193.175", 6881);
     bdhtnet_node("195.56.193.72",40148);
     bdhtnet_node("90.154.212.140",10383);
@@ -278,7 +316,6 @@ main(int argc, char *argv[])
     bdhtnet_node("122.107.166.67",11597);
     bdhtnet_node("222.186.13.91",27781);
     bdhtnet_node("91.82.71.148",16844);
-#if 1
     bdhtnet_node("61.92.120.178",55677);
     bdhtnet_node("91.123.159.137",61986);
     bdhtnet_node("88.118.64.253",28996);

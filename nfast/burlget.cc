@@ -139,7 +139,6 @@ burlget_wrapper::bpolldata(char *buffer, int size)
                     }
                 }
                 if (error > 0 && b_len<4){
-                    printf("not finish: %s\n", buffer);
                     state = 2;
                     break;
                 }
@@ -162,7 +161,6 @@ burlget_wrapper::bpolldata(char *buffer, int size)
                 }
                 break;
             default:
-                printf("remote close: %s!\n", b_urlfull.c_str());
                 return error;
         }
     }

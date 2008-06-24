@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <time.h>
 #include <assert.h>
 #include <stdio.h>
