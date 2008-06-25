@@ -8,7 +8,6 @@
 burlthread::burlthread(const char *url, int second):
     b_url(url)
 {
-    b_get = NULL;
     b_state = 0;
     b_second = second;
     last_time = time(NULL);
@@ -41,10 +40,8 @@ burlthread::bdocall(time_t timeout)
         b_state = state++;
         switch(b_state){
             case 0:
-                b_get = burlget::get();
+                b_get.reset(burlget::get());
                 b_data.clear();
-                assert(b_get != NULL);
-                printf("URI: %s\n", b_url.c_str());
                 error = b_get->burlbind(b_url.c_str());
                 break;
             case 1:
@@ -60,10 +57,8 @@ burlthread::bdocall(time_t timeout)
             case 3:
                 burl = b_get->blocation();
                 if (burl!=NULL && b_data.empty()){
-                    delete b_get;
-                    b_get = burlget::get();
+                    b_get.reset(burlget::get());
                     b_get->burlbind(burl);
-                    printf("TURI: %s\n", burl);
                     state = 6;
                 }
                 break;
@@ -76,8 +71,6 @@ burlthread::bdocall(time_t timeout)
                 break;
             case 5:
                 last_time = time(NULL);
-                delete b_get;
-                b_get = NULL;
                 burl = b_url.c_str();
                 state = 0;
                 break;
@@ -104,8 +97,5 @@ burlthread::bdocall(time_t timeout)
 
 burlthread::~burlthread()
 {
-    if (b_get != NULL){
-        delete b_get;
-        b_get = NULL;
-    }
+
 }

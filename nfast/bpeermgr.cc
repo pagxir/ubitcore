@@ -1,9 +1,62 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <string>
+#include <assert.h>
+#include <arpa/inet.h>
+#include <queue>
+#include <set>
 
+#include "bthread.h"
 #include "btcodec.h"
 #include "bpeermgr.h"
+
+
+bool
+operator < (const ep_t &a, const ep_t &b)
+{
+    return a.b_host < b.b_host;
+}
+
+static std::set<ep_t> __q_epqueue;
+static std::queue<ep_t> __q_session;
+static std::queue<bthread*> __q_bqueue;
+
+static int
+bwait_queue(bthread *thread, int argc, void *argv)
+{
+    __q_bqueue.push(thread);
+    return 0;
+}
+
+int
+bdequeue(ep_t *ep)
+{
+    if (!__q_session.empty()){
+        *ep = __q_session.front();
+        __q_session.pop();
+        return 0;
+    }
+    bthread_waiter(bwait_queue, 0, NULL);
+    return -1;
+}
+
+static int
+benqueue(ep_t &ep)
+{
+    if (__q_epqueue.find(ep) == __q_epqueue.end()){
+        __q_session.push(ep);
+        __q_epqueue.insert(ep);
+        if (!__q_bqueue.empty()){
+            __q_bqueue.front()->bwakeup();
+            __q_bqueue.pop();
+        }
+    }else{
+        if ((*__q_epqueue.find(ep)).b_port != ep.b_port){
+            printf("conflict address!\n");
+        }
+    }
+    return 0;
+}
 
 int
 bload_peer(const char *buffer, size_t count)
@@ -32,6 +85,19 @@ bload_peer(const char *buffer, size_t count)
     if (failure != NULL){
         std::string f(failure, size);
         printf("failure reason: %s\n", f.c_str());
+        return -1;
     }
+    typedef unsigned char peer_t[6];
+    peer_t *peers = (peer_t*)
+        codec.bget().bget("peers").c_str(&size);
+    assert(peers != NULL);
+    int i;
+    for (i=0; i<(size/6); i++){
+        ep_t ep;
+        ep.b_host = *(unsigned long *)peers[i];
+        ep.b_port = htons(*(unsigned short*)(peers[i]+4));
+        benqueue(ep);
+    }
+    printf("peer count: %d\n", __q_epqueue.size());
     return 0;
 }

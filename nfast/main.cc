@@ -10,11 +10,13 @@
 #include <queue>
 
 #include "sha1.h"
+#include "butils.h"
 #include "bthread.h"
 #include "biothread.h"
 #include "bdhtnet.h"
 #include "btcodec.h"
 #include "bclock.h"
+#include "bqueue.h"
 #include "btracker.h"
 
 #ifndef NDEBUG
@@ -22,7 +24,7 @@
 #endif
 
 
-int
+burlthread*
 bttracker_start(const char *url, const unsigned char info_hash[20],
         const unsigned char peer_id[20])
 {
@@ -64,14 +66,16 @@ bttracker_start(const char *url, const unsigned char info_hash[20],
     bturl += "&uploaded=0";
     bturl += "&downloaded=0";
     bturl += "&left=732854576";
+#if 0
     bturl += "&event=started";
+#endif
     bturl += "&key=1785265";
     bturl += "&compact=1";
     bturl += "&numwant=200";
     printf("T: %s\n", bturl.c_str());
-    burlthread *get = new burlthread(bturl.c_str(), 30);
+    burlthread *get = new burlthread(bturl.c_str(), 300);
     get->bwakeup();
-    return 0;
+    return get;
 }
 
 int
@@ -84,6 +88,7 @@ btseed_load(const char *buf, int len)
     codec.bload(buf, len);
     const char *info = codec.bget().bget("info").b_str(&eln);
     SHA1Hash(digest, (unsigned char*)info, eln);
+    set_info_hash(digest);
     const char *list = codec.bget().bget("announce-list").b_str(&eln);
     if (list != NULL){
         const char *urlbuf = NULL;
@@ -101,9 +106,23 @@ btseed_load(const char *buf, int len)
 }
 
 int
+gen_peer_ident(unsigned char ident[20])
+{
+    int i;
+    srand(time(NULL));
+    for (i=0; i<20; i++){
+        ident[i] = rand()%256;
+    }
+    return 0;
+}
+
+int
 main(int argc, char *argv[])
 {
     int i;
+    unsigned char ident[20];
+    gen_peer_ident(ident);
+    set_peer_ident(ident);
     std::queue<burlthread*> burlqueue;
     for (i=1; i<argc; i++){
         if (strncmp(argv[i], "http://", 7)==0){
@@ -308,6 +327,11 @@ main(int argc, char *argv[])
     bdhtnet_node("79.206.122.41",27448);
     bdhtnet_node("89.223.193.64",19949);
 #endif
+
+    for (i=0; i<10; i++){
+        bqueue *bq = new bqueue();
+        bq->bwakeup();
+    }
 
     bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
     c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();

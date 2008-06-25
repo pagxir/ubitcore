@@ -269,6 +269,21 @@ bsocket::bselect(time_t outtime)
 int
 bsocket::bconnect(const char *host, int port)
 {
+    unsigned long rhost = inet_addr(host);
+    if (inet_addr(host) == INADDR_NONE){
+        hostent *phost = gethostbyname(host);
+        if (phost == NULL){
+            return -1;
+        }
+        rhost = *(u_long*)phost->h_addr;
+        fprintf(stderr, "IP: %s\n", inet_ntoa(*(in_addr*)&rhost));
+    }
+    return bconnect(rhost, port);
+}
+
+int
+bsocket::bconnect(unsigned long host, int port)
+{
     int error;
     int fflag;
     sockaddr_in siaddr;
@@ -279,15 +294,7 @@ bsocket::bconnect(const char *host, int port)
     assert(b_fd == -1);
     siaddr.sin_family = AF_INET;
     siaddr.sin_port = htons(port);
-    siaddr.sin_addr.s_addr = inet_addr(host);
-    if (inet_addr(host) == INADDR_NONE){
-        hostent *phost = gethostbyname(host);
-        if (phost == NULL){
-            return -1;
-        }
-        siaddr.sin_addr.s_addr = *(u_long*)phost->h_addr;
-        fprintf(stderr, "IP: %s\n", inet_ntoa(siaddr.sin_addr));
-    }
+    siaddr.sin_addr.s_addr = host;
     b_fd = socket(AF_INET, SOCK_STREAM, 0);
     fflag = fcntl(b_fd, F_GETFL);
     fflag |= O_NONBLOCK;
@@ -375,6 +382,10 @@ bsocket::~bsocket()
 {
     if (b_fd != -1){
         close(b_fd);
+        assert(b_jwr == NULL);
+        assert(b_jrd == NULL);
+        FD_CLR(b_fd, &b_nextfds->readfds);
+        FD_CLR(b_fd, &b_nextfds->writefds);
         b_fd = -1;
     }
 }

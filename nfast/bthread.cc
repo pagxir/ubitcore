@@ -32,7 +32,7 @@ bthread::bdocall(time_t timeout)
 int
 bthread::bfailed()
 {
-    printf("bthread::bfailed()\n");
+    printf("%s::bfailed()\n", b_ident.c_str());
     return 0;
 }
 
@@ -42,7 +42,7 @@ bthread::bwait()
     if (__q_bresume.empty()) {
         return bfailed();
     }
-#if 0
+#if 1
     if (__q_bresume.size() > 2){
         printf("dupit wakeup!\n");
     }
@@ -91,7 +91,6 @@ struct btimer
     int bwait() const
     {
         if (time(NULL) < btick()){
-            printf("waiting\n");
             sleep(btick() - time(NULL));
         }
         return 0;
