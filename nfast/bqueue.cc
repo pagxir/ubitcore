@@ -2,6 +2,7 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
+#include <arpa/inet.h>
 
 #include "bthread.h"
 #include "bqueue.h"
@@ -24,6 +25,9 @@ bqueue::bqueue()
 int
 bqueue::bfailed()
 {
+    printf("failed: %s:%d\n", 
+            inet_ntoa(*(in_addr*)&b_ep.b_host),
+            b_ep.b_port);
     b_state = 0;
     bwakeup();
     return 0;
@@ -67,19 +71,15 @@ bqueue::bdocall(time_t timeout)
                 error = b_socket->bsend(buffer, 68);
                 break;
             case 4:
-#ifndef NDEBUG
-                if (error == 0){
-                    state = 3;
-                    break;
-                }
                 if (error != 68){
                     printf("%d handshake byte is send!\n", error);
                 }
-#endif
-                assert(error==68);
-                error = b_socket->breceive(buffer, 68);
+                assert(error == 68);
                 break;
             case 5:
+                error = b_socket->breceive(buffer, 68);
+                break;
+            case 6:
                 if (error != 68){
                     printf("%d handshake byte is read!\n", error);
                 }else{

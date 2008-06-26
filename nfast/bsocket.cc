@@ -352,7 +352,9 @@ bsocket::__bwait_connect(bthread* job, int argc, void *argv)
     bsocket *bps = (bsocket*)argv;
     bps->q_read(job);
     bps->q_write(job);
+#if 0
     printf("__bwait_connect: wait connect: %p!\n", job);
+#endif
     return 0;
 }
 
