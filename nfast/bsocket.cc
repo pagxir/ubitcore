@@ -58,7 +58,7 @@ int
 bsocket::bwait_connect()
 {
     if (errno == EINPROGRESS){
-        bthread_waiter(bsocket::__bwait_connect, 0, this);
+	   	bthread_waiter(bsocket::__bwait_connect, 0, this);
     }
     return 0;
 }
@@ -146,6 +146,13 @@ bsocket::bpoll(int count)
             flag &= ~BSF_CONN;
             count--;
         }
+#ifndef DEFAULT_TCP_TIME_OUT
+        if (b_syn_time+8 < time(NULL)){
+            b_jwr->bwakeup();
+            b_jrd->bwakeup();
+            flag &= ~BSF_CONN;
+        }
+#endif
         if (flag & BSF_CONN){
             q_read(b_jrd);
             q_write(b_jwr);
@@ -243,18 +250,14 @@ bsocket::bselect(time_t outtime)
 {
     int count;
     timeval tval;
-    tval.tv_sec = outtime-time(NULL);
+    time_t now = time(NULL);
+    tval.tv_sec = outtime>now?outtime-now:0;
     tval.tv_usec = 0;
     bsocket marker;
 
     if (is_busy()){
         count = select(maxfd+1, &b_nextfds->readfds,
                 &b_nextfds->writefds, NULL, outtime==-1?NULL:&tval);
-#ifndef NDEBUG
-        if (count == -1){
-            perror("select");
-        }
-#endif
         assert(count != -1);
         b_nextfds = b_nextfds->next;
         FD_ZERO(&b_nextfds->readfds);
@@ -294,6 +297,11 @@ bsocket::bconnect(unsigned long host, int port)
     sockaddr_in siaddr;
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;
+#ifndef DEFAULT_TCP_TIME_OUT
+        if (b_syn_time+8 < time(NULL)){
+			return -1;
+		}
+#endif
         return (f_flag&FF_MASK);
     }
     assert(b_fd == -1);
@@ -307,6 +315,9 @@ bsocket::bconnect(unsigned long host, int port)
     error = connect(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
     if (error==-1){
         f_flag |= FF_NOCONNECT;
+#ifndef DEFAULT_TCP_TIME_OUT
+        b_syn_time = time(NULL);
+#endif
         bwait_connect();
     }
     return error;
@@ -355,6 +366,7 @@ int
 bsocket::__bwait_connect(bthread* job, int argc, void *argv)
 {
     bsocket *bps = (bsocket*)argv;
+    bps->b_flag |= BSF_CONN;
     bps->q_read(job);
     bps->q_write(job);
 #if 0

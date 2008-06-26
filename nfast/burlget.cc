@@ -74,6 +74,11 @@ burlget_wrapper::burlbind(const char *url)
         "\r\n"
         ;
     assert(url != NULL);
+#ifndef NDEBUG
+    if (strncmp(url, "http://", 7) != 0){
+        printf("bad url: %s\n", url);
+    }
+#endif
     assert(strncmp(url, "http://", 7)==0);
     b_urlfull = url;
     while(*urlpath!='/' && *urlpath){

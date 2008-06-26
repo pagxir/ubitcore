@@ -12,21 +12,18 @@ bclock::bclock(const char *text, int second):
     last_time = time(NULL);
 }
 
-bclock::~bclock()
-{
-}
-
 int
 bclock::bdocall(time_t timeout)
 {
     time_t now;
     time(&now);
 #if 0
-    fprintf(stderr, "\rbcall(%s): %s", ident_text, ctime(&now));
+    printf("bcall(%s): %s\n", ident_text.c_str(), ctime(&now));
 #endif
     while(-1 != btime_wait(last_time+b_second)){
         last_time = time(NULL);
     }
     return -1;
 }
+
 

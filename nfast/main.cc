@@ -328,13 +328,16 @@ main(int argc, char *argv[])
     bdhtnet_node("89.223.193.64",19949);
 #endif
 
+    bqueue bcq[25];
     for (i=0; i<10; i++){
-        bqueue *bq = new bqueue();
-        bq->bwakeup();
+        bcq[i].bwakeup();
     }
 
-    bclock c("SYS", 14), d("DDD", 19), k("UFO", 19), e("XDD", 17), f("ODD", 13);
-    c.bwakeup(); d.bwakeup(); k.bwakeup(); e.bwakeup(); f.bwakeup();
+#ifndef DEFAULT_TCP_TIME_OUT
+    /* NOTICE: Keep this to less socket connect timeout work ok! */
+    bclock c("socket connect clock", 7);
+    c.bwakeup(); 
+#endif
     bthread *j;
     time_t timeout;
     while (-1 != bthread::bpoll(&j, &timeout)){

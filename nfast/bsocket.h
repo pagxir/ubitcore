@@ -51,6 +51,9 @@ class bsocket
         int b_fd;
         int b_flag;
         int f_flag;
+#ifndef DEFAULT_TCP_TIME_OUT
+        time_t b_syn_time;
+#endif
         bthread *b_jwr, *b_jrd;
 
         static int maxfd;

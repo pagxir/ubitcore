@@ -57,8 +57,10 @@ burlthread::bdocall(time_t timeout)
             case 3:
                 burl = b_get->blocation();
                 if (burl!=NULL && b_data.empty()){
-                    b_get.reset(burlget::get());
-                    b_get->burlbind(burl);
+                    assert(strncmp(burl, "http://", 7)==0);
+                    burlget *get = burlget::get();
+                    get->burlbind(burl);
+                    b_get.reset(get);
                     state = 6;
                 }
                 break;
@@ -71,7 +73,6 @@ burlthread::bdocall(time_t timeout)
                 break;
             case 5:
                 last_time = time(NULL);
-                burl = b_url.c_str();
                 state = 0;
                 break;
             case 6:
