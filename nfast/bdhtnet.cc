@@ -101,6 +101,7 @@ bdht_build(unsigned long host, unsigned short port,
         const char id[], size_t elen)
 {
     int i;
+    assert(elen==20);
     const unsigned char *bundle = (const unsigned char*)id;
     printf("peer id: ");
     for (i=0; i<elen; i++){
@@ -112,6 +113,7 @@ bdht_build(unsigned long host, unsigned short port,
     codec.bload((char*)__dht_ping, sizeof(__dht_ping));
     const unsigned char *s_id = (const unsigned char*)
         codec.bget().bget("a").bget("id").c_str(&idl);
+    assert(idl==20);
     for (i=0; i<20; i++){
         int diff = (s_id[i]^bundle[i])-(s_id[i]^__peer_id[i]);
         if (diff == 0){
@@ -150,8 +152,7 @@ bdht_decode_nodes(const char *nodes, int eln)
     int i;
     unsigned long host;
     unsigned short port;
-    for (i=0; i<eln; i+=26){
-        assert(i+26<=eln);
+    for (i=0; i+26<=eln; i+=26){
         memcpy(&host, nodes+i+20, 4);
         memcpy(&port, nodes+i+24, 2);
         port = htons(port);
@@ -159,6 +160,7 @@ bdht_decode_nodes(const char *nodes, int eln)
         printf("add nodes: %s:%d\n",
                 inet_ntoa(*(in_addr*)&host), htons(port));
     }
+    assert(eln==i);
     return 0;
 }
 
@@ -187,6 +189,7 @@ bdhtnet::brecord(time_t timeout)
                     inet_ntoa(*(in_addr*)&host), port);
             const char *id = codec.bget().bget("r").bget("id").c_str(&elen);
             if (id != NULL){
+                assert(elen==20);
                 bdht_build(host, port, id, elen);
             }
             const char *nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);

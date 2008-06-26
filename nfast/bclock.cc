@@ -1,15 +1,15 @@
-/* $Id:$ */
+/* $Id$ */
 #include <time.h>
 #include <string.h>
 
 #include "bclock.h"
 
 bclock::bclock(const char *text, int second):
-    ident_text("bclock")
+    ident_text(text)
 {
+    b_ident = "bclock";
     b_second = second;
     last_time = time(NULL);
-    ident_text = strdup(text);
 }
 
 bclock::~bclock()

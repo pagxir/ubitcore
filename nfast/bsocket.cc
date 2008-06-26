@@ -250,6 +250,11 @@ bsocket::bselect(time_t outtime)
     if (is_busy()){
         count = select(maxfd+1, &b_nextfds->readfds,
                 &b_nextfds->writefds, NULL, outtime==-1?NULL:&tval);
+#ifndef NDEBUG
+        if (count == -1){
+            perror("select");
+        }
+#endif
         assert(count != -1);
         b_nextfds = b_nextfds->next;
         FD_ZERO(&b_nextfds->readfds);

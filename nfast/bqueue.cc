@@ -12,6 +12,9 @@
 /*
  * \x13BitTorrent protocol\0\0\0\0\0\0\0\0<sha1 info hash><20byte peerid>
  */
+static int __failed_count=0;
+static int __success_count=0;
+
 const unsigned char __protocol[68] ={
     "\023BitTorrent protocol\0\0\0\0\0\0\0\0"
 };
@@ -28,6 +31,7 @@ bqueue::bfailed()
     printf("failed: %s:%d\n", 
             inet_ntoa(*(in_addr*)&b_ep.b_host),
             b_ep.b_port);
+    __failed_count++;
     b_state = 0;
     bwakeup();
     return 0;
@@ -37,7 +41,9 @@ int
 dd_ident(unsigned char ident[20])
 {
     int i;
-    printf("remote peed ident: ");
+    __success_count++;
+    printf("ident[%4d/%-4d]: ",
+            __success_count, __failed_count);
     for (i=0; i<20; i++){
         printf("%02x", ident[i]);
     }
@@ -81,6 +87,7 @@ bqueue::bdocall(time_t timeout)
                 break;
             case 6:
                 if (error != 68){
+                    __failed_count++;
                     printf("%d handshake byte is read!\n", error);
                 }else{
                     dd_ident((unsigned char*)buffer+48);
