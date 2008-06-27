@@ -95,6 +95,12 @@ bsocket::bsocket()
 }
 
 int
+bsocket::baccept(unsigned long *host, int *port)
+{
+    return 0;
+}
+
+int
 bsocket::bsend(const char *buf, size_t len)
 {
     int error = send(b_fd, buf, len, 0);

@@ -18,6 +18,7 @@
 #include "bclock.h"
 #include "bqueue.h"
 #include "btracker.h"
+#include "boffer.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -332,6 +333,8 @@ main(int argc, char *argv[])
     for (i=0; i<10; i++){
         bcq[i].bwakeup();
     }
+
+    boffer_start(0);
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */

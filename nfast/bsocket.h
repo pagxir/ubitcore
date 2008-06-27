@@ -18,6 +18,7 @@ class bsocket
     public:
         bsocket();
         ~bsocket();
+        int baccept(unsigned long *host, int *port);
         int bconnect(const char *host, int port);
         int bconnect(unsigned long host, int port);
         int bsend(const char *buf, size_t len);
