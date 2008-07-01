@@ -12,14 +12,25 @@
 
 
 bool
-operator < (const ep_t &a, const ep_t &b)
+operator < (const ep1_t &a, const ep1_t &b)
 {
     return a.b_host < b.b_host;
 }
 
-static std::set<ep_t> __q_epqueue;
-static std::queue<ep_t> __q_session;
+static std::set<ep1_t> __q_epqueue;
+static std::queue<ep1_t> __q_session;
 static std::queue<bthread*> __q_bqueue;
+
+static std::queue<ep_t*> __q_live_ep;
+static std::queue<bthread*> __q_live_thread;
+
+static int
+bwait_live(bthread *thread, int argc, void *argv)
+{
+    __q_live_thread.push(thread);
+    return 0;
+}
+
 
 static int
 bwait_queue(bthread *thread, int argc, void *argv)
@@ -29,10 +40,10 @@ bwait_queue(bthread *thread, int argc, void *argv)
 }
 
 int
-bdequeue(ep_t *ep)
+bdequeue(ep_t **ep)
 {
     if (!__q_session.empty()){
-        *ep = __q_session.front();
+        *ep = new ep_t(__q_session.front());
         __q_session.pop();
         return 0;
     }
@@ -41,7 +52,7 @@ bdequeue(ep_t *ep)
 }
 
 static int
-benqueue(ep_t &ep)
+benqueue(ep1_t &ep)
 {
     if (__q_epqueue.find(ep) == __q_epqueue.end()){
         __q_session.push(ep);
@@ -93,11 +104,37 @@ bload_peer(const char *buffer, size_t count)
     assert(peers != NULL);
     int i;
     for (i=0; i<(size/6); i++){
-        ep_t ep;
+        ep1_t ep;
         ep.b_host = *(unsigned long *)peers[i];
         ep.b_port = htons(*(unsigned short*)(peers[i]+4));
         benqueue(ep);
     }
     printf("peer count: %d\n", __q_epqueue.size());
+    return 0;
+}
+
+int
+bready_push(ep_t *ep)
+{
+    if (__q_live_thread.empty()){
+        delete ep;
+        return -1;
+    }
+
+    __q_live_ep.push(ep);
+    __q_live_thread.front()->bwakeup();
+    __q_live_thread.pop();
+    return 0;
+}
+
+int
+bready_pop(ep_t **ep)
+{
+    if (__q_live_ep.empty()){
+        bthread_waiter(bwait_live, 0, NULL);
+        return -1;
+    }
+    *ep = __q_live_ep.front();
+    __q_live_ep.pop();
     return 0;
 }

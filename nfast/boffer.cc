@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <time.h>
 #include "bthread.h"
 #include "boffer.h"
@@ -8,6 +8,9 @@ class backport: public bthread
     public:
         backport();
         virtual int bdocall(time_t timeout);
+
+    private:
+        int b_state;
 };
 
 static backport __backport;
@@ -19,7 +22,8 @@ boffer_start(int port)
     return 0;
 }
 
-backport::backport()
+backport::backport():
+    b_state(0)
 {
     b_ident = "backport";
 }
@@ -27,6 +31,23 @@ backport::backport()
 int
 backport::bdocall(time_t timeout)
 {
-    printf("hello world!\n");
-    return 0;
+    int error = 0;
+    int state = b_state;
+
+    while (error != -1){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                break;
+            case 1:
+                break;
+            case 2:
+                break;
+            default:
+                error = -1;
+                break;
+        }
+    }
+    return error;
 }

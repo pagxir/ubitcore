@@ -20,7 +20,7 @@ const unsigned char __protocol[68] ={
 };
 
 bqueue::bqueue()
-    :b_state(0)
+    :b_state(0), b_ep(NULL)
 {
     b_ident="bqueue";
 }
@@ -29,8 +29,8 @@ int
 bqueue::bfailed()
 {
     printf("failed: %s:%d\n", 
-            inet_ntoa(*(in_addr*)&b_ep.b_host),
-            b_ep.b_port);
+            inet_ntoa(*(in_addr*)&b_ep->b_host),
+            b_ep->b_port);
     __failed_count++;
     b_state = 0;
     bwakeup();
@@ -62,19 +62,22 @@ bqueue::bdocall(time_t timeout)
         switch(b_state)
         {
             case 0:
+                if (b_ep != NULL){
+                    delete b_ep;
+                }
                 error = bdequeue(&b_ep);
                 break;
             case 1:
-                b_socket.reset(new bsocket());
                 break;
             case 2:
-                error = b_socket->bconnect(b_ep.b_host, b_ep.b_port);
+                error = b_ep->b_socket.bconnect(
+                        b_ep->b_host, b_ep->b_port);
                 break;
             case 3:
                 memcpy(buffer, __protocol, sizeof(__protocol));
                 memcpy(buffer+28, get_info_hash(), 20);
                 memcpy(buffer+48, get_peer_ident(), 20);
-                error = b_socket->bsend(buffer, 68);
+                error = b_ep->b_socket.bsend(buffer, 68);
                 break;
             case 4:
                 if (error != 68){
@@ -83,7 +86,7 @@ bqueue::bdocall(time_t timeout)
                 assert(error == 68);
                 break;
             case 5:
-                error = b_socket->breceive(buffer, 68);
+                error = b_ep->b_socket.breceive(buffer, 68);
                 break;
             case 6:
                 if (error != 68){
@@ -91,6 +94,8 @@ bqueue::bdocall(time_t timeout)
                     printf("%d handshake byte is read!\n", error);
                 }else{
                     dd_ident((unsigned char*)buffer+48);
+                    bready_push(b_ep);
+                    b_ep = NULL;
                 }
                 break;
             default:

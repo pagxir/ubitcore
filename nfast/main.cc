@@ -19,6 +19,7 @@
 #include "bqueue.h"
 #include "btracker.h"
 #include "boffer.h"
+#include "bupdown.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -332,6 +333,12 @@ main(int argc, char *argv[])
     bqueue bcq[25];
     for (i=0; i<10; i++){
         bcq[i].bwakeup();
+    }
+
+    bupdown *updown[200];
+    for (i=0; i<200; i++){
+        updown[i] = new bupdown();
+        updown[i]->bwakeup();
     }
 
     boffer_start(0);

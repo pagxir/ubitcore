@@ -1,13 +1,14 @@
-#ifndef __BQUEUE_H__
-#define __BQUEUE_H__
+#ifndef __BUPDOWN_H__
+#define __BUPDOWN_H__
 #include <memory>
 #include "bthread.h"
 #include "bpeermgr.h"
+#include "bsocket.h"
 
-class bqueue: public bthread
+class bupdown: public bthread
 {
     public:
-        bqueue();
+        bupdown();
         virtual int bfailed();
         virtual int bdocall(time_t timeout);
 
