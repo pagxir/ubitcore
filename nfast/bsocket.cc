@@ -407,6 +407,9 @@ bsocket::~bsocket()
 {
     if (b_fd != -1){
         close(b_fd);
+        if (b_jrd || b_jwr){
+            printf("%p %p %p\n", this, b_jrd, b_jwr);
+        }
         assert(b_jwr == NULL);
         assert(b_jrd == NULL);
         FD_CLR(b_fd, &b_nextfds->readfds);

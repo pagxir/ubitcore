@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 
 #include "bupdown.h"
@@ -26,6 +26,7 @@ bupdown::bdocall(time_t timeout)
             case 0:
                 if (b_ep != NULL){
                     delete b_ep;
+                    b_ep = NULL;
                 }
                 error = bready_pop(&b_ep);
                 break;

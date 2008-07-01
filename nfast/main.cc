@@ -331,7 +331,7 @@ main(int argc, char *argv[])
 #endif
 
     bqueue bcq[25];
-    for (i=0; i<10; i++){
+    for (i=0; i<5; i++){
         bcq[i].bwakeup();
     }
 

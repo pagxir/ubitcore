@@ -64,6 +64,7 @@ bqueue::bdocall(time_t timeout)
             case 0:
                 if (b_ep != NULL){
                     delete b_ep;
+                    b_ep = NULL;
                 }
                 error = bdequeue(&b_ep);
                 break;
@@ -94,8 +95,10 @@ bqueue::bdocall(time_t timeout)
                     printf("%d handshake byte is read!\n", error);
                 }else{
                     dd_ident((unsigned char*)buffer+48);
+#if 1
                     bready_push(b_ep);
                     b_ep = NULL;
+#endif
                 }
                 break;
             default:
