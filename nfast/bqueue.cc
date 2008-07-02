@@ -38,14 +38,26 @@ bqueue::bfailed()
 }
 
 int
-dd_ident(unsigned char ident[20])
+ok_hndshake(unsigned char info[68])
 {
     int i;
     __success_count++;
-    printf("ident[%4d/%-4d]: ",
+    unsigned char *ident = info+28;
+    if (memcmp(info, __protocol, 20)!=0){
+        printf("BAD protocol: %s!\n", info);
+        return -1;
+    }
+    if (memcmp(info+28, get_info_hash(), 20)!=0){
+        return -1;
+    }
+    printf("[%4d/%-4d]: ",
             __success_count, __failed_count);
     for (i=0; i<20; i++){
         printf("%02x", ident[i]);
+    }
+    printf(" ");
+    for (i=0; i<8; i++){
+        printf("%02x", info[20+i]);
     }
     printf("\n");
     return 0;
@@ -93,12 +105,9 @@ bqueue::bdocall(time_t timeout)
                 if (error != 68){
                     __failed_count++;
                     printf("%d handshake byte is read!\n", error);
-                }else{
-                    dd_ident((unsigned char*)buffer+48);
-#if 1
+                }else if (ok_hndshake((unsigned char*)buffer)==0){
                     bready_push(b_ep);
                     b_ep = NULL;
-#endif
                 }
                 break;
             default:

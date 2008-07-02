@@ -13,7 +13,9 @@ class bupdown: public bthread
         virtual int bdocall(time_t timeout);
 
     private:
-        int b_state;
         ep_t *b_ep;
+        int b_state;
+        int b_offset;
+        char b_buffer[1<<14];
 };
 #endif
