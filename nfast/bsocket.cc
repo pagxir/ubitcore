@@ -434,3 +434,14 @@ bsocket::global_init()
     nextfds1.next = &nextfds2;
     return 0;
 }
+
+int
+bsocket::bshutdown()
+{
+    assert(b_fd != -1);
+    shutdown(b_fd, SHUT_RDWR);
+    if (b_jrd != NULL){
+        return -1;
+    }
+    return b_jwr==NULL?0:-1;
+}

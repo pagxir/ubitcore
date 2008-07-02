@@ -5,6 +5,38 @@
 
 #include "bupdown.h"
 
+class bupload_wrapper: public bthread
+{
+    public:
+        bupload_wrapper(bupdown &updown);
+        virtual int bdocall(time_t timeout);
+        int bfinish();
+
+    private:
+        bupdown &b_updown;
+};
+
+bupload_wrapper::bupload_wrapper(bupdown &updown):
+    b_updown(updown)
+{
+}
+
+int
+bupload_wrapper::bfinish()
+{
+    return 0;
+}
+
+int
+bupload_wrapper::bdocall(time_t timeout)
+{
+    int error = b_updown.bupload(timeout);
+    if (error == 0){
+        
+    }
+    return error;
+}
+
 enum {
     BT_MSG_CHOCK,
     BT_MSG_UNCHOCK,
@@ -18,11 +50,8 @@ enum {
 };
 
 int
-quick_decode(char *buf, int len)
+bupdown::quick_decode(char *buf, int len)
 {
-    if (len == 0){
-        return 0;
-    }
     if (len>9 && buf[0]==BT_MSG_PIECE){
         printf("quick data piece: index=%d begin=%d\n", 
                 ntohl(*(unsigned long*)(buf+1)), ntohl(*(unsigned long*)(buf+5)));
@@ -31,11 +60,11 @@ quick_decode(char *buf, int len)
 }
 
 int
-real_decode(char *buf, int len)
+bupdown::real_decode(char *buf, int len)
 {
     unsigned long* text =(unsigned long *)(buf+1);
     if (len == 0){
-        printf("keep alive\n");
+        //printf("keep alive: %p\n", this);
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
         printf("chock\n");
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
@@ -45,7 +74,7 @@ real_decode(char *buf, int len)
     }else if (len==1 && buf[0]==BT_MSG_NOINTERESTED){
         printf("not interested\n");
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
-        printf("have: %d\n", ntohl(text[0])); 
+        //printf("have: %d\n", ntohl(text[0])); 
     }else if (len>1 && buf[0]==BT_MSG_BITFIELD){
         printf("byte field: %d\n", len);
     }else if (len==13 && buf[0]==BT_MSG_REQUEST){
@@ -62,9 +91,15 @@ real_decode(char *buf, int len)
 }
 
 bupdown::bupdown()
-    :b_state(0), b_ep(NULL)
+    :b_state(0), b_ep(NULL),b_upload(new bupload_wrapper(*this))
 {
     b_ident = "bupdown";
+}
+
+int
+bupdown::bupload(time_t timeout)
+{
+    return 0;
 }
 
 int
@@ -103,6 +138,7 @@ bupdown::bdocall(time_t timeout)
                             quick_decode(b_buffer+4, l);
                             break;
                         }
+                        b_upload->bwakeup();
                         real_decode(b_buffer+4, l);
                         b_offset -= meat;
                         memmove(b_buffer, b_buffer+meat, b_offset);
@@ -111,7 +147,10 @@ bupdown::bdocall(time_t timeout)
                 }
                 break;
             case 3:
-                printf("U: hello world!\n");
+                b_ep->b_socket.bshutdown();
+                break;
+            case 4:
+                error = b_upload->bfinish();
                 break;
             default:
                 state = 0;

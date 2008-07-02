@@ -27,6 +27,7 @@ class bsocket
                 unsigned long host, unsigned short port);
         int brecvfrom(char *buf, size_t len,
                 unsigned long *host, unsigned short *port);
+        int bshutdown();
         static int global_init();
         static int bselect(time_t timeout);
    
