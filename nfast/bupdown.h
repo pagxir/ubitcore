@@ -33,6 +33,7 @@ class bupdown: public bthread
         int b_requesting;
 
     private:
+        int b_lastref;
         int b_upoff;
         int b_upsize;
         char b_upbuffer[1<<17];

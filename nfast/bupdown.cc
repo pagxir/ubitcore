@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <arpa/inet.h>
 
+#include "bchunk.h"
 #include "bupdown.h"
-#define BLOCK_SIZE (16*1024)
 
 class bupload_wrapper: public bthread
 {
@@ -41,9 +42,6 @@ enum {
     BT_MSG_CANCEL
 };
 
-static std::vector<unsigned char> __q_bitset;
-static std::vector<unsigned char> __q_visited;
-
 int
 bupdown::quick_decode(char *buf, int len, int readed)
 {
@@ -67,7 +65,6 @@ bupdown::real_decode(char *buf, int len)
         b_keepalive = 1;
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
         b_rchoke = BT_MSG_CHOCK;
-        b_upload->bwakeup();
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
         b_rchoke = BT_MSG_UNCHOCK;
     }else if (len==1 && buf[0]==BT_MSG_INTERESTED){
@@ -77,20 +74,17 @@ bupdown::real_decode(char *buf, int len)
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
         unsigned long idx = ntohl(text[0]); 
         unsigned char flag = b_bitset[idx>>3];
-        b_bitset[idx>>3] |= (1<<~(idx&0x7));
+        b_bitset[idx>>3] |= (1<<((~idx)&0x7));
         b_new_linterested = BT_MSG_INTERESTED;
-        b_upload->bwakeup();
     }else if (len>1 && buf[0]==BT_MSG_BITFIELD){
         b_bitset.resize(len-1);
         memcpy(&b_bitset[0], buf+1, len-1);
-        __q_bitset.resize(len-1);
         b_new_linterested = BT_MSG_INTERESTED;
-        b_upload->bwakeup();
     }else if (len==13 && buf[0]==BT_MSG_REQUEST){
         printf("request: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
-        printf("piece: %d %d %d\n",
+        printf("piece(%p): %d %d %d\n", this,
                 ntohl(text[0]), ntohl(text[1]), len);
         b_requesting -= len;
         if (b_requesting < 0){
@@ -152,33 +146,26 @@ again:
     }
 
     if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<128*1024){
-        int idx;
-        for (idx=0; idx<b_bitset.size(); idx++){
-            int s = rand()%b_bitset.size();
-            unsigned char u = b_bitset[s]&~__q_bitset[s];
-            if (u != 0){
-                s = (s<<3)+7;
-                while(u&0x1){
-                    u>>=1;
-                    s--;
-                }
-                b_requesting += BLOCK_SIZE;
-                unsigned long msglen = htonl(12+1);
-                memcpy(b_upbuffer+b_upsize, &msglen, 4);
-                b_upsize += 4;
-                b_upbuffer[b_upsize] = BT_MSG_REQUEST;
-                b_upsize += 1;
-                msglen = htonl(s);
-                memcpy(b_upbuffer+b_upsize, &msglen, 4);
-                b_upsize += 4;
-                msglen = htonl(0);
-                memcpy(b_upbuffer+b_upsize, &msglen, 4);
-                b_upsize += 4;
-                msglen = htonl(BLOCK_SIZE);
-                memcpy(b_upbuffer+b_upsize, &msglen, 4);
-                b_upsize += 4;
-                goto again;
-            }
+        assert(b_bitset.size());
+        bchunk_t *chunk = bchunk_get(b_lastref, &b_bitset[0], b_bitset.size());
+        if (chunk != NULL){
+            b_lastref = chunk->b_index;
+            b_requesting += chunk->b_length;
+            unsigned long msglen = htonl(12+1);
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+            b_upbuffer[b_upsize] = BT_MSG_REQUEST;
+            b_upsize += 1;
+            msglen = htonl(chunk->b_index);
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+            msglen = htonl(chunk->b_start);
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+            msglen = htonl(chunk->b_length);
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+            goto again;
         }
     }
 
@@ -205,6 +192,7 @@ bupdown::bdocall(time_t timeout)
                 break;
             case 1:
                 b_offset = 0;
+                b_lastref = -1;
                 b_keepalive = 0;
                 b_requesting = 0;
                 b_upoff = b_upsize = 0;
@@ -233,12 +221,14 @@ bupdown::bdocall(time_t timeout)
                             break;
                         }
                         real_decode(b_buffer+parsed4, l);
-                        b_upload->bwakeup();
                         parsed = parsed4+l;
                         parsed4 = parsed+4;
                     }
-                    b_offset -= parsed;
-                    memmove(b_upbuffer, b_upbuffer+parsed, b_offset);
+                    if (parsed > 0){
+                        b_upload->bwakeup();
+                        b_offset -= parsed;
+                        memmove(b_buffer, b_buffer+parsed, b_offset);
+                    }
                     state = 2;
                 }
                 break;
