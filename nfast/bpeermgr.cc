@@ -128,13 +128,14 @@ bready_push(ep_t *ep)
 }
 
 int
-bready_pop(ep_t **ep)
+bready_pop(ep_t *ep)
 {
     if (__q_live_ep.empty()){
         bthread_waiter(bwait_live, 0, NULL);
         return -1;
     }
-    *ep = __q_live_ep.front();
+    *ep = *__q_live_ep.front();
+    delete __q_live_ep.front();
     __q_live_ep.pop();
     return 0;
 }

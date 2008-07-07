@@ -80,6 +80,7 @@ bsocket::bwait_send()
     if (errno == EAGAIN){
         bthread_waiter(bsocket::__bwait_send, 0, this);
     }else{
+       fprintf(stderr, "fd=%d ", b_fd);
         perror("bad bwait_send");
     }
     return 0;
@@ -92,6 +93,26 @@ bsocket::bsocket()
     f_flag = 0;
     b_jwr = NULL;
     b_jrd = NULL;
+}
+
+bsocket &bsocket::operator=(bsocket &src)
+{
+    assert(b_fd == -1);
+    b_fd = src.b_fd;
+    b_flag = src.b_flag;
+    f_flag = src.f_flag;
+#ifndef DEFAULT_TCP_TIME_OUT
+    b_syn_time = src.b_syn_time;
+#endif
+    assert(b_jwr==NULL);
+    assert(src.b_jwr==NULL);
+    assert(src.b_jrd==NULL);
+    assert(b_jrd==NULL);
+    src.b_fd = -1;
+#if 0
+    src.b_flag = 0;
+    src.f_flag = 0;
+#endif
 }
 
 int
@@ -433,15 +454,4 @@ bsocket::global_init()
     nextfds2.next = &nextfds1;
     nextfds1.next = &nextfds2;
     return 0;
-}
-
-int
-bsocket::bshutdown()
-{
-    assert(b_fd != -1);
-    shutdown(b_fd, SHUT_RDWR);
-    if (b_jrd != NULL){
-        return -1;
-    }
-    return b_jwr==NULL?0:-1;
 }

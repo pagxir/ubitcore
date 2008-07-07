@@ -18,6 +18,7 @@ class bsocket
     public:
         bsocket();
         ~bsocket();
+        bsocket &operator=(bsocket&);
         int baccept(unsigned long *host, int *port);
         int bconnect(const char *host, int port);
         int bconnect(unsigned long host, int port);
@@ -27,9 +28,11 @@ class bsocket
                 unsigned long host, unsigned short port);
         int brecvfrom(char *buf, size_t len,
                 unsigned long *host, unsigned short *port);
-        int bshutdown();
         static int global_init();
         static int bselect(time_t timeout);
+
+    private:
+        bsocket(bsocket&);
    
     private:
         int bpoll(int count);

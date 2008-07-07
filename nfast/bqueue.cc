@@ -42,7 +42,7 @@ ok_hndshake(unsigned char info[68])
 {
     int i;
     __success_count++;
-    unsigned char *ident = info+28;
+    unsigned char *ident = info+48;
     if (memcmp(info, __protocol, 20)!=0){
         printf("BAD protocol: %s!\n", info);
         return -1;

@@ -1,16 +1,17 @@
 /* $Id$ */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 
 #include "bupdown.h"
+#define BLOCK_SIZE (16*1024)
 
 class bupload_wrapper: public bthread
 {
     public:
         bupload_wrapper(bupdown &updown);
         virtual int bdocall(time_t timeout);
-        int bfinish();
 
     private:
         bupdown &b_updown;
@@ -22,18 +23,9 @@ bupload_wrapper::bupload_wrapper(bupdown &updown):
 }
 
 int
-bupload_wrapper::bfinish()
-{
-    return 0;
-}
-
-int
 bupload_wrapper::bdocall(time_t timeout)
 {
     int error = b_updown.bupload(timeout);
-    if (error == 0){
-        
-    }
     return error;
 }
 
@@ -49,12 +41,20 @@ enum {
     BT_MSG_CANCEL
 };
 
+static std::vector<unsigned char> __q_bitset;
+static std::vector<unsigned char> __q_visited;
+
 int
-bupdown::quick_decode(char *buf, int len)
+bupdown::quick_decode(char *buf, int len, int readed)
 {
     if (len>9 && buf[0]==BT_MSG_PIECE){
-        printf("quick data piece: index=%d begin=%d\n", 
-                ntohl(*(unsigned long*)(buf+1)), ntohl(*(unsigned long*)(buf+5)));
+#if 0
+        printf("quick data piece: index=%d begin=%d len=%d/%d\n", 
+                ntohl(*(unsigned long*)(buf+1)),
+                ntohl(*(unsigned long*)(buf+5)),
+                readed, len
+                );
+#endif
     }
     return 0;
 }
@@ -64,25 +64,38 @@ bupdown::real_decode(char *buf, int len)
 {
     unsigned long* text =(unsigned long *)(buf+1);
     if (len == 0){
-        //printf("keep alive: %p\n", this);
+        b_keepalive = 1;
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
-        printf("chock\n");
+        b_rchoke = BT_MSG_CHOCK;
+        b_upload->bwakeup();
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
-        printf("unchock\n");
+        b_rchoke = BT_MSG_UNCHOCK;
     }else if (len==1 && buf[0]==BT_MSG_INTERESTED){
-        printf("interested\n");
+        b_rinterested = BT_MSG_INTERESTED;
     }else if (len==1 && buf[0]==BT_MSG_NOINTERESTED){
-        printf("not interested\n");
+        b_rinterested = BT_MSG_NOINTERESTED;
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
-        //printf("have: %d\n", ntohl(text[0])); 
+        unsigned long idx = ntohl(text[0]); 
+        unsigned char flag = b_bitset[idx>>3];
+        b_bitset[idx>>3] |= (1<<~(idx&0x7));
+        b_new_linterested = BT_MSG_INTERESTED;
+        b_upload->bwakeup();
     }else if (len>1 && buf[0]==BT_MSG_BITFIELD){
-        printf("byte field: %d\n", len);
+        b_bitset.resize(len-1);
+        memcpy(&b_bitset[0], buf+1, len-1);
+        __q_bitset.resize(len-1);
+        b_new_linterested = BT_MSG_INTERESTED;
+        b_upload->bwakeup();
     }else if (len==13 && buf[0]==BT_MSG_REQUEST){
         printf("request: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
         printf("piece: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), len);
+        b_requesting -= len;
+        if (b_requesting < 0){
+            b_requesting = 0;
+        }
     }else if (len==13 && buf[0]==BT_MSG_CANCEL){
         printf("cancel: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
@@ -91,7 +104,7 @@ bupdown::real_decode(char *buf, int len)
 }
 
 bupdown::bupdown()
-    :b_state(0), b_ep(NULL),b_upload(new bupload_wrapper(*this))
+    :b_state(0), b_upload(new bupload_wrapper(*this))
 {
     b_ident = "bupdown";
 }
@@ -99,6 +112,76 @@ bupdown::bupdown()
 int
 bupdown::bupload(time_t timeout)
 {
+    int error = 0;
+again:
+    while (b_upoff < b_upsize){
+        error = b_ep.b_socket.bsend(b_upbuffer+b_upoff,
+                b_upsize - b_upoff);
+        if (error == -1){
+            return -1;
+        }
+        b_upoff += error;
+    }
+
+    b_upoff = b_upsize = 0;
+    if (b_keepalive==1 && b_upsize+4<sizeof(b_upbuffer)){
+        memset(b_upbuffer+b_upsize, 0, 4);
+        b_keepalive = 0;
+        b_upsize += 4;
+        goto again;
+    }
+
+    if (b_lchoke!=b_new_lchoke && b_upsize+5<sizeof(b_upbuffer)){
+        b_lchoke = b_new_lchoke;
+        unsigned long msglen = htonl(1);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        b_upbuffer[b_upsize] = b_new_lchoke;
+        b_upsize += 1;
+        goto again;
+    }
+
+    if (b_linterested!=b_new_linterested && b_upsize+5<sizeof(b_upbuffer)){
+        b_linterested = b_new_linterested;
+        unsigned long msglen = htonl(1);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        b_upbuffer[b_upsize] = b_new_linterested;
+        b_upsize += 1;
+        goto again;
+    }
+
+    if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<128*1024){
+        int idx;
+        for (idx=0; idx<b_bitset.size(); idx++){
+            int s = rand()%b_bitset.size();
+            unsigned char u = b_bitset[s]&~__q_bitset[s];
+            if (u != 0){
+                s = (s<<3)+7;
+                while(u&0x1){
+                    u>>=1;
+                    s--;
+                }
+                b_requesting += BLOCK_SIZE;
+                unsigned long msglen = htonl(12+1);
+                memcpy(b_upbuffer+b_upsize, &msglen, 4);
+                b_upsize += 4;
+                b_upbuffer[b_upsize] = BT_MSG_REQUEST;
+                b_upsize += 1;
+                msglen = htonl(s);
+                memcpy(b_upbuffer+b_upsize, &msglen, 4);
+                b_upsize += 4;
+                msglen = htonl(0);
+                memcpy(b_upbuffer+b_upsize, &msglen, 4);
+                b_upsize += 4;
+                msglen = htonl(BLOCK_SIZE);
+                memcpy(b_upbuffer+b_upsize, &msglen, 4);
+                b_upsize += 4;
+                goto again;
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -117,40 +200,47 @@ bupdown::bdocall(time_t timeout)
         b_state = state++;
         switch(b_state){
             case 0:
-                if (b_ep != NULL){
-                    delete b_ep;
-                    b_ep = NULL;
-                }
-                b_offset = 0;
+                b_ep.bclear();
                 error = bready_pop(&b_ep);
                 break;
             case 1:
-                error = b_ep->b_socket.breceive(b_buffer+b_offset,
-                        sizeof(b_buffer)-b_offset);
+                b_offset = 0;
+                b_keepalive = 0;
+                b_requesting = 0;
+                b_upoff = b_upsize = 0;
+                b_rchoke = BT_MSG_CHOCK;
+                b_rinterested = BT_MSG_NOINTERESTED;
+                b_lchoke = BT_MSG_CHOCK;
+                b_new_lchoke = BT_MSG_UNCHOCK;
+                b_linterested = BT_MSG_NOINTERESTED;
+                b_new_linterested = BT_MSG_NOINTERESTED;
                 break;
             case 2:
-                if (error > 0){
-                    b_offset += error;
-                    while (b_offset >= 4){
-                        unsigned long l = ntohl(*(unsigned long*)b_buffer);
-                        unsigned long meat = l + 4;
-                        if (b_offset < meat){
-                            quick_decode(b_buffer+4, l);
-                            break;
-                        }
-                        b_upload->bwakeup();
-                        real_decode(b_buffer+4, l);
-                        b_offset -= meat;
-                        memmove(b_buffer, b_buffer+meat, b_offset);
-                    }
-                    state = 1;
-                }
+                error = b_ep.b_socket.breceive(b_buffer+b_offset,
+                        sizeof(b_buffer)-b_offset);
                 break;
             case 3:
-                b_ep->b_socket.bshutdown();
-                break;
-            case 4:
-                error = b_upload->bfinish();
+                if (error > 0){
+                    b_offset += error;
+                    int parsed = 0;
+                    int parsed4 = parsed + 4;
+                    while (parsed4 <= b_offset){
+                        unsigned long l = ntohl(*(unsigned long*)
+                                (b_buffer+parsed));
+                        if (b_offset < parsed4+l){
+                            quick_decode(b_buffer+parsed4, l,
+                                    b_offset-parsed4);
+                            break;
+                        }
+                        real_decode(b_buffer+parsed4, l);
+                        b_upload->bwakeup();
+                        parsed = parsed4+l;
+                        parsed4 = parsed+4;
+                    }
+                    b_offset -= parsed;
+                    memmove(b_upbuffer, b_upbuffer+parsed, b_offset);
+                    state = 2;
+                }
                 break;
             default:
                 state = 0;

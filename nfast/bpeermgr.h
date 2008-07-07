@@ -19,16 +19,30 @@ struct ep1_t
 
 struct ep_t: public ep1_t
 {
+    ep_t();
     ep_t(ep1_t&ep);
     bsocket b_socket;
+    int bclear();
 };
+
+inline ep_t::ep_t()
+{
+}
 
 inline ep_t::ep_t(ep1_t &ep):ep1_t(ep)
 {
-
 }
 
-int bready_pop(ep_t **ep);
+inline int
+ep_t::bclear()
+{
+    bsocket *so = new bsocket();
+    *so = b_socket;
+    delete so;
+    return 0;
+}
+
+int bready_pop(ep_t *ep);
 int bready_push(ep_t *ep);
 int bdequeue(ep_t **ep);
 int bload_peer(const char *buffer, size_t count);
