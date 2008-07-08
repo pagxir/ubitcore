@@ -7,5 +7,6 @@ struct bchunk_t{
     int b_length;
 };
 
+int bset_piece_length(int length);
 bchunk_t *bchunk_get(int index, unsigned char *bitset, int count);
 #endif

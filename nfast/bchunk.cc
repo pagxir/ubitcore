@@ -8,6 +8,7 @@
 #include "bchunk.h"
 #define BLOCK_SIZE (16*1024)
 
+static int __piece_length;
 static std::vector<unsigned char> __q_visited;
 
 struct bmgrchunk
@@ -70,7 +71,7 @@ bset_bit(int index)
 		chk = new bmgrchunk();
 	   	chk->b_index = index;
 	   	chk->b_started = 0;
-	   	chk->b_length = 512*1024;
+	   	chk->b_length = __piece_length;
 	   	__s_mgrchunk.insert(chk);
 	}
     return chk;
@@ -95,12 +96,25 @@ bchunk_get(int index, unsigned char *bitset, int count)
                 ubit >>= 1;
                 idx--;
             }
+            int refcount = 3;
+again:
             chk = bset_bit(idx);
+            assert(chk != NULL);
             if (chk!=NULL&&chk->bget_chunk(&chunk)){
                 return &chunk;
             }
-            assert(0);
+            if (refcount-- > 0){
+                goto again;
+            }
         }
     }
     return NULL;
+}
+
+int
+bset_piece_length(int length)
+{
+    printf("piece length: %d\n", length);
+    __piece_length = length;
+    return 0;
 }

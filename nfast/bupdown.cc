@@ -146,7 +146,9 @@ again:
     }
 
     if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<128*1024){
-        assert(b_bitset.size());
+        if(b_bitset.size()==0){
+            return 0;
+        }
         bchunk_t *chunk = bchunk_get(b_lastref, &b_bitset[0], b_bitset.size());
         if (chunk != NULL){
             b_lastref = chunk->b_index;
@@ -165,6 +167,10 @@ again:
             msglen = htonl(chunk->b_length);
             memcpy(b_upbuffer+b_upsize, &msglen, 4);
             b_upsize += 4;
+#if 0
+            printf("rq: %d %d %d\n", chunk->b_index,
+                    chunk->b_start, chunk->b_length);
+#endif
             goto again;
         }
     }
