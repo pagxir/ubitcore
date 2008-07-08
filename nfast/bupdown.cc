@@ -84,8 +84,8 @@ bupdown::real_decode(char *buf, int len)
         printf("request: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
-        printf("piece(%p): %d %d %d\n", this,
-                ntohl(text[0]), ntohl(text[1]), len);
+        bchunk_sync((const char*)&text[2],
+                ntohl(text[0]), ntohl(text[1]), len-9);
         b_requesting -= len;
         if (b_requesting < 0){
             b_requesting = 0;
@@ -239,6 +239,17 @@ bupdown::bdocall(time_t timeout)
                 }
                 break;
             default:
+                b_offset = 0;
+                b_lastref = -1;
+                b_keepalive = 0;
+                b_requesting = 0;
+                b_upoff = b_upsize = 0;
+                b_rchoke = BT_MSG_CHOCK;
+                b_rinterested = BT_MSG_INTERESTED;
+                b_lchoke = BT_MSG_CHOCK;
+                b_new_lchoke = BT_MSG_CHOCK;
+                b_linterested = BT_MSG_NOINTERESTED;
+                b_new_linterested = BT_MSG_INTERESTED;
                 state = 0;
                 break;
         }
