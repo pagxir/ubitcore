@@ -16,11 +16,13 @@ class bupload_wrapper: public bthread
         bool bwakeup_safe();
         bool bglobal_wait();
         bool bglobal_wakeup();
+        std::queue<bchunk_t> &queue(){ return b_queue; }
 
     private:
         bool b_flag;
         bool b_wakeupable;
         bupdown &b_updown;
+        std::queue<bchunk_t> b_queue;
 };
 
 std::queue<bupload_wrapper*> __q_upload;
@@ -65,8 +67,8 @@ bupload_wrapper::bwakeup_safe()
 {
     if (b_wakeupable){
         b_wakeupable = false;
-        bwakeup();
     }
+    bwakeup();
     return b_wakeupable;
 }
 
@@ -132,14 +134,20 @@ bupdown::real_decode(char *buf, int len)
         memcpy(&b_bitset[0], buf+1, len-1);
         b_new_linterested = BT_MSG_INTERESTED;
     }else if (len==13 && buf[0]==BT_MSG_REQUEST){
-        printf("request: %d %d %d\n",
-                ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
+        int piece = htonl(text[0]);
+        int start = htonl(text[1]);
+        int length = htonl(text[2]);
+        printf("request: %d %d %d\n", piece, start, length);
+        if (b_lchoke == BT_MSG_UNCHOCK){
+            b_upload->queue().push(
+                    bchunk_t(piece, start, length));
+        }
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
         bchunk_sync((const char*)&text[2],
                 ntohl(text[0]), ntohl(text[1]), len-9);
         b_requesting -= len;
         if (b_requesting < 0){
-            b_requesting = 0;
+            b_requesting = 9;
         }
     }else if (len==13 && buf[0]==BT_MSG_CANCEL){
         printf("cancel: %d %d %d\n",
@@ -209,7 +217,7 @@ again:
         goto again;
     }
 
-    if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<128*1024){
+    if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<96*1024){
         if(b_bitset.size()==0){
             return 0;
         }
@@ -237,6 +245,26 @@ again:
 #endif
             goto again;
         }
+    }
+
+    if (!b_upload->queue().empty()){
+        bchunk_t chunk = b_upload->queue().front();
+        b_upload->queue().pop();
+        unsigned long msglen = htonl(9+chunk.b_length);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        b_upbuffer[b_upsize] = BT_MSG_PIECE;
+        b_upsize += 1;
+        msglen = htonl(chunk.b_index);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        msglen = htonl(chunk.b_start);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        bchunk_copyto(b_upbuffer+b_upsize, &chunk);
+        b_upsize += chunk.b_length;
+        printf("upload data: %d\n", chunk.b_index);
+        goto again;
     }
 
     return 0;
@@ -272,7 +300,8 @@ bupdown::bdocall(time_t timeout)
                 b_lchoke = BT_MSG_CHOCK;
                 b_new_lchoke = BT_MSG_UNCHOCK;
                 b_linterested = BT_MSG_NOINTERESTED;
-                b_new_linterested = BT_MSG_NOINTERESTED;
+                b_new_linterested = BT_MSG_INTERESTED;
+                b_upload->bwakeup();
                 break;
             case 2:
                 error = b_ep.b_socket.breceive(b_buffer+b_offset,

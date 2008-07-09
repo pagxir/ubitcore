@@ -181,7 +181,6 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
     assert(chk != NULL);
     assert(len>0&&start>=0);
     assert(start+len <= chk->b_length);
-    assert(start >= chk->b_recved);
     assert(chk->b_buffer != NULL);
     memcpy(chk->b_buffer+start, buf, len);
     std::map<int,int> &lm = chk->b_lostmap;
@@ -189,10 +188,9 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
         assert(lm.find(start) == lm.end());
         lm.insert(std::make_pair(start, len));
         chk->b_badcount++;
-        printf("bad order\n");
         return len;
     }
-    chk->b_recved += len;
+    chk->b_recved = std::max(start+len, chk->b_recved);
     std::map<int,int>::iterator iter;
     for (iter=lm.begin();
             iter != lm.end();
@@ -200,16 +198,29 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
         if (iter->first > chk->b_recved){
             return len;
         }
-        printf("conbine now!\n");
         int recved = iter->first+iter->second;
         chk->b_recved = std::max(recved, chk->b_recved);
     }
     if (chk->b_recved == chk->b_length){
+        fprintf(stderr, "chunk finish: %d %d!\n", idx, chk->b_badcount);
+        __q_have.push_back(idx);
+        __n_have++;
+        bglobal_break();
+#if 0
         delete[] chk->b_buffer;
         chk->b_buffer = NULL;
-        printf("chunk finish: %d %d!\n", idx, chk->b_badcount);
-       __q_have[__n_have++] = idx;
-       bglobal_break();
+#endif
     }
     return len;
+}
+
+int
+bchunk_copyto(char *buf, bchunk_t *chunk)
+{
+    bmgrchunk *chk = bget_mgrchunk(chunk->b_index);
+    assert(chk != NULL);
+    assert(chunk->b_start >= 0);
+    assert(chunk->b_start+chunk->b_length <= chk->b_recved);
+    memcpy(buf, chk->b_buffer+chunk->b_start, chunk->b_length);
+    return chunk->b_length;
 }

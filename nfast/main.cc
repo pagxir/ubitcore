@@ -374,6 +374,7 @@ main(int argc, char *argv[])
         updown[i]->bwakeup();
     }
 
+    srand(time(NULL));
     boffer_start(0);
 
 #ifndef DEFAULT_TCP_TIME_OUT
