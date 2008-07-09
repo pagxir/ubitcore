@@ -114,7 +114,7 @@ rnd_map(int idx, int count)
         __rnd_map = new int[count];
         for (i=0; i<count; i++){
             __rnd_map[i] = i;
-            if (i > 0){
+            if (i > 1){
                 int u = rand()%i;
                 __rnd_map[i] = __rnd_map[u];
                 __rnd_map[u] = i;
@@ -147,7 +147,7 @@ bchunk_get(int index, unsigned char *bitset, int count)
     static int __last_use = 0;
     __q_visited.resize(count);
     int last_use = __last_use;
-    for (i=last_use+1; last_use!=(i%count); i++){
+    for (i=last_use+1; (last_use%count)!=(i%count); i++){
         int rnd = rnd_map(i, count);
         unsigned char ubit = bitset[rnd]&~__q_visited[rnd];
         if (ubit != 0){
@@ -162,7 +162,7 @@ bchunk_get(int index, unsigned char *bitset, int count)
                 return &chunk;
             }
         }
-        __last_use = (i+1)%count;
+        __last_use = i%count;
     }
     printf("bget chunk fail\n");
     return NULL;

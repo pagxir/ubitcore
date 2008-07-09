@@ -67,8 +67,8 @@ bupload_wrapper::bwakeup_safe()
 {
     if (b_wakeupable){
         b_wakeupable = false;
+        bwakeup();
     }
-    bwakeup();
     return b_wakeupable;
 }
 
@@ -118,9 +118,9 @@ bupdown::real_decode(char *buf, int len)
         b_keepalive = 1;
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
         b_rchoke = BT_MSG_CHOCK;
+        b_requesting = 0;
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
         b_rchoke = BT_MSG_UNCHOCK;
-        b_requesting = 0;
     }else if (len==1 && buf[0]==BT_MSG_INTERESTED){
         b_rinterested = BT_MSG_INTERESTED;
     }else if (len==1 && buf[0]==BT_MSG_NOINTERESTED){
@@ -272,13 +272,17 @@ again:
     return 0;
 }
 
+static int __cc = 0;
+
 int
 bupdown::bfailed()
 {
-    return bthread::bfailed();
+    __cc--;
+    b_state = 4;
+    this->bwakeup();
+    printf("fail: %d\n", __cc);
+    return 0;
 }
-
-static int __cc = 0;
 
 int
 bupdown::bdocall(time_t timeout)
@@ -306,7 +310,7 @@ bupdown::bdocall(time_t timeout)
                 b_linterested = BT_MSG_NOINTERESTED;
                 b_new_linterested = BT_MSG_INTERESTED;
                 b_upload->bwakeup();
-                printf("connection ac: %d\n", __cc++);
+                __cc++;
                 break;
             case 2:
                 error = b_ep.b_socket.breceive(b_buffer+b_offset,
