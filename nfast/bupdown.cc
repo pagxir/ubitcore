@@ -221,7 +221,10 @@ again:
 
     if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<96*1024){
         if(b_bitset.size()==0){
-            return 0;
+            goto fail_exit;
+        }
+        if (b_linterested == BT_MSG_INTERESTED){
+            goto fail_exit;
         }
         bchunk_t *chunk = bchunk_get(b_lastref, &b_bitset[0], b_bitset.size());
         if (chunk != NULL){
@@ -247,8 +250,10 @@ again:
 #endif
             goto again;
         }
+        b_new_linterested = BT_MSG_NOINTERESTED;
     }
 
+fail_exit:
     if (!b_upload->queue().empty()){
         bchunk_t chunk = b_upload->queue().front();
         b_upload->queue().pop();
