@@ -13,20 +13,71 @@ class bupload_wrapper: public bthread
     public:
         bupload_wrapper(bupdown &updown);
         virtual int bdocall(time_t timeout);
+        bool bwakeup_safe();
+        bool bglobal_wait();
+        bool bglobal_wakeup();
 
     private:
+        bool b_flag;
+        bool b_wakeupable;
         bupdown &b_updown;
 };
 
-bupload_wrapper::bupload_wrapper(bupdown &updown):
-    b_updown(updown)
+std::queue<bupload_wrapper*> __q_upload;
+
+bool
+bglobal_break()
 {
+    while (!__q_upload.empty()){
+        __q_upload.front()->bglobal_wakeup();
+        __q_upload.pop();
+    }
+    return true;
+}
+
+bupload_wrapper::bupload_wrapper(bupdown &updown):
+    b_updown(updown), b_wakeupable(false)
+{
+}
+
+bool
+bupload_wrapper::bglobal_wait()
+{
+    if (b_flag == true){
+        return false;
+    }
+    __q_upload.push(this);
+    b_flag = true;
+    return true;
+}
+
+bool
+bupload_wrapper::bglobal_wakeup()
+{
+    assert(b_flag == true);
+    b_flag = false;
+    bwakeup_safe();
+    return true;
+}
+
+bool
+bupload_wrapper::bwakeup_safe()
+{
+    if (b_wakeupable){
+        b_wakeupable = false;
+        bwakeup();
+    }
+    return b_wakeupable;
 }
 
 int
 bupload_wrapper::bdocall(time_t timeout)
 {
     int error = b_updown.bupload(timeout);
+    b_wakeupable = (error==0);
+    if (b_wakeupable==true){
+        bglobal_wait();
+    }
     return error;
 }
 
@@ -112,6 +163,7 @@ again:
         error = b_ep.b_socket.bsend(b_upbuffer+b_upoff,
                 b_upsize - b_upoff);
         if (error == -1){
+            bdump_socket_crash_message("bupload");
             return -1;
         }
         b_upoff += error;
@@ -121,6 +173,18 @@ again:
     if (b_keepalive==1 && b_upsize+4<sizeof(b_upbuffer)){
         memset(b_upbuffer+b_upsize, 0, 4);
         b_keepalive = 0;
+        b_upsize += 4;
+        goto again;
+    }
+
+    if (bget_have(b_ptrhave) != -1){
+        unsigned long msglen = htonl(5);
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
+        b_upsize += 4;
+        b_upbuffer[b_upsize] = BT_MSG_HAVE;
+        b_upsize += 1;
+        msglen = htonl(bget_have(b_ptrhave++));
+        memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
         goto again;
     }
@@ -198,6 +262,7 @@ bupdown::bdocall(time_t timeout)
                 break;
             case 1:
                 b_offset = 0;
+                b_ptrhave = 0;
                 b_lastref = -1;
                 b_keepalive = 0;
                 b_requesting = 0;
@@ -231,7 +296,7 @@ bupdown::bdocall(time_t timeout)
                         parsed4 = parsed+4;
                     }
                     if (parsed > 0){
-                        b_upload->bwakeup();
+                        b_upload->bwakeup_safe();
                         b_offset -= parsed;
                         memmove(b_buffer, b_buffer+parsed, b_offset);
                     }
@@ -241,6 +306,7 @@ bupdown::bdocall(time_t timeout)
             default:
                 b_offset = 0;
                 b_lastref = -1;
+                b_ptrhave = -1;
                 b_keepalive = 0;
                 b_requesting = 0;
                 b_upoff = b_upsize = 0;
@@ -248,7 +314,7 @@ bupdown::bdocall(time_t timeout)
                 b_rinterested = BT_MSG_INTERESTED;
                 b_lchoke = BT_MSG_CHOCK;
                 b_new_lchoke = BT_MSG_CHOCK;
-                b_linterested = BT_MSG_NOINTERESTED;
+                b_linterested = BT_MSG_INTERESTED;
                 b_new_linterested = BT_MSG_INTERESTED;
                 state = 0;
                 break;

@@ -4,13 +4,18 @@
 #include <assert.h>
 #include <string.h>
 #include <vector>
+#include <map>
 #include <set>
 
 #include "bchunk.h"
+#include "bupdown.h"
 #define BLOCK_SIZE (16*1024)
 
 static int __piece_length;
+static int __n_have = 0;
+static std::vector<int> __q_have;
 static std::vector<unsigned char> __q_visited;
+static std::vector<unsigned char> __q_finished;
 
 struct bmgrchunk
 {
@@ -19,8 +24,9 @@ struct bmgrchunk
     int b_length;
 
     int b_recved;
+    int b_badcount;
     char *b_buffer;
-    unsigned int b_window;
+    std::map<int, int> b_lostmap;
 
     bool bget_chunk(bchunk_t *chunk);
     bool operator()(const bmgrchunk *l, const bmgrchunk *r);
@@ -63,6 +69,18 @@ bmgrchunk::bget_chunk(bchunk_t *chunk)
     return true;
 }
 
+int
+bget_have(int idx)
+{
+    if (idx < 0){
+        return -1;
+    }
+    if (idx < __n_have){
+        return __q_have[idx];
+    }
+    return -1;
+}
+
 static bmgrchunk* 
 bset_bit(int index)
 {
@@ -74,9 +92,9 @@ bset_bit(int index)
 	   	__q_visited[index>>3] = ubyte;
 		chk = new bmgrchunk();
 	   	chk->b_index = index;
+        chk->b_badcount = 0;
 	   	chk->b_started = 0;
         chk->b_recved = 0;
-        chk->b_window = 0;
 	   	chk->b_length = __piece_length;
         chk->b_buffer = new char[__piece_length];
 	   	__s_mgrchunk.insert(chk);
@@ -161,21 +179,37 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
 {
     bmgrchunk *chk = bget_mgrchunk(idx);
     assert(chk != NULL);
-    assert(len > 0);
-    assert(start >= 0);
+    assert(len>0&&start>=0);
     assert(start+len <= chk->b_length);
-    if (chk->b_recved == start){
-        memcpy(chk->b_buffer+start, buf, len);
-        chk->b_recved += len;
-    }else{
-        printf("cache fail: idx=%d start=%d recv=%d\n", 
-                idx, start, chk->b_recved);
-        return 0;
+    assert(start >= chk->b_recved);
+    assert(chk->b_buffer != NULL);
+    memcpy(chk->b_buffer+start, buf, len);
+    std::map<int,int> &lm = chk->b_lostmap;
+    if (start > chk->b_recved){
+        assert(lm.find(start) == lm.end());
+        lm.insert(std::make_pair(start, len));
+        chk->b_badcount++;
+        printf("bad order\n");
+        return len;
+    }
+    chk->b_recved += len;
+    std::map<int,int>::iterator iter;
+    for (iter=lm.begin();
+            iter != lm.end();
+            lm.erase(iter++)){
+        if (iter->first > chk->b_recved){
+            return len;
+        }
+        printf("conbine now!\n");
+        int recved = iter->first+iter->second;
+        chk->b_recved = std::max(recved, chk->b_recved);
     }
     if (chk->b_recved == chk->b_length){
         delete[] chk->b_buffer;
         chk->b_buffer = NULL;
-        printf("chunk finish: %d!\n", idx);
+        printf("chunk finish: %d %d!\n", idx, chk->b_badcount);
+       __q_have[__n_have++] = idx;
+       bglobal_break();
     }
     return len;
 }

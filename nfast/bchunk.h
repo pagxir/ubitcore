@@ -7,6 +7,7 @@ struct bchunk_t{
     int b_length;
 };
 
+int bget_have(int idx);
 int bset_piece_length(int length);
 int bchunk_sync(const char *buf, int idx, int start, int len);
 bchunk_t *bchunk_get(int index, unsigned char *bitset, int count);

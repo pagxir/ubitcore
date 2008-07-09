@@ -80,7 +80,7 @@ bsocket::bwait_send()
     if (errno == EAGAIN){
         bthread_waiter(bsocket::__bwait_send, 0, this);
     }else{
-       fprintf(stderr, "fd=%d ", b_fd);
+        fprintf(stderr, "fd=%d ", b_fd);
         perror("bad bwait_send");
     }
     return 0;
@@ -454,4 +454,13 @@ bsocket::global_init()
     nextfds2.next = &nextfds1;
     nextfds1.next = &nextfds2;
     return 0;
+}
+
+void
+bdump_socket_crash_message(const char *buf)
+{
+    if (errno != EAGAIN){
+        fprintf(stderr, "message: %s\n", buf);
+        perror("err");
+    }
 }

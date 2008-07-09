@@ -33,6 +33,7 @@ class bupdown: public bthread
         int b_requesting;
 
     private:
+        int b_ptrhave;
         int b_lastref;
         int b_upoff;
         int b_upsize;
@@ -46,4 +47,6 @@ class bupdown: public bthread
         std::vector<unsigned char> b_bitset;
         std::auto_ptr<bupload_wrapper> b_upload;
 };
+
+bool bglobal_break();
 #endif

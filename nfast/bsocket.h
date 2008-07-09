@@ -65,4 +65,5 @@ class bsocket
         static nextfds *b_nextfds;
         static std::queue<bsocket*> bqueue;
 };
+void bdump_socket_crash_message(const char *buf);
 #endif
