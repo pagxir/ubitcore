@@ -223,7 +223,7 @@ again:
         if(b_bitset.size()==0){
             goto fail_exit;
         }
-        if (b_linterested == BT_MSG_INTERESTED){
+        if (b_linterested == BT_MSG_NOINTERESTED){
             goto fail_exit;
         }
         bchunk_t *chunk = bchunk_get(b_lastref, &b_bitset[0], b_bitset.size());

@@ -89,7 +89,11 @@ burlget_wrapper::burlbind(const char *url)
     if (*urlpath==0){
         urlpath = "/";
     }
+#ifdef DISABLE_PROXY
     sprintf(b_bufhead, title, urlpath, b_urlhost);
+#else
+    sprintf(b_bufhead, title, url, b_urlhost);
+#endif
     char *chdot = strrchr(b_urlhost, ':');
     if (chdot != NULL){
         *chdot = 0;
@@ -110,7 +114,11 @@ burlget_wrapper::bpolldata(char *buffer, int size)
         b_state = state++;
         switch(b_state){
             case 0:
+#ifdef DISABLE_PROXY
                 error = b_connect.bconnect(b_urlhost, b_urlport);
+#else
+                error = b_connect.bconnect("121.14.55.10", 80);
+#endif
                 break;
             case 1:
                 error = b_connect.bsend(b_bufhead, strlen(b_bufhead));
