@@ -101,7 +101,9 @@ bload_peer(const char *buffer, size_t count)
     typedef unsigned char peer_t[6];
     peer_t *peers = (peer_t*)
         codec.bget().bget("peers").c_str(&size);
-    assert(peers != NULL);
+    if(peers == NULL){
+        return -1;
+    }
     int i;
     for (i=0; i<(size/6); i++){
         ep1_t ep;

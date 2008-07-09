@@ -105,9 +105,15 @@ bsocket &bsocket::operator=(bsocket &src)
     b_syn_time = src.b_syn_time;
 #endif
     assert(b_jwr==NULL);
-    assert(src.b_jwr==NULL);
-    assert(src.b_jrd==NULL);
     assert(b_jrd==NULL);
+    if (src.b_jwr || src.b_jrd){
+        fprintf(stderr, "warn: src.b_jwr==%p src.b_jrd==%p\n", 
+                src.b_jwr, src.b_jrd);
+        src.b_jwr&&src.b_jwr->bfailed();
+        src.b_jrd&&src.b_jrd->bfailed();
+    }
+    src.b_jwr=NULL;
+    src.b_jrd=NULL;
     src.b_fd = -1;
 #if 0
     src.b_flag = 0;
@@ -161,6 +167,9 @@ int
 bsocket::bpoll(int count)
 {
     int flag = b_flag;
+    if (b_fd == -1){
+        return -1;
+    }
     b_flag = 0;
     if (BSF_CONN&flag){
         if (count>0 && ok_read()){
