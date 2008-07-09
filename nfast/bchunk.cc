@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -164,6 +164,7 @@ bchunk_get(int index, unsigned char *bitset, int count)
         }
         __last_use = (i+1)%count;
     }
+    printf("bget chunk fail\n");
     return NULL;
 }
 

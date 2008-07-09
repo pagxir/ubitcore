@@ -120,12 +120,14 @@ bupdown::real_decode(char *buf, int len)
         b_rchoke = BT_MSG_CHOCK;
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
         b_rchoke = BT_MSG_UNCHOCK;
+        b_requesting = 0;
     }else if (len==1 && buf[0]==BT_MSG_INTERESTED){
         b_rinterested = BT_MSG_INTERESTED;
     }else if (len==1 && buf[0]==BT_MSG_NOINTERESTED){
         b_rinterested = BT_MSG_NOINTERESTED;
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
         unsigned long idx = ntohl(text[0]); 
+        b_bitset.resize((idx>>3)+1);
         unsigned char flag = b_bitset[idx>>3];
         b_bitset[idx>>3] |= (1<<((~idx)&0x7));
         b_new_linterested = BT_MSG_INTERESTED;
@@ -276,6 +278,8 @@ bupdown::bfailed()
     return bthread::bfailed();
 }
 
+static int __cc = 0;
+
 int
 bupdown::bdocall(time_t timeout)
 {
@@ -302,6 +306,7 @@ bupdown::bdocall(time_t timeout)
                 b_linterested = BT_MSG_NOINTERESTED;
                 b_new_linterested = BT_MSG_INTERESTED;
                 b_upload->bwakeup();
+                printf("connection ac: %d\n", __cc++);
                 break;
             case 2:
                 error = b_ep.b_socket.breceive(b_buffer+b_offset,
@@ -333,6 +338,7 @@ bupdown::bdocall(time_t timeout)
                 }
                 break;
             default:
+                printf("connection lost: %d\n", --__cc);
                 b_offset = 0;
                 b_lastref = -1;
                 b_ptrhave = -1;
