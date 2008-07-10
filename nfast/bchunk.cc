@@ -9,13 +9,15 @@
 
 #include "bchunk.h"
 #include "bupdown.h"
+#include "bitfield.h"
+
 #define BLOCK_SIZE (16*1024)
 
-static int __piece_length;
 static int __n_have = 0;
 static std::vector<int> __q_have;
-static std::vector<unsigned char> __q_visited;
-static std::vector<unsigned char> __q_finished;
+
+static int __piece_length;
+static bitfield __q_visited;
 
 struct bmgrchunk
 {
@@ -86,10 +88,7 @@ bset_bit(int index)
 {
     bmgrchunk *chk = bget_mgrchunk(index);
 	if (chk == NULL){
-	   	int ubyte = __q_visited[index>>3];
-	   	int b1= ubyte;
-	   	ubyte |= (1<<((~index)&0x7));
-	   	__q_visited[index>>3] = ubyte;
+	   	__q_visited.bitset(index);
 		chk = new bmgrchunk();
 	   	chk->b_index = index;
         chk->b_badcount = 0;
@@ -102,13 +101,15 @@ bset_bit(int index)
     return chk;
 }
 
+
+static int __bad_mask = 0;
+static int __map_count = -1;
+static int *__rnd_map = NULL;
+
 static int
-rnd_map(int idx, int count)
+build_map(int count)
 {
     int i;
-    static int __bad_mask = 0;
-    static int __map_count = -1;
-    static int *__rnd_map = NULL;
     if (__map_count != count){
         delete[] __rnd_map;
         __rnd_map = new int[count];
@@ -123,20 +124,22 @@ rnd_map(int idx, int count)
         __map_count = count;
         __bad_mask = count;
     }
-    if (__bad_mask == 0){
-        return -1;
-    }
-    i =__rnd_map[idx%__bad_mask];
-    while (__q_visited[i]==0xFF && __bad_mask>1){
+    return 0;
+}
+
+static int
+rnd_map(int idx)
+{
+    int i =__rnd_map[idx%__map_count];
+    while (__q_visited.bitget(i)){
         __bad_mask--;
         __rnd_map[i] = __rnd_map[__bad_mask];
-        i =__rnd_map[idx%__bad_mask];
+        i =__rnd_map[idx%__map_count];
     }
     return i;
 }
-
 bchunk_t *
-bchunk_get(int index, unsigned char *bitset, int count)
+bchunk_get(int index, bitfield &bitset, int *lidx, int *lcount)
 {
     int i;
     static bchunk_t chunk;
@@ -144,36 +147,49 @@ bchunk_get(int index, unsigned char *bitset, int count)
     if (chk!=NULL && chk->bget_chunk(&chunk)){
         return &chunk;
     }
-    static int __last_use = 0;
-    __q_visited.resize(count);
-    int last_use = __last_use;
-    for (i=last_use+1; (last_use%count)!=(i%count); i++){
-        int rnd = rnd_map(i, count);
-        unsigned char ubit = bitset[rnd]&~__q_visited[rnd];
-        if (ubit != 0){
-            int idx = (rnd<<3)+7;
-            while(0==(ubit&0x1)){
-                ubit >>= 1;
-                idx--;
-            }
-            chk = bset_bit(idx);
+    for (i=*lidx; i<*lcount; i++){
+        int rnd = rnd_map(i);
+        if (bitset.bitget(rnd) && !__q_visited.bitget(rnd)){
+            chk = bset_bit(rnd);
             assert(chk != NULL);
             if (chk!=NULL&&chk->bget_chunk(&chunk)){
+                *lidx = i;
                 return &chunk;
             }
         }
-        __last_use = i%count;
     }
+    *lcount = __bad_mask;
     printf("bget chunk fail\n");
     return NULL;
 }
 
+static size_t __count_of_piece = 0;
+
 int
-bset_piece_length(int length)
+bset_piece_info(int length, int count, int rest)
 {
-    printf("piece length: %d\n", length);
+    int pc = rest>0?count+1:count;
+    build_map(pc);
+    __q_visited.resize(pc);
     __piece_length = length;
+    __count_of_piece = pc;
+    if (rest != 0){
+        bmgrchunk *chk = new bmgrchunk();
+	   	chk->b_index = count;
+        chk->b_badcount = 0;
+	   	chk->b_started = 0;
+        chk->b_recved = 0;
+	   	chk->b_length = __piece_length;
+        chk->b_buffer = new char[rest];
+	   	__s_mgrchunk.insert(chk);
+    }
     return 0;
+}
+
+size_t
+bcount_piece()
+{
+    return __count_of_piece;
 }
 
 int bchunk_sync(const char *buf, int idx, int start, int len)

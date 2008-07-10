@@ -9,6 +9,7 @@ class bentity
         virtual bentity &bget(const char *name);
         virtual const char *b_str(size_t *len);
         virtual const char *c_str(size_t *len);
+        virtual int b_val(int *ival, int *rest, int base);
 };
 
 class btcodec

@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cmath>
+#include <string>
 #include "btcodec.h"
 
 #define TRY_KILL(en) \
@@ -168,6 +170,7 @@ class btint: public bentity
         btint(btcodec *codec, int off);
         virtual int bget(int *ival);
         virtual const char *b_str(size_t *len);
+        virtual int b_val(int *val, int *rest, int base);
 
     private:
         btcodec *b_codec;
@@ -187,6 +190,34 @@ const char *btint::b_str(size_t *len)
         *len = off+1;
     }
     return p;
+}
+
+int btint::b_val(int *ival, int *rest, int bits)
+{
+    size_t len;
+    int re=0, val=0;
+    const char *ibuf = b_str(&len);
+    if (ibuf == NULL){
+        return -1;
+    }
+    assert(len > 2);
+    ibuf++;
+    len-=2;
+    int hlen = (len>>1);
+    int a, b, c;
+    unsigned int mask = (1<<bits)-1;
+    std::string s1(ibuf, hlen), s2(ibuf+hlen, len-hlen);
+    a = atoi(s1.c_str());
+    c = atoi(s2.c_str());
+    b = std::pow(10, s2.size());
+    re = (c&mask)+(a&mask)*(b&mask);
+    val = (a>>bits)*(b&~mask)
+        +(a>>bits)*(b&mask)
+        +(b>>bits)*(a&mask)
+        +(c>>bits);
+    *ival = val+(re>>bits);
+    *rest = re&mask;
+    return 0;
 }
 
 int btint::bget(int *ival)
@@ -352,3 +383,7 @@ const char *bentity::c_str(size_t *len)
     return NULL;
 }
 
+int bentity::b_val(int *ival, int *rest, int base)
+{
+    return -1;
+}

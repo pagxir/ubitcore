@@ -127,13 +127,11 @@ bupdown::real_decode(char *buf, int len)
         b_rinterested = BT_MSG_NOINTERESTED;
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
         unsigned long idx = ntohl(text[0]); 
-        b_bitset.resize((idx>>3)+1);
-        unsigned char flag = b_bitset[idx>>3];
-        b_bitset[idx>>3] |= (1<<((~idx)&0x7));
+        b_bitfield.bitset(idx);
+        b_ref_have++;
         b_new_linterested = BT_MSG_INTERESTED;
     }else if (len>1 && buf[0]==BT_MSG_BITFIELD){
-        b_bitset.resize(len-1);
-        memcpy(&b_bitset[0], buf+1, len-1);
+        b_bitfield.bitfill((unsigned char*)(buf+1), len-1);
         b_new_linterested = BT_MSG_INTERESTED;
     }else if (len==13 && buf[0]==BT_MSG_REQUEST){
         int piece = htonl(text[0]);
@@ -220,13 +218,20 @@ again:
     }
 
     if (b_rchoke==BT_MSG_UNCHOCK && b_requesting<96*1024){
-        if(b_bitset.size()==0){
+        if(b_bitfield.bits_size() ==0){
             goto fail_exit;
         }
         if (b_linterested == BT_MSG_NOINTERESTED){
             goto fail_exit;
         }
-        bchunk_t *chunk = bchunk_get(b_lastref, &b_bitset[0], b_bitset.size());
+        bchunk_t *chunk = bchunk_get(b_lastref, b_bitfield,
+                &b_lidx, &b_lcount);
+        if (chunk == NULL && b_ref_have>0){
+            b_lidx = 0;
+            b_ref_have = 0;
+            chunk = bchunk_get(b_lastref, b_bitfield,
+                    &b_lidx, &b_lcount);
+        }
         if (chunk != NULL){
             b_lastref = chunk->b_index;
             b_requesting += chunk->b_length;
@@ -315,6 +320,10 @@ bupdown::bdocall(time_t timeout)
                 b_linterested = BT_MSG_NOINTERESTED;
                 b_new_linterested = BT_MSG_INTERESTED;
                 b_upload->bwakeup();
+                b_bitfield.resize(bcount_piece());
+                b_lidx = 0;
+                b_ref_have = 0;
+                b_lcount = bcount_piece();
                 __cc++;
                 break;
             case 2:

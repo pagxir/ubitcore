@@ -2,6 +2,7 @@
 #define __BUPDOWN_H__
 #include <memory>
 #include <vector>
+#include "bitfield.h"
 #include "bthread.h"
 #include "bpeermgr.h"
 #include "bsocket.h"
@@ -33,6 +34,11 @@ class bupdown: public bthread
         int b_requesting;
 
     private:
+        int b_ref_have;
+        int b_lidx;
+        int b_lcount;
+
+    private:
         int b_ptrhave;
         int b_lastref;
         int b_upoff;
@@ -44,7 +50,7 @@ class bupdown: public bthread
         int b_state;
         int b_offset;
         char b_buffer[1<<17];
-        std::vector<unsigned char> b_bitset;
+        bitfield b_bitfield;
         std::auto_ptr<bupload_wrapper> b_upload;
 };
 

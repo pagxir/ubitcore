@@ -102,6 +102,7 @@ int
 btseed_load(const char *buf, int len)
 {
     int i;
+    int err;
     size_t eln;
     btcodec codec;
     unsigned char digest[20];
@@ -123,11 +124,44 @@ btseed_load(const char *buf, int len)
         bttracker_start(url.c_str(), digest, digest);
     }
 
-    int err;
     int piecel = codec.bget().bget("info").bget("piece length").bget(&err);
-    if (err != -1){
-        bset_piece_length(piecel);
+    assert(err!=-1 && piecel>0);
+    int bits = 0;
+    int bcount, brest;
+    for (bits=0; bits<32; bits++){
+        if (piecel&(1<<bits)){
+            assert((1<<bits)==piecel);
+            break;
+        }
     }
+
+    const char *name = codec.bget().bget("info").bget("name").c_str(&eln);
+    std::string str_name(name, eln);
+    printf("name: %s\n", str_name.c_str());
+
+    int length = codec.bget().bget("info").bget("length").bget(&err);
+    const char *files = codec.bget().bget("info").bget("files").b_str(&eln);
+    assert((err==-1)^(files==NULL));
+    if (err != -1){
+        codec.bget().bget("info").bget("length").b_val(&bcount, &brest, bits);
+    }
+    if (files != NULL){
+        bcount=0, brest=0;
+        int count, rest;
+        bentity &bfiles = codec.bget().bget("info").bget("files");
+        for (i=0; bfiles.bget(i).b_str(&eln); i++){
+            err = bfiles.bget(i).bget("length").b_val(&count, &rest, bits);
+            assert(err != -1);
+            bcount += count;
+            brest += rest;
+        }
+        bcount += (brest>>bits);
+        brest %= piecel;
+    }
+    printf("piece info: %dx%d %d\n", bcount, piecel, brest);
+    const char *pieces = codec.bget().bget("info").bget("pieces").c_str(&eln);
+    assert(pieces!=NULL && (eln==20*(bcount+(brest>0))));
+    bset_piece_info(piecel, bcount, brest);
 
 #if 1
     bentity &nodes = codec.bget().bget("nodes");
