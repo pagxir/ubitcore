@@ -18,6 +18,7 @@ static std::vector<int> __q_have;
 
 static int __piece_length;
 static bitfield __q_visited;
+static int __bend_key = 0;
 
 struct bmgrchunk
 {
@@ -88,6 +89,7 @@ bset_bit(int index)
 {
     bmgrchunk *chk = bget_mgrchunk(index);
 	if (chk == NULL){
+        __bend_key = index;
 	   	__q_visited.bitset(index);
 		chk = new bmgrchunk();
 	   	chk->b_index = index;
@@ -105,6 +107,12 @@ bset_bit(int index)
 static int __bad_mask = 0;
 static int __map_count = -1;
 static int *__rnd_map = NULL;
+
+int
+bend_key()
+{
+    return __bend_key;
+}
 
 static int
 build_map(int count)
@@ -130,7 +138,6 @@ build_map(int count)
 static int
 rnd_map(int idx)
 {
-    idx %= __map_count;
     int i =__rnd_map[idx];
     while (__q_visited.bitget(i) && __bad_mask>0){
         __bad_mask--;
@@ -140,7 +147,8 @@ rnd_map(int idx)
     return i;
 }
 bchunk_t *
-bchunk_get(int index, bitfield &bitset, int *lidx, int *lcount)
+bchunk_get(int index, bitfield &bitset, int *lidx,
+        int *endkey, int *lcount, int *bhave)
 {
     int i;
     static bchunk_t chunk;
@@ -148,9 +156,10 @@ bchunk_get(int index, bitfield &bitset, int *lidx, int *lcount)
     if (chk!=NULL && chk->bget_chunk(&chunk)){
         return &chunk;
     }
-    for (i=*lidx; i<*lcount; i++){
+retry:
+    for (i=(*lidx)%(*lcount); i!=*endkey; i=(i+1)%(*lcount)){
         int rnd = rnd_map(i);
-        if (bitset.bitget(rnd) && !__q_visited.bitget(rnd)){
+        if (bitset.bitget(rnd)){
             chk = bset_bit(rnd);
             assert(chk != NULL);
             if (chk!=NULL&&chk->bget_chunk(&chunk)){
@@ -160,7 +169,14 @@ bchunk_get(int index, bitfield &bitset, int *lidx, int *lcount)
         }
     }
     *lcount = __bad_mask;
-    printf("bget chunk fail\n");
+    if (*bhave == 0){
+        printf("bget chunk fail\n");
+        return NULL;
+    }
+    *bhave = 0;
+    *endkey = bend_key();
+    *lidx = 1+*endkey;
+    goto retry;
     return NULL;
 }
 
@@ -185,6 +201,12 @@ bset_piece_info(int length, int count, int rest)
 	   	__s_mgrchunk.insert(chk);
     }
     return 0;
+}
+
+size_t
+bmap_count()
+{
+    return __bad_mask;
 }
 
 size_t

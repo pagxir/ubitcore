@@ -99,7 +99,7 @@ int
 bupdown::quick_decode(char *buf, int len, int readed)
 {
     if (len>9 && buf[0]==BT_MSG_PIECE){
-#if 0
+#if 1
         printf("quick data piece: index=%d begin=%d len=%d/%d\n", 
                 ntohl(*(unsigned long*)(buf+1)),
                 ntohl(*(unsigned long*)(buf+5)),
@@ -225,13 +225,7 @@ again:
             goto fail_exit;
         }
         bchunk_t *chunk = bchunk_get(b_lastref, b_bitfield,
-                &b_lidx, &b_lcount);
-        if (chunk == NULL && b_ref_have>0){
-            b_lidx = 0;
-            b_ref_have = 0;
-            chunk = bchunk_get(b_lastref, b_bitfield,
-                    &b_lidx, &b_lcount);
-        }
+                &b_lidx, &b_endkey, &b_lcount, &b_ref_have);
         if (chunk != NULL){
             b_lastref = chunk->b_index;
             b_requesting += chunk->b_length;
@@ -321,9 +315,10 @@ bupdown::bdocall(time_t timeout)
                 b_new_linterested = BT_MSG_INTERESTED;
                 b_upload->bwakeup();
                 b_bitfield.resize(bcount_piece());
-                b_lidx = 0;
                 b_ref_have = 0;
-                b_lcount = bcount_piece();
+                b_endkey = bend_key();
+                b_lidx = b_endkey+1;
+                b_lcount = bmap_count();
                 __cc++;
                 break;
             case 2:

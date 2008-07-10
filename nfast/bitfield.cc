@@ -12,21 +12,22 @@ bitfield::bitfield()
 size_t bitfield::resize(size_t size)
 {
     size_t osize = b_size;
-    b_field.resize((size+7)/8);
     b_size = size;
+    b_field.resize(byte_size());
     return osize;
 }
 
 static unsigned char 
 __use_bit(int idx)
 {
-    return 1<<~(idx&0x7);
+    return 1<<(0x7^(idx&0x7));
 }
 
 bool bitfield::bitget(int idx)
 {
     assert(idx<b_size);
-    return b_field[idx>>3]&__use_bit(idx);
+    bool bval = b_field[idx>>3]&__use_bit(idx);
+    return bval;
 }
 
 bool bitfield::bitset(int idx)

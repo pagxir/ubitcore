@@ -36,6 +36,7 @@ class bupdown: public bthread
     private:
         int b_ref_have;
         int b_lidx;
+        int b_endkey;
         int b_lcount;
 
     private:

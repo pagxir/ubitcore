@@ -17,9 +17,11 @@ struct bchunk_t
 };
 
 size_t bcount_piece();
+size_t bmap_count();
+int bend_key();
 int bget_have(int idx);
 int bset_piece_info(int length, int count, int rest);
 int bchunk_copyto(char *buf, bchunk_t *chunk);
 int bchunk_sync(const char *buf, int idx, int start, int len);
-bchunk_t *bchunk_get(int index, bitfield &bitset, int *lidx, int *lcount);
+bchunk_t *bchunk_get(int index, bitfield &bitset, int *lidx, int *bendkey, int *lcount, int *bhave);
 #endif
