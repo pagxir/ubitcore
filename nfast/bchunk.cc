@@ -130,11 +130,12 @@ build_map(int count)
 static int
 rnd_map(int idx)
 {
-    int i =__rnd_map[idx%__map_count];
-    while (__q_visited.bitget(i)){
+    idx %= __map_count;
+    int i =__rnd_map[idx];
+    while (__q_visited.bitget(i) && __bad_mask>0){
         __bad_mask--;
-        __rnd_map[i] = __rnd_map[__bad_mask];
-        i =__rnd_map[idx%__map_count];
+        __rnd_map[idx] = __rnd_map[__bad_mask];
+        i =__rnd_map[idx];
     }
     return i;
 }
