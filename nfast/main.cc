@@ -87,14 +87,19 @@ bttracker_start(const char *url, const unsigned char info_hash[20],
     bturl += "&uploaded=0";
     bturl += "&downloaded=0";
     bturl += "&left=732854576";
-#if 0
-    bturl += "&event=started";
-#endif
     bturl += "&key=1785265";
     bturl += "&compact=1";
     bturl += "&numwant=200";
+	std::string bturl1st = bturl+"&event=started";
+	std::string bturl2nd = bturl+"&event=completed";
+#if 0
+	bturl+"&event=started";
+#endif
     printf("T: %s\n", bturl.c_str());
-    burlthread *get = new burlthread(bturl.c_str(), 300);
+    burlthread *get = new burlthread(bturl.c_str(),
+			bturl1st.c_str(),
+			bturl2nd.c_str(),
+			300);
     get->bwakeup();
     return get;
 }
@@ -200,7 +205,7 @@ main(int argc, char *argv[])
     std::queue<burlthread*> burlqueue;
     for (i=1; i<argc; i++){
         if (strncmp(argv[i], "http://", 7)==0){
-            burlthread *get = new burlthread(argv[i], 30);
+            burlthread *get = new burlthread(argv[i], argv[i], argv[i], 30);
             burlqueue.push(get);
             get->bwakeup();
         }else{
