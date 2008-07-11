@@ -18,6 +18,7 @@ static std::vector<int> __q_have;
 
 static int __piece_length;
 static bitfield __q_visited;
+static bitfield __q_finished;
 static int __bend_key = 0;
 
 struct bmgrchunk
@@ -139,12 +140,12 @@ static int
 rnd_map(int idx)
 {
     int i =__rnd_map[idx];
-    while (__q_visited.bitget(i) && __bad_mask>0){
+    while (__q_finished.bitget(i) && __bad_mask>0){
         __bad_mask--;
         __rnd_map[idx] = __rnd_map[__bad_mask];
         i =__rnd_map[idx];
     }
-    return i;
+    return __q_visited.bitget(i)?-1:i;
 }
 bchunk_t *
 bchunk_get(int index, bitfield &bitset, int *lidx,
@@ -159,7 +160,7 @@ bchunk_get(int index, bitfield &bitset, int *lidx,
 retry:
     for (i=(*lidx)%(*lcount); i!=*endkey; i=(i+1)%(*lcount)){
         int rnd = rnd_map(i);
-        if (bitset.bitget(rnd)){
+        if (rnd!=-1 && bitset.bitget(rnd)){
             chk = bset_bit(rnd);
             assert(chk != NULL);
             if (chk!=NULL&&chk->bget_chunk(&chunk)){
@@ -188,6 +189,7 @@ bset_piece_info(int length, int count, int rest)
     int pc = rest>0?count+1:count;
     build_map(pc);
     __q_visited.resize(pc);
+    __q_finished.resize(pc);
     __piece_length = length;
     __count_of_piece = pc;
     if (rest != 0){
@@ -245,6 +247,7 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
         fprintf(stderr, "chunk finish: %d %d!\n", idx, chk->b_badcount);
         __q_have.push_back(idx);
         __n_have++;
+        __q_finished.bitset(idx);
         bglobal_break();
 #if 0
         delete[] chk->b_buffer;
@@ -263,4 +266,15 @@ bchunk_copyto(char *buf, bchunk_t *chunk)
     assert(chunk->b_start+chunk->b_length <= chk->b_recved);
     memcpy(buf, chk->b_buffer+chunk->b_start, chunk->b_length);
     return chunk->b_length;
+}
+
+int
+bcancel_request(int idx)
+{
+    __q_visited.bitclr(idx);
+    bmgrchunk *chk = bget_mgrchunk(idx);
+    if (chk != NULL){
+        chk->b_started = chk->b_recved;
+    }
+    return 0;
 }

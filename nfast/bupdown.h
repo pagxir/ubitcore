@@ -38,6 +38,7 @@ class bupdown: public bthread
         int b_lidx;
         int b_endkey;
         int b_lcount;
+        std::vector<int> b_queued;
 
     private:
         int b_ptrhave;

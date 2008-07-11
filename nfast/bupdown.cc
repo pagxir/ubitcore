@@ -99,7 +99,7 @@ int
 bupdown::quick_decode(char *buf, int len, int readed)
 {
     if (len>9 && buf[0]==BT_MSG_PIECE){
-#if 1
+#if 0
         printf("quick data piece: index=%d begin=%d len=%d/%d\n", 
                 ntohl(*(unsigned long*)(buf+1)),
                 ntohl(*(unsigned long*)(buf+5)),
@@ -117,6 +117,10 @@ bupdown::real_decode(char *buf, int len)
     if (len == 0){
         b_keepalive = 1;
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
+        for(std::vector<int>::iterator itor=b_queued.begin();
+                itor != b_queued.end(); itor++){
+            bcancel_request(*itor);
+        }
         b_rchoke = BT_MSG_CHOCK;
         b_requesting = 0;
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
@@ -149,6 +153,10 @@ bupdown::real_decode(char *buf, int len)
         if (b_requesting < 0){
             b_requesting = 9;
         }
+#if 0
+        printf("piece: %d %d %d\n", 
+                ntohl(text[0]), ntohl(text[1]), len-9);
+#endif
     }else if (len==13 && buf[0]==BT_MSG_CANCEL){
         printf("cancel: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
@@ -227,7 +235,10 @@ again:
         bchunk_t *chunk = bchunk_get(b_lastref, b_bitfield,
                 &b_lidx, &b_endkey, &b_lcount, &b_ref_have);
         if (chunk != NULL){
-            b_lastref = chunk->b_index;
+            if (b_lastref != chunk->b_index){
+                b_lastref = chunk->b_index;
+                b_queued.push_back(b_lastref);
+            }
             b_requesting += chunk->b_length;
             unsigned long msglen = htonl(12+1);
             memcpy(b_upbuffer+b_upsize, &msglen, 4);
