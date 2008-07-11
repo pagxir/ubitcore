@@ -160,6 +160,28 @@ bupdown::real_decode(char *buf, int len)
     }else if (len==13 && buf[0]==BT_MSG_CANCEL){
         printf("cancel: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
+        std::queue<bchunk_t> tq;
+        while (b_upload->queue().empty()){
+            bchunk_t bc = b_upload->queue().front();
+            b_upload->queue().pop();
+            if (ntohl(text[0]) != bc.b_index){
+                tq.push(bc);
+                continue;
+            }
+            if (ntohl(text[1]) != bc.b_start){
+                tq.push(bc);
+                continue;
+            }
+            if (ntohl(text[1]) != bc.b_length){
+                tq.push(bc);
+                continue;
+            }
+        }
+        while (!tq.empty()){
+            bchunk_t bc = tq.front();
+            tq.pop();
+            b_upload->queue().push(bc);
+        }
     }
     return 0;
 }
@@ -195,6 +217,17 @@ again:
 
     if (bget_have(b_ptrhave) != -1){
         unsigned long msglen = htonl(5);
+        if (b_ptrhave == 0){
+            int si=bsync_bitfield(b_upbuffer+b_upsize+5, &b_ptrhave);
+            msglen = htonl(si+1);
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+            b_upbuffer[b_upsize] = BT_MSG_BITFIELD;
+            b_upsize += 1;
+            b_upsize += si;
+            assert(b_ptrhave != 0);
+            goto again;
+        }
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
         b_upbuffer[b_upsize] = BT_MSG_HAVE;

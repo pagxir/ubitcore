@@ -19,6 +19,7 @@ static std::vector<int> __q_have;
 static int __piece_length;
 static bitfield __q_visited;
 static bitfield __q_finished;
+static bitfield __q_syncfile;
 static int __bend_key = 0;
 
 struct bmgrchunk
@@ -42,6 +43,29 @@ bool bmgrchunk::operator()(const bmgrchunk *l, const bmgrchunk *r)
 }
 
 static std::set<bmgrchunk*, bmgrchunk> __s_mgrchunk;
+static std::set<bmgrchunk*, bmgrchunk> __qfinish_list;
+static std::queue<bmgrchunk*> __qchunk_list;
+
+static bmgrchunk *
+balloc_chunk()
+{
+    bmgrchunk *chk = NULL;
+    static int __count = 0;
+    if (__count < 20){
+        __count++;
+        chk = new bmgrchunk();
+        chk->b_buffer = new char[__piece_length];
+        return chk;
+    }
+    if (!__qchunk_list.empty()){
+        bmgrchunk *chunk = __qchunk_list.front();
+        __s_mgrchunk.erase(chunk);
+        __qchunk_list.pop();
+    }
+    chk = new bmgrchunk();
+    chk->b_buffer = new char[__piece_length];
+    return chk;
+}
 
 static bmgrchunk*
 bget_mgrchunk(int index)
@@ -92,13 +116,12 @@ bset_bit(int index)
 	if (chk == NULL){
         __bend_key = index;
 	   	__q_visited.bitset(index);
-		chk = new bmgrchunk();
+		chk = balloc_chunk();
 	   	chk->b_index = index;
         chk->b_badcount = 0;
 	   	chk->b_started = 0;
         chk->b_recved = 0;
 	   	chk->b_length = __piece_length;
-        chk->b_buffer = new char[__piece_length];
 	   	__s_mgrchunk.insert(chk);
 	}
     return chk;
@@ -190,6 +213,7 @@ bset_piece_info(int length, int count, int rest)
     build_map(pc);
     __q_visited.resize(pc);
     __q_finished.resize(pc);
+    __q_syncfile.resize(pc);
     __piece_length = length;
     __count_of_piece = pc;
     if (rest != 0){
@@ -256,6 +280,7 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
         delete[] chk->b_buffer;
         chk->b_buffer = NULL;
 #endif
+        __qfinish_list.insert(chk);
     }
     return len;
 }
@@ -280,4 +305,54 @@ bcancel_request(int idx)
         chk->b_started = chk->b_recved;
     }
     return 0;
+}
+
+int
+bfile_sync(FILE *fp, int piece, int start)
+{
+    int count = 0;
+    static int __lpiece = 0;
+    static int __lstart = 0;
+    for (std::set<bmgrchunk*, bmgrchunk>::iterator pchunk
+            = __qfinish_list.begin(); 
+           pchunk!=__qfinish_list.end();
+           __qfinish_list.erase(pchunk++)){
+        int offset = 0;
+        int length = (*pchunk)->b_length;
+        if ((*pchunk)->b_index > piece){
+            break;
+        }
+        if ((*pchunk)->b_index == __lpiece){
+            offset = __lstart;
+        }
+        if ((*pchunk)->b_index == piece){
+            length = start;
+        }
+        printf("%p %d @ %d %d",
+                (*pchunk)->b_buffer+start,
+                length-start,
+                (*pchunk)->b_index-__lpiece,
+                __lstart-offset
+                );
+        if ((*pchunk)->b_index == piece){
+            break;
+        }
+        assert(!__q_syncfile.bitget((*pchunk)->b_index));
+        __q_syncfile.bitset((*pchunk)->b_index);
+        if ((*pchunk)->b_length == __piece_length){
+            __qchunk_list.push(*pchunk);
+        }
+    }
+    __lpiece = piece;
+    __lstart = start;
+    return __qfinish_list.empty();
+}
+
+int
+bsync_bitfield(char *buffer, int *have)
+{
+    *have = __n_have;
+    return __q_finished.bcopyto(
+            (unsigned char*)buffer,
+            __q_finished.byte_size());
 }
