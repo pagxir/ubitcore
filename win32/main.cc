@@ -193,7 +193,7 @@ main(int argc, char *argv[])
     unsigned char ident[20];
     gen_peer_ident(ident);
     set_peer_ident(ident);
-    signal(SIGPIPE, SIG_IGN);
+    //signal(SIGPIPE, SIG_IGN);
     std::queue<burlthread*> burlqueue;
     for (i=1; i<argc; i++){
         if (strncmp(argv[i], "http://", 7)==0){

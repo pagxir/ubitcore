@@ -6,6 +6,7 @@
 #include <queue>
 #include <set>
 
+#include "wpatch.inc"
 #include "bthread.h"
 
 struct bresume{

@@ -2,13 +2,8 @@
 #include <time.h>
 #include <assert.h>
 #include <stdio.h>
-#include <errno.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+#include <winsock.h>
 #include "bthread.h"
 #include "biothread.h"
 #include "bsocket.h"
@@ -16,6 +11,17 @@
 #ifndef INADDR_NONE
 #define INADDR_NONE -1
 #endif
+
+typedef int socklen_t;
+
+#undef errno
+#undef EAGAIN 
+#undef EINPROGRESS
+
+#define errno WSAGetLastError()
+#define EAGAIN WSAEWOULDBLOCK
+#define EINPROGRESS WSAEWOULDBLOCK
+#define close closesocket
 
 /*
  * NOTICE: If connection not finish, donot minitor read or write.
@@ -345,9 +351,8 @@ bsocket::bconnect(unsigned long host, int port)
     siaddr.sin_port = htons(port);
     siaddr.sin_addr.s_addr = host;
     b_fd = socket(AF_INET, SOCK_STREAM, 0);
-    fflag = fcntl(b_fd, F_GETFL);
-    fflag |= O_NONBLOCK;
-    fcntl(b_fd, F_SETFL, fflag);
+	fflag = 1;
+    ioctlsocket(b_fd, FIONBIO, (u_long*)&fflag);
     error = connect(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
     if (error==-1){
         f_flag |= FF_NOCONNECT;
@@ -367,9 +372,8 @@ bsocket::bsendto(const char* buffer, size_t len,
     sockaddr_in siaddr;
     if (b_fd == -1){
         b_fd = socket(AF_INET, SOCK_DGRAM, 0);
-        fflag = fcntl(b_fd, F_GETFL);
-        fflag |= O_NONBLOCK;
-        fcntl(b_fd, F_SETFL, fflag);
+	   	fflag = 1;
+	   	ioctlsocket(b_fd, FIONBIO, (u_long*)&fflag);
     }
     siaddr.sin_family = AF_INET;
     siaddr.sin_port = htons(port);
