@@ -22,6 +22,7 @@
 #include "boffer.h"
 #include "bupdown.h"
 #include "bchunk.h"
+#include "bfiled.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -144,6 +145,7 @@ btseed_load(const char *buf, int len)
     assert((err==-1)^(files==NULL));
     if (err != -1){
         codec.bget().bget("info").bget("length").b_val(&bcount, &brest, bits);
+        badd_per_file(bcount, brest);
     }
     if (files != NULL){
         bcount=0, brest=0;
@@ -154,6 +156,7 @@ btseed_load(const char *buf, int len)
             assert(err != -1);
             bcount += count;
             brest += rest;
+            badd_per_file(bcount, brest);
         }
         bcount += (brest>>bits);
         brest %= piecel;
@@ -223,6 +226,7 @@ main(int argc, char *argv[])
 
     srand(time(NULL));
     boffer_start(0);
+    bfiled_start(30);
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
