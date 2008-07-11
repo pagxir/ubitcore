@@ -9,6 +9,7 @@ burlthread::burlthread(const char *url, int second):
     b_url(url)
 {
     b_state = 0;
+	b_ident = "burlthread";
     b_second = second;
     last_time = time(NULL);
 
