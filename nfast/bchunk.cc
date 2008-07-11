@@ -227,8 +227,11 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
     memcpy(chk->b_buffer+start, buf, len);
     std::map<int,int> &lm = chk->b_lostmap;
     if (start > chk->b_recved){
-        assert(lm.find(start) == lm.end());
-        lm.insert(std::make_pair(start, len));
+        if (lm.find(start) == lm.end()){
+            lm.insert(std::make_pair(start, len));
+		}else if (lm.find(start)->second > len){
+			lm.insert(std::make_pair(start, len));
+		}
         chk->b_badcount++;
         return len;
     }
