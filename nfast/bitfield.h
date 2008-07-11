@@ -13,6 +13,7 @@ class bitfield
         size_t byte_size(){ return (b_size+7)/8; }
         size_t resize(size_t size);
         size_t bitfill(unsigned char *buf, size_t count);
+        size_t bcopyto(unsigned char *buf, size_t count);
 
     private:
         size_t b_size;

@@ -60,7 +60,9 @@ bfiled::bdocall(time_t timeout)
         for (std::set<bfile_info>::iterator pfile = __qfile_list.begin();
                 pfile != __qfile_list.end(); pfile++){
             printf("sync_file: %d %d\n", pfile->b_piece, pfile->b_start);
-            bfile_sync(pfile->b_fd, pfile->b_piece, pfile->b_start);
+            if (bfile_sync(pfile->b_fd, pfile->b_piece, pfile->b_start)){
+                break;
+            }
         }
     }
     return -1;

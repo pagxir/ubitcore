@@ -345,5 +345,14 @@ bfile_sync(FILE *fp, int piece, int start)
     }
     __lpiece = piece;
     __lstart = start;
-    return count;
+    return __qfinish_list.empty();
+}
+
+int
+bsync_bitfield(char *buffer, int *have)
+{
+    *have = __n_have;
+    return __q_finished.bcopyto(
+            (unsigned char*)buffer,
+            __q_finished.byte_size());
 }

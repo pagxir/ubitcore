@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -54,4 +54,11 @@ size_t bitfield::bitfill(unsigned char *ubytes, size_t count)
     assert(count==byte_size());
     memcpy(&b_field[0], ubytes, count);
     return b_size;
+}
+
+size_t bitfield::bcopyto(unsigned char *bytes, size_t count)
+{
+    assert(count > byte_size());
+    memcpy(bytes, &b_field[0], byte_size());
+    return byte_size();
 }
