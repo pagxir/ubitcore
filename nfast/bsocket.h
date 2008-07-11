@@ -1,6 +1,5 @@
 #ifndef __BSOCKET_H__
 #define __BSOCKET_H__
-#include <sys/select.h>
 #include <queue>
 #include "bthread.h"
 #define BSF_QUEUE 0x1000

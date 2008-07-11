@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <assert.h>
 #include <queue>
 
+#include "buinet.h"
 #include "bthread.h"
 #include "bsocket.h"
 #include "bdhtnet.h"

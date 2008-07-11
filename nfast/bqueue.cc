@@ -2,8 +2,8 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
-#include <arpa/inet.h>
 
+#include "buinet.h"
 #include "bthread.h"
 #include "bqueue.h"
 #include "butils.h"
