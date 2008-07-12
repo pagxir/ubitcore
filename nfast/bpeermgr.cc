@@ -111,6 +111,12 @@ bload_peer(const char *buffer, size_t count)
         ep.b_port = htons(*(unsigned short*)(peers[i]+4));
         benqueue(ep);
     }
+    
+    ep1_t eplo;
+    eplo.b_host = htonl(INADDR_LOOPBACK);
+    eplo.b_port = 6949;
+    benqueue(eplo);
+    
     printf("peer count: %d\n", __q_epqueue.size());
     return 0;
 }

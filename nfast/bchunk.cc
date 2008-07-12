@@ -42,8 +42,8 @@ bool bmgrchunk::operator()(const bmgrchunk *l, const bmgrchunk *r)
     return l->b_index<r->b_index;
 }
 
-static std::set<bmgrchunk*, bmgrchunk> __s_mgrchunk;
 static std::set<bmgrchunk*, bmgrchunk> __qfinish_list;
+static std::set<bmgrchunk*, bmgrchunk> __s_mgrchunk;
 static std::queue<bmgrchunk*> __qchunk_list;
 
 static bmgrchunk *
@@ -107,6 +107,20 @@ bget_have(int idx)
         return __q_have[idx];
     }
     return -1;
+}
+
+int
+bpost_chunk(int piece)
+{
+    bmgrchunk *chk = bget_mgrchunk(piece);
+    if(chk == NULL){
+        chk = balloc_chunk();
+        chk->b_index = piece;
+        chk->b_started = 0;
+        chk->b_length = __piece_length;
+        __qfinish_list.insert(chk);
+    }
+    return 0;
 }
 
 static bmgrchunk* 
@@ -242,9 +256,12 @@ bcount_piece()
 }
 
 int bchunk_sync(const char *buf, int idx, int start, int len)
-{
+{   
+    if (__q_finished.bitget(idx)){
+        return len;
+    }
     bmgrchunk *chk = bget_mgrchunk(idx);
-    assert(chk != NULL);
+    assert(chk!=NULL);
     assert(len>0&&start>=0);
     assert(start+len <= chk->b_length);
     assert(chk->b_buffer != NULL);
@@ -289,7 +306,9 @@ int
 bchunk_copyto(char *buf, bchunk_t *chunk)
 {
     bmgrchunk *chk = bget_mgrchunk(chunk->b_index);
-    assert(chk != NULL);
+    if(chk == NULL){
+        return -1;
+    }
     assert(chunk->b_start >= 0);
     assert(chunk->b_start+chunk->b_length <= chk->b_recved);
     memcpy(buf, chk->b_buffer+chunk->b_start, chunk->b_length);
@@ -328,16 +347,38 @@ bfile_sync(FILE *fp, int piece, int start)
         if ((*pchunk)->b_index == piece){
             length = start;
         }
-        printf("%p %d @ %d %d",
-                (*pchunk)->b_buffer+start,
-                length-start,
-                (*pchunk)->b_index-__lpiece,
-                __lstart-offset
-                );
+        assert(fp != NULL);
+        if (__q_syncfile.bitget((*pchunk)->b_index)){
+            printf("tomem: %p %d @ %d %d\n",
+                    (*pchunk)->b_buffer+offset,
+                    length-offset,
+                    (*pchunk)->b_index-__lpiece,
+                    offset-__lstart
+                    );
+            fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
+                    +(offset-__lstart), SEEK_SET);
+            int n=fread((*pchunk)->b_buffer+offset,
+                    1, length-offset, fp);
+            (*pchunk)->b_recved = __piece_length;
+            (*pchunk)->b_started = __piece_length;
+            __s_mgrchunk.insert(*pchunk);
+            assert(n);
+        }else{
+            printf("tofile: %p %d @ %d %d\n",
+                    (*pchunk)->b_buffer+offset,
+                    length-offset,
+                    (*pchunk)->b_index-__lpiece,
+                    offset-__lstart
+                    );
+            fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
+                    +(offset-__lstart), SEEK_SET);
+            int n=fwrite((*pchunk)->b_buffer+offset,
+                    1, length-offset, fp);
+            assert(n);
+        }
         if ((*pchunk)->b_index == piece){
             break;
         }
-        assert(!__q_syncfile.bitget((*pchunk)->b_index));
         __q_syncfile.bitset((*pchunk)->b_index);
         if ((*pchunk)->b_length == __piece_length){
             __qchunk_list.push(*pchunk);

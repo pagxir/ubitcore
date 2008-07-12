@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include "buinet.h"
+#include "bfiled.h"
 #include "bchunk.h"
 #include "bupdown.h"
 
@@ -145,6 +146,7 @@ bupdown::real_decode(char *buf, int len)
         if (b_lchoke == BT_MSG_UNCHOCK){
             b_upload->queue().push(
                     bchunk_t(piece, start, length));
+            bpost_chunk(piece);
         }
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
         bchunk_sync((const char*)&text[2],
@@ -161,7 +163,7 @@ bupdown::real_decode(char *buf, int len)
         printf("cancel: %d %d %d\n",
                 ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
         std::queue<bchunk_t> tq;
-        while (b_upload->queue().empty()){
+        while (!b_upload->queue().empty()){
             bchunk_t bc = b_upload->queue().front();
             b_upload->queue().pop();
             if (ntohl(text[0]) != bc.b_index){
@@ -245,6 +247,11 @@ again:
         b_upsize += 4;
         b_upbuffer[b_upsize] = b_new_lchoke;
         b_upsize += 1;
+#if 1
+        if (b_lchoke == BT_MSG_CHOCK){
+            b_new_lchoke = BT_MSG_UNCHOCK;
+        }
+#endif
         goto again;
     }
 
@@ -297,9 +304,10 @@ again:
     }
 
 fail_exit:
-    if (!b_upload->queue().empty()){
+    while (!b_upload->queue().empty()){
         bchunk_t chunk = b_upload->queue().front();
         b_upload->queue().pop();
+        int oupsize = b_upsize;
         unsigned long msglen = htonl(9+chunk.b_length);
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
@@ -311,7 +319,13 @@ fail_exit:
         msglen = htonl(chunk.b_start);
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
-        bchunk_copyto(b_upbuffer+b_upsize, &chunk);
+        if (-1 == bchunk_copyto(b_upbuffer+b_upsize, &chunk)){
+            //b_new_lchoke = BT_MSG_CHOCK;
+            bfiled_start(1);
+            b_upsize = oupsize;
+            printf("peer cache fail: %p %d\n", this, chunk.b_index);
+            return 0;
+        }
         b_upsize += chunk.b_length;
         printf("upload data: %d\n", chunk.b_index);
         goto again;

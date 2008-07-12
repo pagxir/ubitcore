@@ -21,6 +21,7 @@ size_t bcount_piece();
 size_t bmap_count();
 int bend_key();
 int bget_have(int idx);
+int bpost_chunk(int idx);
 int bcancel_request(int idx);
 int bsync_bitfield(char *buffer, int *havep);
 int bset_piece_info(int length, int count, int rest);
