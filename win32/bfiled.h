@@ -13,6 +13,6 @@ class bfiled: public bthread
         int last_time;
 };
 
-int badd_per_file(int piece, int start);
+int badd_per_file(int piece, int start, const char *path);
 int bfiled_start(int time);
 #endif

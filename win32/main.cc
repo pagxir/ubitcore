@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <string>
+#include <sys/stat.h>
 #include <fstream>
 #include <queue>
 
@@ -87,14 +88,19 @@ bttracker_start(const char *url, const unsigned char info_hash[20],
     bturl += "&uploaded=0";
     bturl += "&downloaded=0";
     bturl += "&left=732854576";
-#if 0
-    bturl += "&event=started";
-#endif
     bturl += "&key=1785265";
     bturl += "&compact=1";
     bturl += "&numwant=200";
+	std::string bturl1st = bturl+"&event=started";
+	std::string bturl2nd = bturl+"&event=completed";
+#if 0
+	bturl+"&event=started";
+#endif
     printf("T: %s\n", bturl.c_str());
-    burlthread *get = new burlthread(bturl.c_str(), 300);
+    burlthread *get = new burlthread(bturl.c_str(),
+			bturl1st.c_str(),
+			bturl2nd.c_str(),
+			300);
     get->bwakeup();
     return get;
 }
@@ -142,21 +148,38 @@ btseed_load(const char *buf, int len)
 
     int length = codec.bget().bget("info").bget("length").bget(&err);
     const char *files = codec.bget().bget("info").bget("files").b_str(&eln);
+    const char *bname = codec.bget().bget("info").bget("name.utf-8").c_str(&eln);
+    if (bname == NULL){
+        bname = codec.bget().bget("info").bget("name").c_str(&eln);
+    }
+    std::string dname(bname, eln);
     assert((err==-1)^(files==NULL));
     if (err != -1){
         codec.bget().bget("info").bget("length").b_val(&bcount, &brest, bits);
-        badd_per_file(bcount, brest);
+        badd_per_file(bcount, brest, dname.c_str());
     }
     if (files != NULL){
         bcount=0, brest=0;
-        int count, rest;
+        int j, count, rest;
         bentity &bfiles = codec.bget().bget("info").bget("files");
         for (i=0; bfiles.bget(i).b_str(&eln); i++){
             err = bfiles.bget(i).bget("length").b_val(&count, &rest, bits);
             assert(err != -1);
             bcount += count;
             brest += rest;
-            badd_per_file(bcount, brest);
+            std::string filen=dname;
+            const char *path_key = "path.utf-8";
+            const char *pathv = bfiles.bget(i).bget(path_key).b_str(&eln);
+            if (pathv==NULL){
+                path_key = "path";
+            }
+            const char *vp = NULL;
+            for (j=0; vp=bfiles.bget(i).bget(path_key).bget(j).c_str(&eln); j++){
+                //mkdir(filen.c_str(), 0777);
+                mkdir(filen.c_str());
+                filen += '/'+std::string(vp, eln);
+            }
+            badd_per_file(bcount, brest, filen.c_str());
         }
         bcount += (brest>>bits);
         brest %= piecel;
@@ -200,7 +223,7 @@ main(int argc, char *argv[])
     std::queue<burlthread*> burlqueue;
     for (i=1; i<argc; i++){
         if (strncmp(argv[i], "http://", 7)==0){
-            burlthread *get = new burlthread(argv[i], 30);
+            burlthread *get = new burlthread(argv[i], argv[i], argv[i], 30);
             burlqueue.push(get);
             get->bwakeup();
         }else{

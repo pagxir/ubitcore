@@ -5,8 +5,9 @@
 #include "btracker.h"
 #include "bpeermgr.h"
 
-burlthread::burlthread(const char *url, int second):
-    b_url(url)
+burlthread::burlthread(const char *url, const char *url1st,
+        const char *url2nd, int second):
+    b_1st(0), b_url(url), b_url1st(url1st), b_url2nd(url2nd)
 {
     b_state = 0;
 	b_ident = "burlthread";
@@ -43,7 +44,9 @@ burlthread::bdocall(time_t timeout)
             case 0:
                 b_get.reset(burlget::get());
                 b_data.clear();
-                error = b_get->burlbind(b_url.c_str());
+                error = b_get->burlbind(b_1st?b_url.c_str()
+                        :b_url1st.c_str());
+                b_1st++;
                 break;
             case 1:
                 error = b_get->bpolldata(buffer, sizeof(buffer));

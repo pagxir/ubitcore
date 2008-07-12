@@ -58,7 +58,7 @@ size_t bitfield::bitfill(unsigned char *ubytes, size_t count)
 
 size_t bitfield::bcopyto(unsigned char *bytes, size_t count)
 {
-    assert(count > byte_size());
+    assert(count >= byte_size());
     memcpy(bytes, &b_field[0], byte_size());
     return byte_size();
 }
