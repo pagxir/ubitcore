@@ -35,12 +35,11 @@ bool operator<(bfile_info l, bfile_info r)
 static std::set<bfile_info> __qfile_list;
 
 int
-badd_per_file(int piece, int start)
+badd_per_file(int piece, int start, const char *path)
 {
-    sprintf(__text, "%d.dat", __fc++);
-    FILE *fp= fopen(__text, "rb+");
+    FILE *fp= fopen(path, "rb+");
     if (fp == NULL){
-        fp = fopen(__text, "wb+");
+        fp = fopen(path, "wb+");
     }
     assert(__qfile_list.find(bfile_info(piece, start, fp))
             == __qfile_list.end());

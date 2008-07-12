@@ -307,6 +307,7 @@ bchunk_copyto(char *buf, bchunk_t *chunk)
 {
     bmgrchunk *chk = bget_mgrchunk(chunk->b_index);
     if(chk == NULL){
+        bpost_chunk(chunk->b_index);
         return -1;
     }
     assert(chunk->b_start >= 0);
@@ -355,14 +356,16 @@ bfile_sync(FILE *fp, int piece, int start)
                     (*pchunk)->b_index-__lpiece,
                     offset-__lstart
                     );
-            fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
-                    +(offset-__lstart), SEEK_SET);
-            int n=fread((*pchunk)->b_buffer+offset,
-                    1, length-offset, fp);
-            (*pchunk)->b_recved = __piece_length;
-            (*pchunk)->b_started = __piece_length;
-            __s_mgrchunk.insert(*pchunk);
-            assert(n);
+            if (__s_mgrchunk.find(*pchunk) == __s_mgrchunk.end()){
+                fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
+                        +(offset-__lstart), SEEK_SET);
+                int n=fread((*pchunk)->b_buffer+offset,
+                        1, length-offset, fp);
+                (*pchunk)->b_recved = __piece_length;
+                (*pchunk)->b_started = __piece_length;
+                __s_mgrchunk.insert(*pchunk);
+                assert(n);
+            }
         }else{
             printf("tofile: %p %d @ %d %d\n",
                     (*pchunk)->b_buffer+offset,

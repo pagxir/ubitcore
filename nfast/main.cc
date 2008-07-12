@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <string>
+#include <sys/stat.h>
 #include <fstream>
 #include <queue>
 
@@ -147,21 +148,37 @@ btseed_load(const char *buf, int len)
 
     int length = codec.bget().bget("info").bget("length").bget(&err);
     const char *files = codec.bget().bget("info").bget("files").b_str(&eln);
+    const char *bname = codec.bget().bget("info").bget("name.utf-8").c_str(&eln);
+    if (bname == NULL){
+        bname = codec.bget().bget("info").bget("name").c_str(&eln);
+    }
+    std::string dname(bname, eln);
     assert((err==-1)^(files==NULL));
     if (err != -1){
         codec.bget().bget("info").bget("length").b_val(&bcount, &brest, bits);
-        badd_per_file(bcount, brest);
+        badd_per_file(bcount, brest, dname.c_str());
     }
     if (files != NULL){
         bcount=0, brest=0;
-        int count, rest;
+        int j, count, rest;
         bentity &bfiles = codec.bget().bget("info").bget("files");
         for (i=0; bfiles.bget(i).b_str(&eln); i++){
             err = bfiles.bget(i).bget("length").b_val(&count, &rest, bits);
             assert(err != -1);
             bcount += count;
             brest += rest;
-            badd_per_file(bcount, brest);
+            std::string filen=dname;
+            const char *path_key = "path.utf-8";
+            const char *pathv = bfiles.bget(i).bget(path_key).b_str(&eln);
+            if (pathv==NULL){
+                path_key = "path";
+            }
+            const char *vp = NULL;
+            for (j=0; vp=bfiles.bget(i).bget(path_key).bget(j).c_str(&eln); j++){
+                mkdir(filen.c_str(), 0777);
+                filen += '/'+std::string(vp, eln);
+            }
+            badd_per_file(bcount, brest, filen.c_str());
         }
         bcount += (brest>>bits);
         brest %= piecel;

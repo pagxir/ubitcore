@@ -142,7 +142,7 @@ bupdown::real_decode(char *buf, int len)
         int piece = htonl(text[0]);
         int start = htonl(text[1]);
         int length = htonl(text[2]);
-        printf("request: %d %d %d\n", piece, start, length);
+        printf("request: %p %d %d %d\n", this, piece, start, length);
         if (b_lchoke == BT_MSG_UNCHOCK){
             b_upload->queue().push(
                     bchunk_t(piece, start, length));
@@ -160,8 +160,8 @@ bupdown::real_decode(char *buf, int len)
                 ntohl(text[0]), ntohl(text[1]), len-9);
 #endif
     }else if (len==13 && buf[0]==BT_MSG_CANCEL){
-        printf("cancel: %d %d %d\n",
-                ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
+        printf("cancel: %p %d %d %d\n",
+               this, ntohl(text[0]), ntohl(text[1]), ntohl(text[2]));
         std::queue<bchunk_t> tq;
         while (!b_upload->queue().empty()){
             bchunk_t bc = b_upload->queue().front();
