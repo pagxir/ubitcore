@@ -148,7 +148,7 @@ btseed_load(const char *buf, int len)
 
     int length = codec.bget().bget("info").bget("length").bget(&err);
     const char *files = codec.bget().bget("info").bget("files").b_str(&eln);
-    const char *bname = codec.bget().bget("info").bget("name.utf-8").c_str(&eln);
+    const char *bname = codec.bget().bget("info").bget("name").c_str(&eln);
     if (bname == NULL){
         bname = codec.bget().bget("info").bget("name").c_str(&eln);
     }
@@ -168,7 +168,7 @@ btseed_load(const char *buf, int len)
             bcount += count;
             brest += rest;
             std::string filen=dname;
-            const char *path_key = "path.utf-8";
+            const char *path_key = "path";
             const char *pathv = bfiles.bget(i).bget(path_key).b_str(&eln);
             if (pathv==NULL){
                 path_key = "path";

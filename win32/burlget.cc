@@ -117,7 +117,7 @@ burlget_wrapper::bpolldata(char *buffer, int size)
 #ifdef DISABLE_PROXY
                 error = b_connect.bconnect(b_urlhost, b_urlport);
 #else
-                error = b_connect.bconnect("121.14.55.10", 80);
+                error = b_connect.bconnect("121.14.55.8", 80);
 #endif
                 break;
             case 1:
