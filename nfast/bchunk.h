@@ -1,7 +1,6 @@
 #ifndef __BCHUNK_H__
 #define __BCHUNK_H__
-#include <stdio.h>
-#include "bitfield.h"
+class bitfield;
 
 struct bchunk_t
 {

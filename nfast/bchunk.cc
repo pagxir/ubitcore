@@ -61,7 +61,7 @@ balloc_chunk()
         bmgrchunk *chunk = __qreuse_list.front();
         __qupdown_list.erase(chunk);
         __qreuse_list.pop();
-		return chk;
+		return chunk;
     }
     chk = new bmgrchunk();
     chk->b_buffer = new char[__piece_length];
