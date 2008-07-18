@@ -18,6 +18,8 @@
 #define PF_PING  0x1000
 #define PF_FIND  0x2000
 #define PF_PEER  0x0100
+#define PF_FAIL  0x0400
+
 #define PF_QPEER  0x0200
 #define PF_QFIND  0x4000
 #define PF_QPING  0x8000
@@ -156,6 +158,7 @@ static bdhtnode *__last_good_getpeer = NULL;
 static int
 active_get_peers(bdhtnode *node)
 {
+#if 0
 	peers_lesser lesser;
 	if (__last_good_getpeer == NULL){
 		__stack_getpeers.insert(node);
@@ -164,6 +167,9 @@ active_get_peers(bdhtnode *node)
 		__stack_getpeers.insert(node);
 		__play.bwakeup();
 	}
+#endif
+   	__stack_getpeers.insert(node);
+   	__play.bwakeup();
 	node->b_flag |= PF_QPEER;
 	return 0;
 }
@@ -290,7 +296,10 @@ bdhtnet::brecord(time_t timeout)
             const char *ident = codec.bget().bget("r").bget("id").c_str(&elen);
 
 			assert(elen == 20);
-			assert(ident != NULL);
+			if(ident == NULL){
+				printf("err pkg: %s\n", buffer);
+				continue;
+			}
 			if (__ident_nodes.find(&tnode) != __ident_nodes.end()){
 				bdhtnode *id_node = *__ident_nodes.find(&tnode);
 				__ident_nodes.erase(id_node);
@@ -326,9 +335,12 @@ bdhtnet::brecord(time_t timeout)
 
 			   	const char *token = codec.bget().bget("r").bget("token").c_str(&elen);
 				if (token != NULL){
-					printf("get token!\n");
+					printf("get token: %p %p!\n", nodes, peers);
 					peers_lesser lesser;
-					if (__last_good_getpeer == NULL){
+					if (nodes==NULL && peers==NULL){
+						dump_find_node(*nfind, "fail key:");
+					   	(*nfind)->b_flag |= PF_FAIL;
+					}else if (__last_good_getpeer == NULL){
 					   	__last_good_getpeer = *nfind;
 					}else if (lesser.operator()(*nfind, __last_good_getpeer)){
 					   	__last_good_getpeer = *nfind;
@@ -384,9 +396,15 @@ bdhtnet::bplay(time_t timeout)
 	while (!__stack_getpeers.empty() && count<5){
 		std::set<bdhtnode*, peers_lesser>::iterator start;
 		start = __stack_getpeers.begin();
+		if ((*start)->b_flag&PF_FAIL){
+			dump_find_node(*start, "skip get peer:");
+			__stack_getpeers.erase(start);
+			continue;
+		}
         if (!((*start)->b_flag&PF_PEER)){
-			__stack_getpeers.clear();
-			break;
+		//	__stack_getpeers.clear();
+			__stack_getpeers.erase(start);
+			continue;
 		}
 		if ((*start)->b_life>=0){
 			get_peer_node = *start;
@@ -428,7 +446,7 @@ bdhtnet::bplay(time_t timeout)
 		__out_nodes.push(p);
     }
     if (error != -1 && count!=0){
-        error = btime_wait(time(NULL)+1);
+        error = btime_wait(time(NULL)+2);
     }else{
         printf("finish!\n");
     }
