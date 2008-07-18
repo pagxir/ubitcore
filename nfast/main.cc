@@ -235,6 +235,7 @@ main(int argc, char *argv[])
         }
     }
 
+#if 0
     bqueue bcq[25];
     for (i=0; i<5; i++){
         bcq[i].bwakeup();
@@ -245,6 +246,7 @@ main(int argc, char *argv[])
         updown[i] = new bupdown();
         updown[i]->bwakeup();
     }
+#endif
 
     srand(time(NULL));
     boffer_start(0);
