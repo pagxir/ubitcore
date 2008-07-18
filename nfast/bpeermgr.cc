@@ -118,7 +118,7 @@ bload_peer(const char *buffer, size_t count)
     benqueue(eplo);
     
     printf("peer count: %d\n", __q_epqueue.size());
-    return 0;
+    return __q_session.size();
 }
 
 int

@@ -70,10 +70,13 @@ burlthread::bdocall(time_t timeout)
                 break;
             case 4:
                 if (!b_data.empty()){
-                    bload_peer(b_data.c_str(), b_data.size());
+                    error = bload_peer(b_data.c_str(), b_data.size());
                 }
-                assert(error==0);
-                error = btime_wait(last_time+b_second);
+                if (error < 40){
+                    error = 0;
+                }else{
+                    error = btime_wait(last_time+b_second);
+                }
                 break;
             case 5:
                 last_time = time(NULL);
