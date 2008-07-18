@@ -209,7 +209,7 @@ int btint::b_val(int *ival, int *rest, int bits)
     std::string s1(ibuf, hlen), s2(ibuf+hlen, len-hlen);
     a = atoi(s1.c_str());
     c = atoi(s2.c_str());
-    b = std::pow((float)10, (int)s2.size());
+    b = (int)std::pow((float)10, (int)s2.size());
     re = (c&mask)+(a&mask)*(b&mask);
     val = (a>>bits)*(b&~mask)
         +(a>>bits)*(b&mask)

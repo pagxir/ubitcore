@@ -134,9 +134,9 @@ bsocket::baccept(unsigned long *host, int *port)
 }
 
 int
-bsocket::bsend(const char *buf, size_t len)
+bsocket::bsend(const void *buf, size_t len)
 {
-    int error = send(b_fd, buf, len, 0);
+    int error = send(b_fd, (const char*)buf, len, 0);
     if (error == -1){
         bwait_send();
     }
@@ -144,9 +144,9 @@ bsocket::bsend(const char *buf, size_t len)
 }
 
 int
-bsocket::breceive(char *buf, size_t len)
+bsocket::breceive(void *buf, size_t len)
 {
-    int error = recv(b_fd, buf, len, 0);
+    int error = recv(b_fd, (char*)buf, len, 0);
     if (error == -1){
         bwait_receive();
     }
@@ -365,7 +365,7 @@ bsocket::bconnect(unsigned long host, int port)
 }
 
 int
-bsocket::bsendto(const char* buffer, size_t len,
+bsocket::bsendto(const void* buffer, size_t len,
         unsigned long host, unsigned short port)
 {
     int fflag;
@@ -378,17 +378,17 @@ bsocket::bsendto(const char* buffer, size_t len,
     siaddr.sin_family = AF_INET;
     siaddr.sin_port = htons(port);
     siaddr.sin_addr.s_addr = host;
-    return sendto(b_fd, buffer, len, 0, (sockaddr*)&siaddr, sizeof(siaddr));
+    return sendto(b_fd, (const char*)buffer, len, 0, (sockaddr*)&siaddr, sizeof(siaddr));
 }
 
 int
-bsocket::brecvfrom(char* buffer, size_t len,
+bsocket::brecvfrom(void* buffer, size_t len,
         unsigned long *host, unsigned short *port)
 {
     assert(b_fd != -1);
     sockaddr_in siaddr;
     socklen_t silen = sizeof(siaddr);
-    int error = recvfrom(b_fd, buffer, len, 0, (sockaddr*)&siaddr, &silen);
+    int error = recvfrom(b_fd, (char*)buffer, len, 0, (sockaddr*)&siaddr, &silen);
     if (error == -1){
         bwait_receive();
         return -1;
