@@ -73,7 +73,7 @@ burlthread::bdocall(time_t timeout)
                     error = bload_peer(b_data.c_str(), b_data.size());
                 }
                 if (error < 40){
-                    error = 0;
+                    error = btime_wait(last_time+15);
                 }else{
                     error = btime_wait(last_time+b_second);
                 }

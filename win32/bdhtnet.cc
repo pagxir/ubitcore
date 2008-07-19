@@ -158,7 +158,6 @@ static bdhtnode *__last_good_getpeer = NULL;
 static int
 active_get_peers(bdhtnode *node)
 {
-#if 0
 	peers_lesser lesser;
 	if (__last_good_getpeer == NULL){
 		__stack_getpeers.insert(node);
@@ -167,9 +166,6 @@ active_get_peers(bdhtnode *node)
 		__stack_getpeers.insert(node);
 		__play.bwakeup();
 	}
-#endif
-   	__stack_getpeers.insert(node);
-   	__play.bwakeup();
 	node->b_flag |= PF_QPEER;
 	return 0;
 }
@@ -393,31 +389,32 @@ bdhtnet::bplay(time_t timeout)
 		}
 		__stack_find.erase(start);
 	}
+	if (find_node == NULL){
 	while (!__stack_getpeers.empty() && count<5){
 		std::set<bdhtnode*, peers_lesser>::iterator start;
 		start = __stack_getpeers.begin();
+#if 0
 		if ((*start)->b_flag&PF_FAIL){
 			dump_find_node(*start, "skip get peer:");
 			__stack_getpeers.erase(start);
 			continue;
 		}
+#endif
         if (!((*start)->b_flag&PF_PEER)){
-		//	__stack_getpeers.clear();
-			__stack_getpeers.erase(start);
-			continue;
+			__stack_getpeers.clear();
+			break;
 		}
 		if ((*start)->b_life>=0){
-			get_peer_node = *start;
+			find_node=get_peer_node=*start;
 		   	error = b_socket.bsendto(__getpeers, sizeof(__getpeers)-1,
 					(*start)->b_host, (*start)->b_port);
-			if (get_peer_node != find_node){
-			   	get_peer_node->b_life--;
-			}
+		   	get_peer_node->b_life--;
 			count ++;
 			dump_find_node(*start, "getpeers:");
 			break;
 		}
 		__stack_getpeers.erase(start);
+	}
 	}
     while (!__out_nodes.empty() && count<5){
         bdhtnode *p = __out_nodes.front();
@@ -425,7 +422,7 @@ bdhtnet::bplay(time_t timeout)
             break;
         }
         __out_nodes.pop();
-	   	if (find_node==p || get_peer_node==p){
+	   	if (find_node==p){
 			//printf("skip find node\n");
 	   	}else if (p->b_life == 0){
 			//printf("node is dead!\n");

@@ -350,6 +350,7 @@ bfile_sync(FILE *fp, int piece, int start)
             length = start;
         }
         if(fp == NULL){
+            __lpiece=__lstart=0;
 			return 0;
 		}
         if (__q_syncfile.bitget((*pchunk)->b_index)){
@@ -380,7 +381,7 @@ bfile_sync(FILE *fp, int piece, int start)
                     +(offset-__lstart), SEEK_SET);
             int n=fwrite((*pchunk)->b_buffer+offset,
                     1, length-offset, fp);
-            assert(n);
+            assert(n>=0);
         }
         if ((*pchunk)->b_index == piece){
             break;

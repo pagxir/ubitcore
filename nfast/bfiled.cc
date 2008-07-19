@@ -28,8 +28,8 @@ struct bfile_info{
 bool operator<(bfile_info l, bfile_info r)
 {
     return l.b_piece==r.b_piece?
-        l.b_start>r.b_start:
-        l.b_piece>r.b_piece;
+        l.b_start<r.b_start:
+        l.b_piece<r.b_piece;
 }
 
 static std::set<bfile_info> __qfile_list;

@@ -236,7 +236,7 @@ main(int argc, char *argv[])
         }
     }
 
-#if 0
+#if 1
     bqueue bcq[25];
     for (i=0; i<5; i++){
         bcq[i].bwakeup();
