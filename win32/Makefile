@@ -11,7 +11,7 @@ bmain: $(OBJS)
 	$(CXX) $(LDFLAGS) -o bmain $(OBJS) $(LDLIBS)
 
 .cc.o:
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -g -c $< -o $@
 
 bclean:
 	rm -f $(OBJS)

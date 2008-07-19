@@ -196,17 +196,19 @@ bchunk_get(int index, bitfield &bitset, int *lidx,
         return &chunk;
     }
 retry:
-    for (i=(*lidx)%(*lcount); i!=*endkey; i=(i+1)%(*lcount)){
-        int rnd = rnd_map(i);
-        if (rnd!=-1 && bitset.bitget(rnd)){
-            chk = bset_bit(rnd);
-            assert(chk != NULL);
-            if (chk!=NULL&&chk->bget_chunk(&chunk)){
-                *lidx = i;
-                return &chunk;
-            }
-        }
-    }
+	if (*lcount > 1){
+	   	for (i=(*lidx)%(*lcount); i!=*endkey; i=(i+1)%(*lcount)){
+		   	int rnd = rnd_map(i);
+		   	if (rnd!=-1 && bitset.bitget(rnd)){
+			   	chk = bset_bit(rnd);
+			   	assert(chk != NULL);
+			   	if (chk!=NULL&&chk->bget_chunk(&chunk)){
+				   	*lidx = i;
+				   	return &chunk;
+			   	}
+		   	}
+	   	}
+	}
     *lcount = __bad_mask;
     if (*bhave == 0){
         printf("bget chunk fail\n");
