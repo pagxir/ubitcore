@@ -1,4 +1,4 @@
-/* $Id:$ */
+/* $Id$ */
 #include <stdlib.h>
 #include <string.h>
 #include "butils.h"

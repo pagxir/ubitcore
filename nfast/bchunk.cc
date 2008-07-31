@@ -10,6 +10,7 @@
 #include "bchunk.h"
 #include "bupdown.h"
 #include "bitfield.h"
+#include "bfiled.h"
 
 #define BLOCK_SIZE (16*1024)
 
@@ -113,14 +114,21 @@ bget_have(int idx)
 int
 bpost_chunk(int piece)
 {
+    bmgrchunk posted;
     bmgrchunk *chk = bget_mgrchunk(piece);
-    if(chk == NULL){
-        chk = balloc_chunk();
-        chk->b_index = piece;
-        chk->b_started = 0;
-        chk->b_length = __piece_length;
-        __qfinish_list.insert(chk);
+    if(chk != NULL){
+        return 0;
     }
+    posted.b_index = piece;
+    if (__qfinish_list.find(&posted)
+            != __qfinish_list.end()){
+        return 0;
+    }
+    chk = balloc_chunk();
+    chk->b_index = piece;
+    chk->b_started = 0;
+    chk->b_length = __piece_length;
+    __qfinish_list.insert(chk);
     return 0;
 }
 
@@ -330,72 +338,90 @@ bcancel_request(int idx)
     return 0;
 }
 
+int csync(FILE *, int, void *, size_t, int, int);
 int
-bfile_sync(FILE *fp, int piece, int start)
+bfile_sync(std::set<bfile_info> &filelist)
 {
-    int count = 0;
-    static int __lpiece = 0;
-    static int __lstart = 0;
-    for (std::set<bmgrchunk*, bmgrchunk>::iterator pchunk
-            = __qfinish_list.begin(); 
-           pchunk!=__qfinish_list.end();
-           __qfinish_list.erase(pchunk++)){
-        int offset = 0;
-        int length = (*pchunk)->b_length;
-        if ((*pchunk)->b_index > piece){
+    bmgrchunk *chunk;
+    std::set<bfile_info>::iterator file_iterator;
+    file_iterator = filelist.begin();
+    std::set<bmgrchunk*, bmgrchunk>::iterator chunk_iterator;
+    chunk_iterator = __qfinish_list.begin();
+
+    int from_base = 0;
+    int piece_base = 0;
+    int start_base = 0;
+    for (;;){
+        if (chunk_iterator==__qfinish_list.end()){
             break;
         }
-        if ((*pchunk)->b_index == __lpiece){
-            offset = __lstart;
+        chunk = *chunk_iterator;
+        if (file_iterator==filelist.end()){
+            assert(0);
         }
-        if ((*pchunk)->b_index == piece){
-            length = start;
-        }
-        if(fp == NULL){
-            __lpiece=__lstart=0;
-			return 0;
-		}
-        if (__q_syncfile.bitget((*pchunk)->b_index)){
-            printf("tomem: %p %d @ %d %d\n",
-                    (*pchunk)->b_buffer+offset,
-                    length-offset,
-                    (*pchunk)->b_index-__lpiece,
-                    offset-__lstart
-                    );
-            if (__qupdown_list.find(*pchunk) == __qupdown_list.end()){
-                fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
-                        +(offset-__lstart), SEEK_SET);
-                int n=fread((*pchunk)->b_buffer+offset,
-                        1, length-offset, fp);
-                (*pchunk)->b_recved = __piece_length;
-                (*pchunk)->b_started = __piece_length;
-                __qupdown_list.insert(*pchunk);
-                assert(n);
-            }
-        }else{
-            printf("tofile: %p %d @ %d %d\n",
-                    (*pchunk)->b_buffer+offset,
-                    length-offset,
-                    (*pchunk)->b_index-__lpiece,
-                    offset-__lstart
-                    );
-            fseek(fp, __piece_length*((*pchunk)->b_index-__lpiece)
-                    +(offset-__lstart), SEEK_SET);
-            int n=fwrite((*pchunk)->b_buffer+offset,
-                    1, length-offset, fp);
-            assert(n>=0);
-        }
-        if ((*pchunk)->b_index == piece){
-            break;
-        }
-        __q_syncfile.bitset((*pchunk)->b_index);
-        if ((*pchunk)->b_length == __piece_length){
-            __qreuse_list.push(*pchunk);
+        const bfile_info &info = *file_iterator;
+        if (info.b_piece < chunk->b_index){
+            piece_base = info.b_piece;
+            start_base = info.b_start;
+            file_iterator++;
+        }else if(chunk->b_index < info.b_piece){
+            int length = chunk->b_length;
+            csync(info.b_fd, chunk->b_index,
+                    chunk->b_buffer+from_base,
+                    length-from_base,
+                    chunk->b_index-piece_base,
+                    from_base-start_base);
+            from_base = 0;
+           __qfinish_list.erase(chunk_iterator++);
+           __qupdown_list.insert(*chunk_iterator);
+           if (__piece_length == length){
+               __qreuse_list.push(*chunk_iterator);
+           }
+        }else if (info.b_start < chunk->b_length){
+            int length = info.b_start;
+            csync(info.b_fd, chunk->b_index,
+                    chunk->b_buffer+from_base,
+                    length-from_base,
+                    chunk->b_index-piece_base,
+                    from_base-start_base);
+            from_base = info.b_start;
+            piece_base = info.b_piece;
+            start_base = info.b_start;
+            file_iterator++;
+        }else {
+            int length = chunk->b_length;
+            csync(info.b_fd, chunk->b_index,
+                    chunk->b_buffer+from_base,
+                    length-from_base,
+                    chunk->b_index-piece_base,
+                    from_base-start_base);
+            from_base = 0;
+           __qfinish_list.erase(chunk_iterator++);
+           __qupdown_list.insert(*chunk_iterator);
+           if (__piece_length == length){
+               __qreuse_list.push(*chunk_iterator);
+           }
+
         }
     }
-    __lpiece = piece;
-    __lstart = start;
-    return __qfinish_list.empty();
+    return 0;
+}
+
+int
+csync(FILE *fp, int index, void *buffer,
+        size_t length, int blkno, int offset)
+{
+    if (__q_syncfile.bitget(index)){
+        fseek(fp, __piece_length*blkno+offset, SEEK_SET);
+        int n=fread(buffer, 1, length, fp);
+        assert(n);
+    }else{
+        fseek(fp, __piece_length*blkno+offset, SEEK_SET);
+        int n=fwrite(buffer, 1, length, fp);
+        assert(n>=0);
+        __q_syncfile.bitset(index);
+    }
+    return 0;
 }
 
 int

@@ -26,7 +26,6 @@ int bsync_bitfield(char *buffer, int *havep);
 int bset_piece_info(int length, int count, int rest);
 int bchunk_copyto(char *buf, bchunk_t *chunk);
 int bchunk_sync(const char *buf, int idx, int start, int len);
-int bfile_sync(FILE *fp, int piece, int start);
 bchunk_t *bchunk_get(int index, bitfield &bitset,
         int *lidx, int *bendkey, int *lcount, int *bhave);
 #endif

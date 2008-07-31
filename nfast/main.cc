@@ -127,8 +127,10 @@ btseed_load(const char *buf, int len)
         }
     }else{
         const char *urlbuf = codec.bget().bget("announce").c_str(&eln);
-        std::string url(urlbuf, eln);
-        bttracker_start(url.c_str(), digest, digest);
+        if (urlbuf != NULL){
+            std::string url(urlbuf, eln);
+            bttracker_start(url.c_str(), digest, digest);
+        }
     }
 
     int piecel = codec.bget().bget("info").bget("piece length").bget(&err);

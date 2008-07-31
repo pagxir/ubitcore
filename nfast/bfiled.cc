@@ -9,29 +9,6 @@
 #include "bupdown.h"
 #include "bchunk.h"
 
-static int __fc=0;
-static char __text[20];
-
-struct bfile_info{
-    int b_piece;
-    int b_start;
-    FILE *b_fd;
-
-    bfile_info(int idx, int off, FILE *fp)
-    {
-        b_fd = fp;
-        b_piece = idx;
-        b_start = off;
-    }
-};
-
-bool operator<(bfile_info l, bfile_info r)
-{
-    return l.b_piece==r.b_piece?
-        l.b_start<r.b_start:
-        l.b_piece<r.b_piece;
-}
-
 static std::set<bfile_info> __qfile_list;
 
 int
@@ -64,13 +41,7 @@ bfiled::bdocall(time_t timeout)
 #endif
     while(-1 != btime_wait(last_time+b_second)){
         last_time = time(NULL);
-        bfile_sync(NULL, 0, 0);
-        for (std::set<bfile_info>::iterator pfile = __qfile_list.begin();
-                pfile != __qfile_list.end(); pfile++){
-            if (bfile_sync(pfile->b_fd, pfile->b_piece, pfile->b_start)){
-                break;
-            }
-        }
+        bfile_sync(__qfile_list);
         bglobal_break();
     }
     return -1;
