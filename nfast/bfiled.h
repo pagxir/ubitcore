@@ -38,4 +38,5 @@ inline bool operator<(bfile_info l, bfile_info r)
 int bfile_sync(std::set<bfile_info> &filelist);
 int badd_per_file(int piece, int start, const char *path);
 int bfiled_start(int time);
+int bthash_check(void);
 #endif

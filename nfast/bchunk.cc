@@ -247,7 +247,7 @@ bset_piece_info(int length, int count, int rest)
         chk->b_badcount = 0;
 	   	chk->b_started = 0;
         chk->b_recved = 0;
-	   	chk->b_length = __piece_length;
+	   	chk->b_length = rest;
         chk->b_buffer = new char[rest];
 	   	__qupdown_list.insert(chk);
     }
@@ -431,4 +431,10 @@ bsync_bitfield(char *buffer, int *have)
     return __q_finished.bcopyto(
             (unsigned char*)buffer,
             __q_finished.byte_size());
+}
+
+size_t
+get_piece_length()
+{
+    return __piece_length;
 }

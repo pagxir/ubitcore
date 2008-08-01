@@ -234,6 +234,7 @@ main(int argc, char *argv[])
                     std::istreambuf_iterator<char>(),
                     std::back_inserter(btseed));
             btseed_load(btseed.c_str(), btseed.size());
+            bthash_check();
         }
     }
 

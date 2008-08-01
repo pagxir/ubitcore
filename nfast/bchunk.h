@@ -18,6 +18,7 @@ struct bchunk_t
 
 size_t bcount_piece();
 size_t bmap_count();
+size_t get_piece_length();
 int bend_key();
 int bget_have(int idx);
 int bpost_chunk(int idx);
