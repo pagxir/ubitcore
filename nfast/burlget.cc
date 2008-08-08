@@ -20,6 +20,7 @@ class burlget_wrapper: public burlget
 
     private:
         bsocket b_connect;
+        int b_idx;
         int b_len;
         int b_loc;
         int b_state;
@@ -46,6 +47,7 @@ burlget::~burlget()
 
 burlget_wrapper::burlget_wrapper()
 {
+    b_idx = 0;
     b_len = 0;
     b_loc = 0;
     b_state = 0;
@@ -55,7 +57,7 @@ burlget_wrapper::burlget_wrapper()
 const char*
 burlget_wrapper::blocation()
 {
-    if (b_loc == 13){
+    if (b_loc == 12){
         return b_urlfull.c_str();
     }
     return NULL;
@@ -89,10 +91,9 @@ burlget_wrapper::burlbind(const char *url)
     if (*urlpath==0){
         urlpath = "/";
     }
-#ifdef DISABLE_PROXY
     sprintf(b_bufhead, title, urlpath, b_urlhost);
-#else
-    sprintf(b_bufhead, title, url, b_urlhost);
+#ifdef DISABLE_PROXY
+//    sprintf(b_bufhead, title, url, b_urlhost);
 #endif
     char *chdot = strrchr(b_urlhost, ':');
     if (chdot != NULL){
@@ -109,15 +110,14 @@ burlget_wrapper::bpolldata(char *buffer, int size)
     int error=0;
     int state = b_state;
     const char match[5]="\r\n\r\n";
-    const char mlocate[13]="\r\nLocation: ";
+    const char mlocate[12]="\r\nLocation:";
     while(error != -1){
         b_state = state++;
         switch(b_state){
             case 0:
-#ifdef DISABLE_PROXY
                 error = b_connect.bconnect(b_urlhost, b_urlport);
-#else
-                error = b_connect.bconnect("121.14.55.8", 80);
+#ifdef DISABLE_PROXY
+//              error = b_connect.bconnect("121.14.55.8", 80);
 #endif
                 break;
             case 1:
@@ -127,53 +127,50 @@ burlget_wrapper::bpolldata(char *buffer, int size)
                 error = b_connect.breceive(buffer, size);
                 break;
             case 3:
-                for (i=0; i<error&&b_len<4; i++){
+                for (i=0; i<error&&b_len<4&&b_idx<2; i++){
+		    if (buffer[i] == '\n'){
+		        b_idx++;
+		    }else{
+			b_idx=0;
+		    }
                     if (buffer[i] == match[b_len]){
                         b_len ++;
                     }else{
                         b_len = (buffer[i]=='\r');
                     }
-                    if (b_loc < 12){ 
+                    if (b_loc < 11){ 
                         if (buffer[i]==mlocate[b_loc]){
                             b_loc++;
                         }else{
                             b_loc=(buffer[i]=='\r');
                         }
-                        if (b_loc == 12){
+                        if (b_loc == 11){
                             b_urlfull = "";
                         }
-                    }else if (b_loc == 12){
+                    }else if (b_loc == 11){
                         if (b_len == 0){
-                            b_urlfull += buffer[i];
+		            if (buffer[i]!=' '){
+			       	b_urlfull += buffer[i];
+			    }
                         }else{
                             assert(b_urlfull.size()>0);
                             b_loc++;
                         }
                     }
                 }
-                if (error > 0 && b_len<4){
+                if (error > 0 && b_len<4 && b_idx<2){
                     state = 2;
                     break;
                 }
                 if (error > i){
-                    memmove(buffer, buffer+i, error-i);
+		    error-=i;
+                    memmove(buffer, buffer+i, error);
+		    b_state = 4;
+		    return error;
                 }
-                error-=i;
                 break;
             case 4:
-                break;
-            case 5:
-                if (error > 0){
-                    return error;
-                }
                 error = b_connect.breceive(buffer, size);
-                break;
-            case 6:
-                if (error > 0){
-                    state = 5;
-                }
-                break;
-            default:
                 return error;
         }
     }
