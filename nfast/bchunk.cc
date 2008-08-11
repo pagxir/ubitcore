@@ -371,11 +371,11 @@ bfile_sync(std::set<bfile_info> &filelist)
                     chunk->b_index-piece_base,
                     from_base-start_base);
             from_base = 0;
-           __qfinish_list.erase(chunk_iterator++);
            __qupdown_list.insert(*chunk_iterator);
            if (__piece_length == length){
                __qreuse_list.push(*chunk_iterator);
            }
+           __qfinish_list.erase(chunk_iterator++);
         }else if (info.b_start < chunk->b_length){
             int length = info.b_start;
             csync(info.b_fd, chunk->b_index,
@@ -396,12 +396,11 @@ bfile_sync(std::set<bfile_info> &filelist)
                     chunk->b_index-piece_base,
                     from_base-start_base);
             from_base = 0;
-           __qfinish_list.erase(chunk_iterator++);
            __qupdown_list.insert(*chunk_iterator);
            if (__piece_length == length){
                __qreuse_list.push(*chunk_iterator);
            }
-
+           __qfinish_list.erase(chunk_iterator++);
         }
     }
     return 0;
