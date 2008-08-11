@@ -20,7 +20,7 @@ badd_per_file(int piece, int start, const char *path)
         fp = fopen(path, "wb+");
     }
     if(__qfile_list.find(bfile_info(piece, start, fp))
-            == __qfile_list.end()){
+            != __qfile_list.end()){
         fclose(fp);
         return 0;
     }

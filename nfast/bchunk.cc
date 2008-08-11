@@ -356,14 +356,12 @@ bfile_sync(std::set<bfile_info> &filelist)
             break;
         }
         chunk = *chunk_iterator;
-        if (file_iterator==filelist.end()){
-            printf("warning \n");
-            return -1;
-        }
+        assert (file_iterator!=filelist.end());
         const bfile_info &info = *file_iterator;
         if (info.b_piece < chunk->b_index){
             piece_base = info.b_piece;
             start_base = info.b_start;
+	    printf("next file\n");
             file_iterator++;
         }else if(chunk->b_index < info.b_piece){
             int length = chunk->b_length;
@@ -388,6 +386,7 @@ bfile_sync(std::set<bfile_info> &filelist)
             from_base = info.b_start;
             piece_base = info.b_piece;
             start_base = info.b_start;
+	    printf("padding file\n");
             file_iterator++;
         }else {
             int length = chunk->b_length;
