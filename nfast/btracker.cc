@@ -70,6 +70,7 @@ burlthread::bdocall(time_t timeout)
                 break;
             case 4:
                 if (!b_data.empty()){
+                    printf("Hello World!\n");
                     error = bload_peer(b_data.c_str(), b_data.size());
                 }
                 if (error < 40){

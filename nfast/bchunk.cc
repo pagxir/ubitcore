@@ -357,7 +357,8 @@ bfile_sync(std::set<bfile_info> &filelist)
         }
         chunk = *chunk_iterator;
         if (file_iterator==filelist.end()){
-            assert(0);
+            printf("warning \n");
+            return -1;
         }
         const bfile_info &info = *file_iterator;
         if (info.b_piece < chunk->b_index){
