@@ -409,7 +409,10 @@ bupdown::bdocall(time_t timeout)
                 }
                 break;
             default:
-                printf("connection lost: %d\n", --__cc);
+			   	printf("connection lost: %d\n", __cc);
+				if (error == 0){
+					__cc--;
+				}
                 b_offset = 0;
                 b_lastref = -1;
                 b_ptrhave = -1;

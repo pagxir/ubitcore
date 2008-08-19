@@ -413,11 +413,17 @@ csync(FILE *fp, int index, void *buffer,
     if (__q_syncfile.bitget(index)){
         fseek(fp, __piece_length*blkno+offset, SEEK_SET);
         int n=fread(buffer, 1, length, fp);
+        if (n != length){
+           printf(" %d %d %d\n", index, n, length);
+        }
         assert(n);
     }else{
         fseek(fp, __piece_length*blkno+offset, SEEK_SET);
         int n=fwrite(buffer, 1, length, fp);
-        assert(n>=0);
+        if (n != length){
+           printf("%d %d %d\n", index, n, length);
+        }
+        assert(n==length);
         __q_syncfile.bitset(index);
     }
     return 0;
