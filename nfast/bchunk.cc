@@ -443,3 +443,9 @@ get_piece_length()
 {
     return __piece_length;
 }
+
+void
+bset_finish(int idx)
+{
+    __q_finished.bitset(idx);
+}

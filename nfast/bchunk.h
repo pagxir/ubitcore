@@ -29,4 +29,5 @@ int bchunk_copyto(char *buf, bchunk_t *chunk);
 int bchunk_sync(const char *buf, int idx, int start, int len);
 bchunk_t *bchunk_get(int index, bitfield &bitset,
         int *lidx, int *bendkey, int *lcount, int *bhave);
+void bset_finish(int idx);
 #endif

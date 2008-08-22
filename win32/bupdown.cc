@@ -125,6 +125,7 @@ bupdown::real_decode(char *buf, int len)
         b_rchoke = BT_MSG_CHOCK;
         b_requesting = 0;
     }else if (len==1 && buf[0]==BT_MSG_UNCHOCK){
+        printf("REMOTE: unchock !\n ");
         b_rchoke = BT_MSG_UNCHOCK;
     }else if (len==1 && buf[0]==BT_MSG_INTERESTED){
         b_rinterested = BT_MSG_INTERESTED;
@@ -149,6 +150,7 @@ bupdown::real_decode(char *buf, int len)
             bpost_chunk(piece);
         }
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
+        printf("piece receive!\n");
         bchunk_sync((const char*)&text[2],
                 ntohl(text[0]), ntohl(text[1]), len-9);
         b_requesting -= len;
@@ -220,6 +222,7 @@ again:
     if (bget_have(b_ptrhave) != -1){
         unsigned long msglen = htonl(5);
         if (b_ptrhave == 0){
+#if 0
             int si=bsync_bitfield(b_upbuffer+b_upsize+5, &b_ptrhave);
             msglen = htonl(si+1);
             memcpy(b_upbuffer+b_upsize, &msglen, 4);
@@ -228,6 +231,11 @@ again:
             b_upsize += 1;
             b_upsize += si;
             assert(b_ptrhave != 0);
+#else
+            msglen = 0;
+            memcpy(b_upbuffer+b_upsize, &msglen, 4);
+            b_upsize += 4;
+#endif
             goto again;
         }
         memcpy(b_upbuffer+b_upsize, &msglen, 4);

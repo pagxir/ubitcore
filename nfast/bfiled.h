@@ -39,4 +39,5 @@ int bfile_sync(std::set<bfile_info> &filelist);
 int badd_per_file(int piece, int start, const char *path);
 int bfiled_start(int time);
 int bthash_check(void);
+int bset_piece_hash(const void *hash, size_t len);
 #endif

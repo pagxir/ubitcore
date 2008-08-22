@@ -243,7 +243,7 @@ main(int argc, char *argv[])
     }
 
     bupdown *updown[200];
-    for (i=0; i<200; i++){
+    for (i=0; i<30; i++){
         updown[i] = new bupdown();
         updown[i]->bwakeup();
     }

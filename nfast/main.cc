@@ -188,9 +188,10 @@ btseed_load(const char *buf, int len)
     printf("piece info: %dx%d %d\n", bcount, piecel, brest);
     const char *pieces = codec.bget().bget("info").bget("pieces").c_str(&eln);
     assert(pieces!=NULL && (eln==20*(bcount+(brest>0))));
+    bset_piece_hash(pieces, eln);
     bset_piece_info(piecel, bcount, brest);
 
-#if 1
+#if 0
     bentity &nodes = codec.bget().bget("nodes");
     for (i=0; nodes.bget(i).b_str(&eln); i++){
         int port = nodes.bget(i).bget(1).bget(&err);

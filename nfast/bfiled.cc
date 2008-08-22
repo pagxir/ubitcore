@@ -11,6 +11,15 @@
 #include "bchunk.h"
 
 static std::set<bfile_info> __qfile_list;
+static unsigned char *__piece_hash;
+
+int
+bset_piece_hash(const void *hash, size_t len)
+{
+    __piece_hash = new unsigned char[len];
+    memcpy(__piece_hash, hash, len);
+    return 0;
+}
 
 int
 badd_per_file(int piece, int start, const char *path)
@@ -65,11 +74,9 @@ static int hash_check(int piece, void *buf, size_t len)
     int i;
     unsigned char digest[20];
     SHA1Hash(digest, static_cast<unsigned char*>(buf), len);
-    printf("hash(%4d): ", piece);
-    for (i=0; i<20; i++){
-        printf("%02x", digest[i]);
+    if (0==memcmp(digest, __piece_hash+20*piece, 20)){
+        bset_finish(piece);
     }
-    printf("\n");
     return 0;
 }
 
