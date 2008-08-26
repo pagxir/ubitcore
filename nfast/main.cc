@@ -180,10 +180,10 @@ btseed_load(const char *buf, int len)
                 mkdir(filen.c_str(), 0777);
                 filen += '/'+std::string(vp, eln);
             }
+            bcount += (brest>>bits);
+            brest %= piecel;
             badd_per_file(bcount, brest, filen.c_str());
         }
-        bcount += (brest>>bits);
-        brest %= piecel;
     }
     printf("piece info: %dx%d %d\n", bcount, piecel, brest);
     const char *pieces = codec.bget().bget("info").bget("pieces").c_str(&eln);

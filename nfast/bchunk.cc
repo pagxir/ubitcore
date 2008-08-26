@@ -34,6 +34,8 @@ struct bmgrchunk
     char *b_buffer;
     std::map<int, int> b_lostmap;
 
+    time_t b_uptime;
+
     bool bget_chunk(bchunk_t *chunk);
     bool operator()(const bmgrchunk *l, const bmgrchunk *r);
 };
@@ -96,6 +98,7 @@ bmgrchunk::bget_chunk(bchunk_t *chunk)
         chunk->b_length = b_length-b_started;
     }
     b_started += chunk->b_length;
+    b_uptime = time(NULL);
     return true;
 }
 
@@ -128,6 +131,7 @@ bpost_chunk(int piece)
     chk->b_index = piece;
     chk->b_started = 0;
     chk->b_length = __piece_length;
+    chk->b_uptime = 0;
     __qfinish_list.insert(chk);
     return 0;
 }
@@ -203,6 +207,25 @@ bchunk_get(int index, bitfield &bitset, int *lidx,
     if (chk!=NULL && chk->bget_chunk(&chunk)){
         return &chunk;
     }
+
+    std::set<bmgrchunk*, bmgrchunk>::iterator iter; 
+
+    for (iter=__qupdown_list.begin();
+            __qupdown_list.end()!=iter;
+            iter++){
+        if (bitset.bitget((*iter)->b_index)){
+            if ((*iter)->bget_chunk(&chunk)){
+                return &chunk;
+            }
+            if ((*iter)->b_uptime+100<time(NULL)){
+                (*iter)->b_started = (*iter)->b_recved;
+            }
+            if ((*iter)->bget_chunk(&chunk)){
+                return &chunk;
+            }
+        }
+    }
+
 retry:
 	if (*lcount > 1){
 	   	for (i=(*lidx)%(*lcount); i!=*endkey; i=(i+1)%(*lcount)){
@@ -278,6 +301,7 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
     assert(chk->b_buffer != NULL);
     memcpy(chk->b_buffer+start, buf, len);
     std::map<int,int> &lm = chk->b_lostmap;
+    chk->b_uptime = time(NULL);
     if (start > chk->b_recved){
         if (lm.find(start) == lm.end()){
             lm.insert(std::make_pair(start, len));
@@ -317,11 +341,15 @@ int
 bchunk_copyto(char *buf, bchunk_t *chunk)
 {
     bmgrchunk *chk = bget_mgrchunk(chunk->b_index);
-    if(chk == NULL){
+    if(chk == NULL || chk->b_recved==0){
         bpost_chunk(chunk->b_index);
         return -1;
     }
     assert(chunk->b_start >= 0);
+    if(chunk->b_start+chunk->b_length > chk->b_recved){
+        printf("start: %d length: %d recved: %d\n",
+                chunk->b_start, chunk->b_length, chk->b_recved);
+    }
     assert(chunk->b_start+chunk->b_length <= chk->b_recved);
     memcpy(buf, chk->b_buffer+chunk->b_start, chunk->b_length);
     return chunk->b_length;
@@ -342,6 +370,7 @@ int csync(FILE *, int, void *, size_t, int, int);
 int
 bfile_sync(std::set<bfile_info> &filelist)
 {
+    int cc_idx;
     bmgrchunk *chunk;
     std::set<bfile_info>::iterator file_iterator;
     file_iterator = filelist.begin();
@@ -351,17 +380,20 @@ bfile_sync(std::set<bfile_info> &filelist)
     int from_base = 0;
     int piece_base = 0;
     int start_base = 0;
-    for (;;){
+    for (cc_idx=0;;cc_idx++){
         if (chunk_iterator==__qfinish_list.end()){
             break;
         }
         chunk = *chunk_iterator;
-        assert (file_iterator!=filelist.end());
+        if (file_iterator==filelist.end()){
+            printf("warn: file_iterator==filelist.end()");
+            printf(" index=%d cc_idx=%d\n", chunk->b_index, cc_idx);
+            break;
+        }
         const bfile_info &info = *file_iterator;
         if (info.b_piece < chunk->b_index){
             piece_base = info.b_piece;
             start_base = info.b_start;
-	    printf("next file\n");
             file_iterator++;
         }else if(chunk->b_index < info.b_piece){
             int length = chunk->b_length;
@@ -370,6 +402,7 @@ bfile_sync(std::set<bfile_info> &filelist)
                     length-from_base,
                     chunk->b_index-piece_base,
                     from_base-start_base);
+            chunk->b_recved = length;
             from_base = 0;
            __qupdown_list.insert(*chunk_iterator);
            if (__piece_length == length){
@@ -383,10 +416,11 @@ bfile_sync(std::set<bfile_info> &filelist)
                     length-from_base,
                     chunk->b_index-piece_base,
                     from_base-start_base);
+            chunk->b_recved = length;
             from_base = info.b_start;
             piece_base = info.b_piece;
             start_base = info.b_start;
-	    printf("padding file\n");
+            printf("padding file\n");
             file_iterator++;
         }else {
             int length = chunk->b_length;
@@ -395,6 +429,7 @@ bfile_sync(std::set<bfile_info> &filelist)
                     length-from_base,
                     chunk->b_index-piece_base,
                     from_base-start_base);
+            chunk->b_recved = length;
             from_base = 0;
            __qupdown_list.insert(*chunk_iterator);
            if (__piece_length == length){
