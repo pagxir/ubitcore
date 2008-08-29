@@ -28,9 +28,11 @@ bqueue::bqueue()
 int
 bqueue::bfailed()
 {
+#if 0
     printf("failed: %s:%d\n", 
             inet_ntoa(*(in_addr*)&b_ep->b_host),
             b_ep->b_port);
+#endif
     __failed_count++;
     b_state = 0;
     bwakeup();

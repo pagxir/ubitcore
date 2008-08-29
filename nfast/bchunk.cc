@@ -23,6 +23,13 @@ static bitfield __q_visited;
 static bitfield __q_finished;
 static bitfield __q_syncfile;
 
+struct badchunk{
+    int b_offset;
+    int b_length;
+    int b_receive;
+    int b_uptime;
+};
+
 struct bmgrchunk
 {
     int b_index;
