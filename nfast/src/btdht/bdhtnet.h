@@ -4,6 +4,8 @@
 
 #include <map>
 
+class bdhtnet;
+
 class bdhtcodec
 {
     public:
@@ -29,11 +31,15 @@ class bdhtpoller: public bthread
 
 class bdhtransfer{
     public:
-        bdhtransfer(void *bdhtnet, uint32_t id);
+        bdhtransfer(bdhtnet *bdhtnet, uint32_t id);
+        int ping_node(uint32_t host, uint16_t port);
+        int find_node(uint32_t host, uint16_t port, uint8_t ident[20]);
         void binput(bdhtcodec *codec, uint32_t host, uint16_t port);
         int bdopolling(bdhtpoller *poller);
 
     private:
+        uint32_t b_ident;
+        bdhtnet *b_dhtnet;
         std::queue<int> b_queue;
         bdhtpoller *b_poller;
 };
@@ -47,6 +53,8 @@ class bdhtnet: public bthread
     public:
         bdhtransfer *get_transfer();
         int ping_node(uint32_t tid, uint32_t host, uint16_t port);
+        int find_node(uint32_t tid, uint32_t host,
+                uint16_t port, uint8_t ident[20]);
 
     private:
         void binput(bdhtcodec *codec, uint32_t host, uint16_t port);
@@ -69,4 +77,7 @@ class bdhtbucket: public bdhtpoller
         uint32_t b_host_list[8];
         bdhtransfer *b_transfer;
 };
+
+int bdhtnet_node(const char *host, int port);
+int bdhtnet_start();
 #endif

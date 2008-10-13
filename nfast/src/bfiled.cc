@@ -24,6 +24,9 @@ bset_piece_hash(const void *hash, size_t len)
 int
 badd_per_file(int piece, int start, const char *path)
 {
+#if 1
+    return 0;
+#endif
     FILE *fp= fopen(path, "rb+");
     if (fp == NULL){
         fp = fopen(path, "wb+");

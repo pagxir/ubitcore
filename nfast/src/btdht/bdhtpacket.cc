@@ -13,15 +13,18 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
+#include "bdhtident.h"
 #include "bdhtnet.h"
 
+static bdhtnet __dhtnet;
+
 uint8_t __ping_nodes[] = {
-    "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t1:P1:y1:qe"
+    "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
 };
 
 uint8_t __find_nodes[] = {
     "d1:ad2:id20:abcdefghij01234567896:target"
-        "20:abcdefghij0123456789e1:q9:find_node1:t1:F1:y1:qe"
+        "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
 };
 
 int
@@ -48,6 +51,25 @@ bdhtcodec::bload(const char *buffer, size_t length)
     return error;
 }
 
+bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
+{
+    b_ident = ident;
+    b_dhtnet = net;
+}
+
+
+int
+bdhtransfer::find_node(uint32_t host, uint16_t port, uint8_t ident[20])
+{
+    return b_dhtnet->find_node(b_ident, host, port, ident);
+}
+
+int
+bdhtransfer::ping_node(uint32_t host, uint16_t port)
+{
+    return b_dhtnet->ping_node(b_ident, host, port);
+}
+
 void
 bdhtransfer::binput(bdhtcodec *codec, uint32_t host, uint16_t port)
 {
@@ -67,7 +89,7 @@ bdhtransfer::bdopolling(bdhtpoller *poller)
     if (!b_queue.empty()){
         return 0;
     }
-#if 0
+#if 1
     if (poller != b_poller){
         if (b_poller != NULL){
             printf("warn: bdhtransfer::bpoll conflict!\n");
@@ -78,16 +100,27 @@ bdhtransfer::bdopolling(bdhtpoller *poller)
     return -1;
 }
 
-static bdhtnet __dhtnet;
-
 bdhtnet::bdhtnet()
     :b_tid(0)
 {
 }
 
 int
+bdhtnet::find_node(uint32_t tid, uint32_t host,
+        uint16_t port, uint8_t ident[20])
+{
+
+    memcpy(__find_nodes+42, ident, 20);
+    memcpy(__find_nodes+83, &tid, 4);
+    return b_socket.bsendto(__find_nodes,
+            sizeof(__find_nodes)-1,
+            host, port);
+}
+
+int
 bdhtnet::ping_node(uint32_t tid, uint32_t host, uint16_t port)
 {
+    memcpy(__ping_nodes+47, &tid, 4);
     return b_socket.bsendto(__ping_nodes,
             sizeof(__ping_nodes)-1,
             host, port);
@@ -132,6 +165,7 @@ bdhtnet::bdocall(time_t timeout)
         }else{
             printf("recv bad packet !\n");
         }
+        printf("recv one packet\n");
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
     }
     return error;
@@ -162,10 +196,8 @@ bdhtbucket::bdocall(time_t timeout)
         b_transfer = __dhtnet.get_transfer();
     }
     for (i=0; i<b_count; i++){
-#if 0
         b_transfer->ping_node(b_host_list[i],
                 b_port_list[i]);
-#endif
     }
 
     return error;
@@ -189,8 +221,6 @@ bdhtnet_start()
     if (__call_once_only++ == 0){
         memcpy(__ping_nodes+12, get_peer_ident(), 20);
         memcpy(__find_nodes+12, get_peer_ident(), 20);
-        memcpy(__find_nodes+43, get_peer_ident(), 20);
-        __find_nodes[62]^=0x1;
     }
     __bootstrap_bucket.bwakeup();
     __dhtnet.bwakeup();

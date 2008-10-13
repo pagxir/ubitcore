@@ -177,7 +177,9 @@ btseed_load(const char *buf, int len)
             }
             const char *vp = NULL;
             for (j=0; vp=bfiles.bget(i).bget(path_key).bget(j).c_str(&eln); j++){
+#if 0
                 mkdir(filen.c_str(), 0777);
+#endif
                 filen += '/'+std::string(vp, eln);
             }
             bcount += (brest>>bits);
@@ -191,7 +193,7 @@ btseed_load(const char *buf, int len)
     bset_piece_hash(pieces, eln);
     bset_piece_info(piecel, bcount, brest);
 
-#if 0
+#if 1
     bentity &nodes = codec.bget().bget("nodes");
     for (i=0; nodes.bget(i).b_str(&eln); i++){
         int port = nodes.bget(i).bget(1).bget(&err);
@@ -239,7 +241,7 @@ main(int argc, char *argv[])
         }
     }
 
-#if 1
+#if 0
     bqueue bcq[25];
     for (i=0; i<5; i++){
         bcq[i].bwakeup();
@@ -255,6 +257,7 @@ main(int argc, char *argv[])
     srand(time(NULL));
     boffer_start(0);
     bfiled_start(30);
+    bdhtnet_start();
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
