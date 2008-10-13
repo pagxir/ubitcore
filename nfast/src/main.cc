@@ -15,7 +15,6 @@
 #include "butils.h"
 #include "bthread.h"
 #include "biothread.h"
-#include "bdhtnet.h"
 #include "btcodec.h"
 #include "bclock.h"
 #include "bqueue.h"
@@ -24,6 +23,7 @@
 #include "bupdown.h"
 #include "bchunk.h"
 #include "bfiled.h"
+#include "btdht/bdhtnet.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"

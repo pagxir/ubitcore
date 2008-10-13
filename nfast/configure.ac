@@ -8,6 +8,7 @@ AC_CONFIG_SRCDIR([src/bchunk.cc])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
+AC_PROG_RANLIB
 AC_PROG_CXX
 AC_PROG_CC
 
@@ -25,4 +26,4 @@ AC_TYPE_SIZE_T
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([gethostbyname inet_ntoa memmove memset mkdir pow select socket])
 
-AC_OUTPUT([Makefile src/Makefile])
+AC_OUTPUT([Makefile src/Makefile src/btdht/Makefile])
