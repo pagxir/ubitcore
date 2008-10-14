@@ -188,7 +188,6 @@ void
 bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
-    printf("binput::bdhtnet\n");
     if (codec->type() == 'r'){
         /* process response */
         int id = codec->transid();
@@ -229,7 +228,6 @@ bdhtnet::bdocall(time_t timeout)
 #endif
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
     }
-    printf("recv from\n");
     return error;
 }
 
@@ -270,10 +268,12 @@ bdhtbucket::find_next(const void *buf, size_t len)
     btcodec codec;
     codec.bload((char*)buf, len);
 
-    //codec.bget().bget("r").bget("id");
     const char *np = codec.bget().bget("r").bget("nodes").c_str(&elen);
+    if (np == NULL){
+        printf("bad packet\n");
+        return ;
+    }
 
-    
     npack *p, *ep=(npack*)(np+elen);
     for (p=(npack*)(np); p<ep; p++){
         bdhtident dident(p->ident);
@@ -286,12 +286,12 @@ bdhtbucket::find_next(const void *buf, size_t len)
             delete traper;
             continue;
         }
-#if 1
+#if 0
         int i;
         for (i=0; i<20; i++){
             printf("%02x", p->ident[i]);
         }
-        printf("\n");
+        printf("\t");
         for (i=0; i<20; i++){
             printf("%02x", get_peer_ident()[i]);
         }
@@ -299,10 +299,35 @@ bdhtbucket::find_next(const void *buf, size_t len)
 #endif
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             delete traper;
+            printf("node reenter DHT network!\n");
             continue;
         }
         traper->b_transfer = __dhtnet.get_transfer();
     }
+}
+
+void
+update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
+{
+    size_t idl;
+    btcodec codec;
+    codec.bload((char*)ibuf, len);
+
+    const char *ident = codec.bget().bget("r").bget("id").c_str(&idl);
+    if (ident==NULL || idl!=20){
+        return;
+    }
+
+    int i;
+    printf("update route: ");
+    for (i=0; i<20; i++){
+        printf("%02x", ident[i]&0xff);
+    }
+    printf("\t");
+    for (i=0; i<20; i++){
+        printf("%02x", get_peer_ident()[i]);
+    }
+    printf("\n");
 }
 
 int
@@ -361,6 +386,7 @@ bdhtbucket::bdocall(time_t timeout)
                     p.b_transfer = NULL;
                     state = error = 0;
                     find_next(buffer, flag);
+                    update_route(buffer, flag, host, port);
                 }
                 break;
             case 3:
