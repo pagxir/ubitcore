@@ -3,6 +3,29 @@
 
 #include "bdhtident.h"
 
+netpt::netpt(uint32_t host, uint16_t port)
+{
+    b_host = host;
+    b_port = port;
+}
+
+bool
+netpt::operator==(const netpt &pt)const
+{
+    if (b_host != pt.b_host){
+        return false;
+    }
+    return b_port == pt.b_port;
+}
+
+bool
+netpt::operator<(const netpt &pt)const
+{
+    if (b_host != pt.b_host){
+        return b_host < pt.b_host;
+    }
+    return b_port < pt.b_port;
+}
 
 bdhtident::bdhtident(uint8_t ident[20])
 {

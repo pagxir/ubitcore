@@ -91,8 +91,8 @@ bttracker_start(const char *url, const unsigned char info_hash[20],
     bturl += "&key=1785265";
     bturl += "&compact=1";
     bturl += "&numwant=200";
-	std::string bturl1st = bturl+"&event=started";
-	std::string bturl2nd = bturl+"&event=completed";
+    std::string bturl1st = bturl+"&event=started";
+    std::string bturl2nd = bturl+"&event=completed";
 #if 0
 	bturl+"&event=started";
 #endif
@@ -123,13 +123,17 @@ btseed_load(const char *buf, int len)
         bentity& en = codec.bget().bget("announce-list");
         for (i=0;urlbuf=en.bget(i).bget(0).c_str(&eln);i++){
             std::string url(urlbuf, eln);
+#if 0
             bttracker_start(url.c_str(), digest, digest);
+#endif
         }
     }else{
         const char *urlbuf = codec.bget().bget("announce").c_str(&eln);
         if (urlbuf != NULL){
             std::string url(urlbuf, eln);
+#if 0
             bttracker_start(url.c_str(), digest, digest);
+#endif
         }
     }
 

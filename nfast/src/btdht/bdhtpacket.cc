@@ -7,6 +7,7 @@
 #include <stack>
 #include <map>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "buinet.h"
 #include "bthread.h"
@@ -27,6 +28,15 @@ uint8_t __find_nodes[] = {
         "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
 };
 
+struct bdhtpack
+{
+    void *b_ibuf;
+    size_t b_len;
+    uint32_t b_host;
+    uint16_t b_port;
+    uint16_t b_align;
+};
+
 int
 bdhtcodec::bload(const char *buffer, size_t length)
 {
@@ -44,22 +54,46 @@ bdhtcodec::bload(const char *buffer, size_t length)
     }
     b_ident = std::string(t, elen);
     const char *transid = b_codec.bget().bget("t").c_str(&elen);
-    if (t!=NULL && elen<4){
+    if (t!=NULL && elen<=4){
         b_transid = 0;
         memcpy(&b_transid, transid, elen);
     }
-    return error;
+    return (error=0);
 }
 
 bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
 {
     b_ident = ident;
     b_dhtnet = net;
+    b_poller = NULL;
 }
 
+int
+bdhtransfer::get_response(void *buf, size_t len,
+        uint32_t *host, uint16_t *port)
+{
+    if (b_queue.empty()){
+        return -1;
+    }
+    bdhtpack *pkg = b_queue.front();
+    if (pkg->b_len > len){
+        return -1;
+    }
+    b_queue.pop();
+    memcpy(buf, pkg->b_ibuf, pkg->b_len);
+    if (host != NULL){
+        *host = pkg->b_host;
+    }
+    if (port != NULL){
+        *port = pkg->b_port;
+    }
+    delete pkg;
+    return pkg->b_len;
+}
 
 int
-bdhtransfer::find_node(uint32_t host, uint16_t port, uint8_t ident[20])
+bdhtransfer::find_node(uint32_t host, 
+        uint16_t port, uint8_t ident[20])
 {
     return b_dhtnet->find_node(b_ident, host, port, ident);
 }
@@ -71,9 +105,17 @@ bdhtransfer::ping_node(uint32_t host, uint16_t port)
 }
 
 void
-bdhtransfer::binput(bdhtcodec *codec, uint32_t host, uint16_t port)
+bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
+        uint32_t host, uint16_t port)
 {
-    b_queue.push(host);
+    bdhtpack *pkg = new bdhtpack;
+    pkg->b_ibuf = malloc(len);
+    pkg->b_len = len;
+    pkg->b_host = host;
+    pkg->b_port = port;
+    assert(pkg->b_ibuf != NULL);
+    memcpy(pkg->b_ibuf, ibuf, len);
+    b_queue.push(pkg);
     if (b_poller == NULL){
         return;
     }
@@ -110,7 +152,14 @@ bdhtnet::find_node(uint32_t tid, uint32_t host,
         uint16_t port, uint8_t ident[20])
 {
 
-    memcpy(__find_nodes+42, ident, 20);
+#if 0
+    in_addr addr;
+    memcpy(&addr, &host, 4);
+    printf("find node: %s:%d\n",
+            inet_ntoa(addr), htons(port));
+#endif
+
+    memcpy(__find_nodes+43, ident, 20);
     memcpy(__find_nodes+83, &tid, 4);
     return b_socket.bsendto(__find_nodes,
             sizeof(__find_nodes)-1,
@@ -129,17 +178,25 @@ bdhtnet::ping_node(uint32_t tid, uint32_t host, uint16_t port)
 bdhtransfer *
 bdhtnet::get_transfer()
 {
-    return new bdhtransfer(this, b_tid++);
+    int tid = b_tid++;
+    bdhtransfer *transfer = new bdhtransfer(this, tid);
+    b_requests.insert(std::make_pair(tid, transfer));
+    return transfer;
 }
 
 void
-bdhtnet::binput(bdhtcodec *codec, uint32_t host, uint16_t port)
+bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
+        uint32_t host, uint16_t port)
 {
+    printf("binput::bdhtnet\n");
     if (codec->type() == 'r'){
         /* process response */
         int id = codec->transid();
         if (b_requests.find(id) != b_requests.end()){
-            (*b_requests.find(id)).second->binput(codec, host, port);
+            bdhtransfer *t = (*b_requests.find(id)).second;
+            t->binput(codec, ibuf, len,host, port);
+        }else{
+            printf("not found: %d!\n", id);
         }
     }else if (codec->type() == 'q'){
         /* process query */
@@ -161,43 +218,173 @@ bdhtnet::bdocall(time_t timeout)
     while (error != -1){ 
         bdhtcodec codec;
         if (0==codec.bload(buffer, error)){
-            binput(&codec, host, port);
+            binput(&codec, buffer, error, host, port);
         }else{
             printf("recv bad packet !\n");
         }
-        printf("recv one packet\n");
+#if 0
+        in_addr addr;
+        memcpy(&addr, &host, 4);
+        printf("recv one packet: %s:%d\n", inet_ntoa(addr), htons(port));
+#endif
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
     }
+    printf("recv from\n");
     return error;
 }
 
 void
 bdhtbucket::add_node(uint32_t host, uint16_t port)
 {
-    if (b_count < 8){
-        b_index = b_count++;
-    }else {
-        b_index++;
+    uint8_t ibuf[20]={0};
+    netpt pt(host,port);
+    ibuf[19] = b_index++;
+    bdhtident dident(ibuf);
+    bootstraper *traper = new bootstraper();
+    traper->b_host = host;
+    traper->b_port = port;
+    traper->b_transfer = __dhtnet.get_transfer();
+    b_trapmap.insert(std::make_pair(pt, traper));
+    b_bootmap.insert(std::make_pair(dident, traper));
+}
+
+static uint8_t _bootraphash[20];
+
+bdhtbucket::bdhtbucket()
+{
+    b_index = 0;
+    b_state = 0;
+}
+
+typedef struct _npack
+{
+    uint8_t ident[20];
+    uint8_t host[4];
+    uint8_t port[2];
+}npack;
+
+void
+bdhtbucket::find_next(const void *buf, size_t len)
+{
+    size_t elen;
+    btcodec codec;
+    codec.bload((char*)buf, len);
+
+    //codec.bget().bget("r").bget("id");
+    const char *np = codec.bget().bget("r").bget("nodes").c_str(&elen);
+
+    
+    npack *p, *ep=(npack*)(np+elen);
+    for (p=(npack*)(np); p<ep; p++){
+        bdhtident dident(p->ident);
+        bootstraper *traper = new bootstraper();
+        memcpy(&traper->b_host, &p->host, 4);
+        memcpy(&traper->b_port, &p->port, 2);
+        traper->b_port = htons(traper->b_port);
+        netpt pt(traper->b_host, traper->b_port);
+        if (false == b_trapmap.insert(std::make_pair(pt, traper)).second){
+            delete traper;
+            continue;
+        }
+#if 1
+        int i;
+        for (i=0; i<20; i++){
+            printf("%02x", p->ident[i]);
+        }
+        printf("\n");
+        for (i=0; i<20; i++){
+            printf("%02x", get_peer_ident()[i]);
+        }
+        printf("\n");
+#endif
+        if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
+            delete traper;
+            continue;
+        }
+        traper->b_transfer = __dhtnet.get_transfer();
     }
-    if (b_index == 8){
-        b_index = 0;
-    }
-    b_port_list[b_index] = port;
-    b_host_list[b_index] = host;
 }
 
 int
 bdhtbucket::bdocall(time_t timeout)
 {
     int i;
-    int error = -1;
+    uint32_t host;
+    uint16_t port;
+    int error = 0;
+    int state = b_state;
+    char buffer[8192];
+    std::map<bdhtident, bootstraper*>::iterator iter, niter;
 
-    if (b_transfer == NULL){
-        b_transfer = __dhtnet.get_transfer();
-    }
-    for (i=0; i<b_count; i++){
-        b_transfer->ping_node(b_host_list[i],
-                b_port_list[i]);
+    while (error != -1){
+        b_state = state++;
+        switch (b_state){
+            case 0:
+                for (iter=b_bootmap.begin();
+                        iter!=b_bootmap.end(); ){
+                    niter = iter++;
+                    bootstraper &p = *niter->second;
+                    bdhtransfer *trans = p.b_transfer;
+                    if (trans == NULL){
+                        b_bootmap.erase(niter);
+                        continue;
+                    }
+                    trans->find_node(p.b_host,
+                            p.b_port, _bootraphash);
+                    b_tryagain.push(niter->second);
+                    b_findmap.insert(*niter);
+                    b_bootmap.erase(niter);
+                }
+                break;
+            case 1:
+                b_polling = true;
+                b_touch = time(NULL);
+                break;
+            case 2:
+                error = btime_wait(b_touch+2);
+                for (iter=b_findmap.begin();
+                        iter!=b_findmap.end(); ){
+                    niter = iter++;
+                    bootstraper &p = *niter->second;
+                    bdhtransfer *trans = p.b_transfer;
+                    if (trans == NULL){
+                        b_findmap.erase(niter);
+                        continue;
+                    }
+                    int flag = trans->get_response(
+                            buffer, sizeof(buffer),
+                            &host, &port);
+                    if (flag == -1){
+                        continue;
+                    }
+                    delete trans;
+                    p.b_transfer = NULL;
+                    state = error = 0;
+                    find_next(buffer, flag);
+                }
+                break;
+            case 3:
+                while (!b_tryfinal.empty()){
+                    bootstraper &p = *b_tryfinal.front();
+                    p.b_transfer = NULL;
+                    b_tryfinal.pop();
+                }
+                while (!b_tryagain.empty()){
+                    bootstraper &p = *b_tryagain.front();
+                    bdhtransfer *trans = p.b_transfer;
+                    b_tryagain.pop();
+                    if (trans == NULL){
+                        continue;
+                    }
+                    trans->find_node(p.b_host,
+                            p.b_port, _bootraphash);
+                    b_tryfinal.push(&p);
+                }
+                break;
+            default:
+                state = 1;
+                break;
+        }
     }
 
     return error;
@@ -221,6 +408,8 @@ bdhtnet_start()
     if (__call_once_only++ == 0){
         memcpy(__ping_nodes+12, get_peer_ident(), 20);
         memcpy(__find_nodes+12, get_peer_ident(), 20);
+        memcpy(_bootraphash, get_peer_ident(), 20);
+        _bootraphash[19]^=0x1;
     }
     __bootstrap_bucket.bwakeup();
     __dhtnet.bwakeup();
