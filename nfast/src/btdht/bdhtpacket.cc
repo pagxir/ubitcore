@@ -350,7 +350,7 @@ static void
 dump_route_table()
 {
     int i, j;
-    printf("route table begin\n");
+    printf("\nroute table begin\n");
     printf("myid: ");
     for (i=0; i<20; i++){
         printf("%02x", 0xff&(get_peer_ident()[i]));
@@ -361,6 +361,7 @@ dump_route_table()
             uint8_t *vp = __bucket[i][j];
             if (vp != NULL){
                 int u;
+                printf("0x%02x:\t", i);
                 for (u=0; u<20; u++){
                     printf("%02x", vp[u]);
                 }
