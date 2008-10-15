@@ -3,16 +3,14 @@
 #include <time.h>
 #include <string.h>
 #include <assert.h>
-#include <queue>
-#include <stack>
-#include <map>
 #include <stdint.h>
 #include <stdlib.h>
+#include <queue>
+#include <map>
 
 #include "buinet.h"
-#include "bthread.h"
-#include "bsocket.h"
 #include "btcodec.h"
+#include "bsocket.h"
 #include "butils.h"
 #include "bdhtident.h"
 #include "bdhtnet.h"
@@ -20,7 +18,7 @@
 #include "bdhtransfer.h"
 
 static bdhtnet __dhtnet;
-static bdhtboot __bootstrap_bucket(&__dhtnet);
+static bdhtboot __boot_bucket(&__dhtnet);
 
 uint8_t __ping_nodes[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
@@ -149,7 +147,7 @@ int
 bdhtnet_node(const char *host, int port)
 {
     uint32_t ihost = inet_addr(host);
-    __bootstrap_bucket.add_node(ihost, port);
+    __boot_bucket.add_node(ihost, port);
     return 0;
 }
 
@@ -166,8 +164,8 @@ bdhtnet_start()
     memcpy(__find_nodes+12, get_peer_ident(), 20);
     memcpy(boothash, get_peer_ident(), 20);
     boothash[19]^=0x1;
-    __bootstrap_bucket.set_target(boothash);
-    __bootstrap_bucket.bwakeup();
+    __boot_bucket.set_target(boothash);
+    __boot_bucket.bwakeup();
     __dhtnet.bwakeup();
     return 0;
 }

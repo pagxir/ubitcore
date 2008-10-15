@@ -1,10 +1,7 @@
 /* $Id: bdhtnet.cc 94 2008-07-19 04:12:35Z pagxir $ */
 #ifndef __BDHTNET_H__
 #define __BDHTNET_H__
-
 #include <map>
-#include <queue>
-#include "bdhtident.h"
 
 class bdhtnet;
 class bdhtransfer;

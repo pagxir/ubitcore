@@ -3,7 +3,6 @@
 #include <string.h>
 #include <assert.h>
 #include <queue>
-#include <stack>
 #include <map>
 #include <stdint.h>
 #include <stdlib.h>
@@ -17,6 +16,7 @@
 #include "bdhtnet.h"
 #include "bdhtboot.h"
 #include "bdhtransfer.h"
+#include "bdhtroute.h"
 
 typedef struct _npack
 {
@@ -156,7 +156,7 @@ bdhtboot::bdocall(time_t timeout)
                     p.b_transfer = NULL;
                     state = error = 0;
                     find_next(buffer, flag);
-                    //update_route(buffer, flag, host, port);
+                    update_route(buffer, flag, host, port);
                 }
                 break;
             case 3:
@@ -184,7 +184,7 @@ bdhtboot::bdocall(time_t timeout)
                 break;
             case 5:
                 //__dhtorrent.bwakeup();
-                //dump_route_table();
+                dump_route_table();
                 break;
             default:
                 return 0;

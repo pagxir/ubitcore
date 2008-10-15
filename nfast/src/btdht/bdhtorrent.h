@@ -1,6 +1,6 @@
 /* $Id: bdhtnet.cc 94 2008-07-19 04:12:35Z pagxir $ */
-#ifndef __BDHTORRENT_H_
-#define __BDHTORRENT_H_
+#ifndef __BDHTORRENT_H__
+#define __BDHTORRENT_H__
 
 class bdhtorrent: public bdhtpoller
 {

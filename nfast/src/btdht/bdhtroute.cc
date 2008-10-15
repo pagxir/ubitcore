@@ -3,23 +3,15 @@
 #include <string.h>
 #include <assert.h>
 #include <queue>
-#include <stack>
-#include <map>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string>
+#include <map>
 
 #include "buinet.h"
-#include "bthread.h"
-#include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
 #include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtboot.h"
-#include "bdhtorrent.h"
-
-static bdhtnet __dhtnet;
-
 
 typedef struct  _rib{
     uint8_t ident[20];
