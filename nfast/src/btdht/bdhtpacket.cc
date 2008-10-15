@@ -306,6 +306,9 @@ bdhtbucket::find_next(const void *buf, size_t len)
     }
 }
 
+typedef uint8_t pident[20];
+static uint8_t *__bucket[160][8];
+
 void
 update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
 {
@@ -319,6 +322,7 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
     }
 
     int i;
+#if 0
     printf("update route: ");
     for (i=0; i<20; i++){
         printf("%02x", ident[i]&0xff);
@@ -328,6 +332,43 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
         printf("%02x", get_peer_ident()[i]);
     }
     printf("\n");
+#endif
+    fprintf(stderr, ".");
+    bdhtident one((uint8_t*)ident), self((uint8_t*)get_peer_ident());
+    bdhtident dist = one^self;
+    int lg = dist.lg();
+    for (i=0; i<8; i++){
+        if (__bucket[lg][i] == NULL){
+            __bucket[lg][i] = new pident;
+            memcpy(__bucket[lg][i], ident, 20);
+            break;
+        }
+    }
+}
+
+static void
+dump_route_table()
+{
+    int i, j;
+    printf("route table begin\n");
+    printf("myid: ");
+    for (i=0; i<20; i++){
+        printf("%02x", 0xff&(get_peer_ident()[i]));
+    }
+    printf("---------------\n");
+    for (i=0; i<160; i++){
+        for (j=0; j<8; j++){
+            uint8_t *vp = __bucket[i][j];
+            if (vp != NULL){
+                int u;
+                for (u=0; u<20; u++){
+                    printf("%02x", vp[u]);
+                }
+                printf("\n");
+            }
+        }
+    }
+    printf("route table finish\n");
 }
 
 int
@@ -407,8 +448,14 @@ bdhtbucket::bdocall(time_t timeout)
                     b_tryfinal.push(&p);
                 }
                 break;
+            case 4:
+                if (!b_findmap.empty()){
+                    state = 1;
+                }
+                break;
             default:
-                state = 1;
+                dump_route_table();
+                return 0;
                 break;
         }
     }

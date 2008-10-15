@@ -22,6 +22,7 @@ class bdhtident
         bool operator<(const bdhtident &ident)const;
         bool operator>(const bdhtident &ident)const;
         const bdhtident operator^(const bdhtident &ident)const;
+        size_t lg();
 
     private:
         uint8_t b_ident[20];
