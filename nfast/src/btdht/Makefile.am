@@ -2,8 +2,16 @@ noinst_LIBRARIES = libsub_btdht.a
 
 libsub_btdht_a_SOURCES = \
 	bdhtpacket.cc  \
-	bdhtident.cc \
-	bdhtident.h \
+	bdhtident.cc   \
+	bdhtorrent.cc  \
+	bdhtboot.cc    \
+	bdhtroute.cc   \
+	bdhtransfer.cc \
+	bdhtransfer.h  \
+	bdhtroute.h    \
+	bdhtboot.h     \
+	bdhtorrnt.h    \
+	bdhtident.h    \
 	bdhtnet.h
 	
 
