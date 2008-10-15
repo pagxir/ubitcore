@@ -15,6 +15,7 @@ class bdhtransfer{
         bdhtransfer(bdhtnet *bdhtnet, uint32_t id);
         int ping_node(uint32_t host, uint16_t port);
         int find_node(uint32_t host, uint16_t port, uint8_t ident[20]);
+        int get_peers(uint32_t host, uint16_t port, uint8_t ident[20]);
         void binput(bdhtcodec *codec, const void *buf, size_t len,
                 uint32_t host, uint16_t port);
         int get_response(void *buf, size_t size,

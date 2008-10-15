@@ -10,7 +10,7 @@ libsub_btdht_a_SOURCES = \
 	bdhtransfer.h  \
 	bdhtroute.h    \
 	bdhtboot.h     \
-	bdhtorrnt.h    \
+	bdhtorrent.h   \
 	bdhtident.h    \
 	bdhtnet.h
 	

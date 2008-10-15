@@ -11,7 +11,11 @@
 #include "buinet.h"
 #include "btcodec.h"
 #include "butils.h"
+#include "bsocket.h"
+#include "bthread.h"
 #include "bdhtident.h"
+#include "bdhtnet.h"
+#include "bdhtorrent.h"
 
 typedef struct  _rib{
     uint8_t ident[20];
@@ -84,4 +88,40 @@ dump_route_table()
         }
     }
     printf("route table finish\n");
+}
+
+static bdhtorrent *__dhtorrent;
+
+void
+route_get_peers(bdhtnet *dhtnet)
+{
+    __dhtorrent = new bdhtorrent(dhtnet);
+    bdhtident info((uint8_t*)get_info_hash());
+    bdhtident ident((uint8_t*)get_peer_ident());
+
+    bdhtident dist = info^ident;
+
+    int i;
+    int count = 0;
+    int lg = dist.lg();
+    for (; lg<160 && count<8; lg++){
+        for (i=0; i<8&&count<8; i++){
+            rib *r = __bucket[lg][i];
+            if (r != NULL){
+                count++;
+                __dhtorrent->add_node(r->host,r->port);
+            }
+        }
+    }
+    for (lg=dist.lg()-1; lg>=0 && count<8; lg--){
+        for (i=0; i<8&&count<8; i++){
+            rib *r = __bucket[lg][i];
+            if (r != NULL){
+                count++;
+                __dhtorrent->add_node(r->host,r->port);
+            }
+        }
+    }
+    __dhtorrent->set_infohash((uint8_t*)get_info_hash());
+    __dhtorrent->bwakeup();
 }

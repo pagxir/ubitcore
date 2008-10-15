@@ -40,6 +40,8 @@ class bdhtnet: public bthread
         int ping_node(uint32_t tid, uint32_t host, uint16_t port);
         int find_node(uint32_t tid, uint32_t host,
                 uint16_t port, uint8_t ident[20]);
+        int get_peers(uint32_t tid, uint32_t host,
+                uint16_t port, uint8_t ident[20]);
 
     private:
         void binput(bdhtcodec *codec, const void *ibuf, size_t len,

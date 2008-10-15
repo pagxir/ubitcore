@@ -183,7 +183,7 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 break;
             case 5:
-                //__dhtorrent.bwakeup();
+                route_get_peers(b_dhtnet);
                 dump_route_table();
                 break;
             default:

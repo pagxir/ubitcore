@@ -48,6 +48,13 @@ bdhtransfer::get_response(void *buf, size_t len,
 }
 
 int
+bdhtransfer::get_peers(uint32_t host, 
+        uint16_t port, uint8_t ident[20])
+{
+    return b_dhtnet->get_peers(b_ident, host, port, ident);
+}
+
+int
 bdhtransfer::find_node(uint32_t host, 
         uint16_t port, uint8_t ident[20])
 {

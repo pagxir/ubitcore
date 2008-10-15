@@ -29,6 +29,11 @@ uint8_t __find_nodes[] = {
         "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
 };
 
+uint8_t __get_peers[] =  {
+    "d1:ad2:id20:abcdefghij01234567899:info_hash"
+        "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
+};
+
 int
 bdhtcodec::bload(const char *buffer, size_t length)
 {
@@ -56,6 +61,17 @@ bdhtcodec::bload(const char *buffer, size_t length)
 bdhtnet::bdhtnet()
     :b_tid(0)
 {
+}
+
+int
+bdhtnet::get_peers(uint32_t tid, uint32_t host,
+        uint16_t port, uint8_t ident[20])
+{
+    memcpy(__get_peers+46, ident, 20);
+    memcpy(__get_peers+86, &tid, 4);
+    return b_socket.bsendto(__get_peers,
+            sizeof(__get_peers)-1,
+            host, port);
 }
 
 int
@@ -162,6 +178,7 @@ bdhtnet_start()
     }
     memcpy(__ping_nodes+12, get_peer_ident(), 20);
     memcpy(__find_nodes+12, get_peer_ident(), 20);
+    memcpy(__get_peers+12, get_peer_ident(), 20);
     memcpy(boothash, get_peer_ident(), 20);
     boothash[19]^=0x1;
     __boot_bucket.set_target(boothash);
