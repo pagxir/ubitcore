@@ -24,11 +24,17 @@ bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
     b_poller = NULL;
 }
 
+bdhtransfer::~bdhtransfer()
+{
+    b_dhtnet->detach(b_ident);
+}
+
 int
-bdhtransfer::get_response(void *buf, size_t len,
+bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
     if (b_queue.empty()){
+        bdopolling(poller);
         return -1;
     }
     bdhtpack *pkg = b_queue.front();

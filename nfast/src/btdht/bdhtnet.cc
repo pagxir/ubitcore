@@ -64,6 +64,13 @@ bdhtnet::bdhtnet()
 }
 
 int
+bdhtnet::detach(uint32_t id)
+{
+    b_requests.erase(id);
+    return 0;
+}
+
+int
 bdhtnet::get_peers(uint32_t tid, uint32_t host,
         uint16_t port, uint8_t ident[20])
 {

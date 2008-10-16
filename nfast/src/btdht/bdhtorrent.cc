@@ -18,6 +18,12 @@
 #include "bdhtroute.h"
 #include "bdhtorrent.h"
 
+typedef struct _addrpack
+{
+    uint8_t host[4];
+    uint8_t port[2];
+}addrpack;
+
 typedef struct _npack
 {
     uint8_t ident[20];
@@ -71,12 +77,26 @@ bdhtorrent::get_peers_next(const void *buf, size_t len)
 
     const char *vp = codec.bget().bget("r").bget("values").b_str(&elen);
     if (vp != NULL){
-        printf("found peer node\n");
+#if 0
+        uint32_t host;
+        uint16_t port;
+        addrpack *ap, *aep = (addrpack*)(vp+elen);
+        for (ap=(addrpack*)(vp); ap<aep; ap++){
+            memcpy(&host, &ap->host, 4);
+            memcpy(&port, &ap->port, 2);
+            port = ntohs(port);
+            printf("%s:%d\n",
+                    in_addr(*(in_addr*)&host),
+                    port);
+        }
+#endif
+        printf("get peer values expanded!\n");
+        return;
     }
 
     const char *np = codec.bget().bget("r").bget("nodes").c_str(&elen);
     if (np == NULL){
-        //printf("pkg: %s\n", buf);
+        printf("bad get peers packet\n");
         return ;
     }
 
@@ -94,7 +114,7 @@ bdhtorrent::get_peers_next(const void *buf, size_t len)
         }
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             delete traper;
-            printf("node reenter DHT network!\n");
+            //printf("node reenter DHT network!\n");
             continue;
         }
         traper->b_transfer = b_dhtnet->get_transfer();
@@ -148,7 +168,7 @@ bdhtorrent::bdocall(time_t timeout)
                         continue;
                     }
                     int flag = trans->get_response(
-                            buffer, sizeof(buffer),
+                            this, buffer, sizeof(buffer),
                             &host, &port);
                     if (flag == -1){
                         continue;

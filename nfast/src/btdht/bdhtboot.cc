@@ -93,7 +93,7 @@ bdhtboot::find_next(const void *buf, size_t len)
 #endif
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             delete traper;
-            printf("node reenter DHT network!\n");
+            //printf("node reenter DHT network!\n");
             continue;
         }
         traper->b_transfer = b_dhtnet->get_transfer();
@@ -147,7 +147,7 @@ bdhtboot::bdocall(time_t timeout)
                         continue;
                     }
                     int flag = trans->get_response(
-                            buffer, sizeof(buffer),
+                            this, buffer, sizeof(buffer),
                             &host, &port);
                     if (flag == -1){
                         continue;

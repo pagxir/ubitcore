@@ -37,6 +37,7 @@ class bdhtnet: public bthread
 
     public:
         bdhtransfer *get_transfer();
+        int detach(uint32_t id);
         int ping_node(uint32_t tid, uint32_t host, uint16_t port);
         int find_node(uint32_t tid, uint32_t host,
                 uint16_t port, uint8_t ident[20]);
