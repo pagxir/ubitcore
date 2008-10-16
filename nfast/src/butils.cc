@@ -1,6 +1,7 @@
 /* $Id$ */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "butils.h"
 
 static unsigned char __info_hash[20];

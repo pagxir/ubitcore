@@ -75,9 +75,9 @@ bdhtorrent::get_peers_next(const void *buf, size_t len)
         return ;
     }
 
-    const char *vp = codec.bget().bget("r").bget("values").b_str(&elen);
+    const char *vp = codec.bget().bget("r").bget("values").bget(0).c_str(&elen);
     if (vp != NULL){
-#if 0
+#if 1
         uint32_t host;
         uint16_t port;
         addrpack *ap, *aep = (addrpack*)(vp+elen);
@@ -86,11 +86,10 @@ bdhtorrent::get_peers_next(const void *buf, size_t len)
             memcpy(&port, &ap->port, 2);
             port = ntohs(port);
             printf("%s:%d\n",
-                    in_addr(*(in_addr*)&host),
+                    inet_ntoa(*(in_addr*)&host),
                     port);
         }
 #endif
-        printf("get peer values expanded!\n");
         return;
     }
 
@@ -177,7 +176,7 @@ bdhtorrent::bdocall(time_t timeout)
                     p.b_transfer = NULL;
                     state = error = 0;
                     get_peers_next(buffer, flag);
-                    printf(".");
+                    //printf(".");
                     update_route(buffer, flag, host, port);
                 }
                 break;
