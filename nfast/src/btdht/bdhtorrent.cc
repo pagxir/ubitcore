@@ -176,7 +176,6 @@ bdhtorrent::bdocall(time_t timeout)
                     p.b_transfer = NULL;
                     state = error = 0;
                     get_peers_next(buffer, flag);
-                    //printf(".");
                     update_route(buffer, flag, host, port);
                 }
                 break;

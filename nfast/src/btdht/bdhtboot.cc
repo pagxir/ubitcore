@@ -28,7 +28,7 @@ typedef struct _npack
 
 bdhtboot::bdhtboot(bdhtnet *dhtnet)
 {
-    b_index = 0;
+    b_count = 0;
     b_state = 0;
     b_dhtnet = dhtnet;
 }
@@ -36,27 +36,21 @@ bdhtboot::bdhtboot(bdhtnet *dhtnet)
 void
 bdhtboot::set_target(uint8_t target[20])
 {
-    memcpy(b_findtarget, target, 20);
+    memcpy(b_target, target, 20);
 }
 
 void
-bdhtboot::add_node(uint32_t host, uint16_t port)
+bdhtboot::add_dhtnode(uint32_t host, uint16_t port)
 {
-    uint8_t ibuf[20]={0};
-    netpt pt(host,port);
-    ibuf[19] = b_index++;
-    bdhtident dident(ibuf);
-    bootstraper *traper = new bootstraper();
-    traper->b_host = host;
-    traper->b_port = port;
-    traper->b_transfer = b_dhtnet->get_transfer();
-    b_trapmap.insert(std::make_pair(pt, traper));
-    b_bootmap.insert(std::make_pair(dident, traper));
+    int idx = 0x7&b_count++;
+
+    b_hosts[idx] = host;
+    b_ports[idx] = port;
 }
 
 
 void
-bdhtboot::find_next(const void *buf, size_t len)
+bdhtboot::find_node_next(const void *buf, size_t len)
 {
     size_t elen;
     btcodec codec;
@@ -92,8 +86,6 @@ bdhtboot::find_next(const void *buf, size_t len)
         printf("\n");
 #endif
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
-            delete traper;
-            //printf("node reenter DHT network!\n");
             continue;
         }
         traper->b_transfer = b_dhtnet->get_transfer();
@@ -109,12 +101,32 @@ bdhtboot::bdocall(time_t timeout)
     int error = 0;
     int state = b_state;
     char buffer[8192];
+    std::map<netpt, bootstraper*>::iterator inter;
     std::map<bdhtident, bootstraper*>::iterator iter, niter;
 
     while (error != -1){
         b_state = state++;
         switch (b_state){
             case 0:
+                for (i=0; i<8; i++){
+                    if (i >= b_count){
+                        break;
+                    }
+                    host = b_hosts[i];
+                    port = b_ports[i];
+                    uint8_t ibuf[20]={0};
+                    netpt pt(host,port);
+                    ibuf[19] = i;
+                    bdhtident dident(ibuf);
+                    bootstraper *traper = new bootstraper();
+                    traper->b_host = host;
+                    traper->b_port = port;
+                    traper->b_transfer = b_dhtnet->get_transfer();
+                    b_trapmap.insert(std::make_pair(pt, traper));
+                    b_bootmap.insert(std::make_pair(dident, traper));
+                }
+                break;
+            case 1:
                 for (iter=b_bootmap.begin();
                         iter!=b_bootmap.end(); ){
                     niter = iter++;
@@ -125,18 +137,18 @@ bdhtboot::bdocall(time_t timeout)
                         continue;
                     }
                     trans->find_node(p.b_host,
-                            p.b_port, b_findtarget);
-                    b_tryagain.push(niter->second);
+                            p.b_port, b_target);
                     b_findmap.insert(*niter);
                     b_bootmap.erase(niter);
+                    b_tryfinal.push(&p);
                 }
                 break;
-            case 1:
+            case 2:
                 b_polling = true;
                 b_touch = time(NULL);
                 break;
-            case 2:
-                error = btime_wait(b_touch+2);
+            case 3:
+                error = btime_wait(b_touch+5);
                 for (iter=b_findmap.begin();
                         iter!=b_findmap.end(); ){
                     niter = iter++;
@@ -154,35 +166,38 @@ bdhtboot::bdocall(time_t timeout)
                     }
                     delete trans;
                     p.b_transfer = NULL;
-                    state = error = 0;
-                    find_next(buffer, flag);
+                    error = 0;
+                    state = 1;
+                    find_node_next(buffer, flag);
                     update_route(buffer, flag, host, port);
                 }
                 break;
-            case 3:
+            case 4:
                 while (!b_tryfinal.empty()){
                     bootstraper &p = *b_tryfinal.front();
                     p.b_transfer = NULL;
                     b_tryfinal.pop();
                 }
-                while (!b_tryagain.empty()){
-                    bootstraper &p = *b_tryagain.front();
-                    bdhtransfer *trans = p.b_transfer;
-                    b_tryagain.pop();
-                    if (trans == NULL){
-                        continue;
-                    }
-                    trans->find_node(p.b_host,
-                            p.b_port, b_findtarget);
-                    b_tryfinal.push(&p);
-                }
-                break;
-            case 4:
-                if (!b_findmap.empty()){
-                    state = 1;
-                }
                 break;
             case 5:
+                if (!b_findmap.empty()){
+                    state = 2;
+                }
+                break;
+            case 6:
+                printf("find ended\n");
+                for (inter=b_trapmap.begin();
+                        inter!=b_trapmap.end();
+                        inter++){
+                    delete inter->second->b_transfer;
+                    delete inter->second;
+                }
+                b_trapmap.clear();
+                if (getribcount()<32){
+                    state = 0;
+                }
+                break;
+            case 7:
                 route_get_peers(b_dhtnet);
                 dump_route_table();
                 break;

@@ -23,7 +23,14 @@ typedef struct  _rib{
     uint32_t host;
 }rib;
 
+
+static int __ribcount = 0;
 static rib *__bucket[160][8];
+
+int getribcount()
+{
+    return __ribcount;
+}
 
 void
 update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
@@ -38,18 +45,6 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
     }
 
     int i;
-#if 0
-    printf("update route: ");
-    for (i=0; i<20; i++){
-        printf("%02x", ident[i]&0xff);
-    }
-    printf("\t");
-    for (i=0; i<20; i++){
-        printf("%02x", get_peer_ident()[i]);
-    }
-    printf("\n");
-#endif
-    fprintf(stderr, ".");
     bdhtident one((uint8_t*)ident), self((uint8_t*)get_peer_ident());
     bdhtident dist = one^self;
     int lg = dist.lg();
@@ -59,6 +54,7 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
             memcpy(__bucket[lg][i]->ident, ident, 20);
             __bucket[lg][i]->host = host;
             __bucket[lg][i]->port = port;
+            __ribcount++;
             break;
         }
     }
@@ -69,11 +65,11 @@ dump_route_table()
 {
     int i, j;
     printf("\nroute table begin\n");
-    printf("myid: ");
+    printf("myid:\t");
     for (i=0; i<20; i++){
         printf("%02x", 0xff&(get_peer_ident()[i]));
     }
-    printf("---------------\n");
+    printf("\n---------------------------------\n");
     for (i=0; i<160; i++){
         for (j=0; j<8; j++){
             rib *vp = __bucket[i][j];

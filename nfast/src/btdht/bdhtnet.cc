@@ -128,8 +128,6 @@ bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         if (b_requests.find(id) != b_requests.end()){
             bdhtransfer *t = (*b_requests.find(id)).second;
             t->binput(codec, ibuf, len,host, port);
-        }else{
-            printf("not found: %d!\n", id);
         }
     }else if (codec->type() == 'q'){
         /* process query */
@@ -152,14 +150,7 @@ bdhtnet::bdocall(time_t timeout)
         bdhtcodec codec;
         if (0==codec.bload(buffer, error)){
             binput(&codec, buffer, error, host, port);
-        }else{
-            printf("recv bad packet !\n");
         }
-#if 0
-        in_addr addr;
-        memcpy(&addr, &host, 4);
-        printf("recv one packet: %s:%d\n", inet_ntoa(addr), htons(port));
-#endif
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
     }
     return error;
@@ -170,7 +161,7 @@ int
 bdhtnet_node(const char *host, int port)
 {
     uint32_t ihost = inet_addr(host);
-    __boot_bucket.add_node(ihost, port);
+    __boot_bucket.add_dhtnode(ihost, port);
     return 0;
 }
 
