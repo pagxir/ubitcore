@@ -9,6 +9,7 @@
  * Licensed under GPLv2 or later, see file LICENSE in busybox tarball for details.
  */
 
+#include "config.h"
 #include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
