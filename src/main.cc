@@ -123,17 +123,13 @@ btseed_load(const char *buf, int len)
         bentity& en = codec.bget().bget("announce-list");
         for (i=0;urlbuf=en.bget(i).bget(0).c_str(&eln);i++){
             std::string url(urlbuf, eln);
-#if 0
             bttracker_start(url.c_str(), digest, digest);
-#endif
         }
     }else{
         const char *urlbuf = codec.bget().bget("announce").c_str(&eln);
         if (urlbuf != NULL){
             std::string url(urlbuf, eln);
-#if 0
             bttracker_start(url.c_str(), digest, digest);
-#endif
         }
     }
 
@@ -181,9 +177,7 @@ btseed_load(const char *buf, int len)
             }
             const char *vp = NULL;
             for (j=0; vp=bfiles.bget(i).bget(path_key).bget(j).c_str(&eln); j++){
-#if 0
                 mkdir(filen.c_str(), 0777);
-#endif
                 filen += '/'+std::string(vp, eln);
             }
             bcount += (brest>>bits);
@@ -245,7 +239,6 @@ main(int argc, char *argv[])
         }
     }
 
-#if 0
     bqueue bcq[25];
     for (i=0; i<5; i++){
         bcq[i].bwakeup();
@@ -256,7 +249,6 @@ main(int argc, char *argv[])
         updown[i] = new bupdown();
         updown[i]->bwakeup();
     }
-#endif
 
     srand(time(NULL));
     boffer_start(0);
