@@ -6,8 +6,8 @@
 #include <map>
 #include <stdint.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 
-#include "buinet.h"
 #include "bthread.h"
 #include "bsocket.h"
 #include "btcodec.h"

@@ -5,10 +5,10 @@
 #include <queue>
 #include <stdint.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 #include <string>
 #include <map>
 
-#include "buinet.h"
 #include "btcodec.h"
 #include "butils.h"
 #include "bsocket.h"

@@ -8,7 +8,7 @@
 #include <queue>
 #include <map>
 
-#include "buinet.h"
+#include "arpa/inet.h"
 #include "btcodec.h"
 #include "bsocket.h"
 #include "butils.h"

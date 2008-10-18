@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <arpa/inet.h>
 
-#include "buinet.h"
 #include "bfiled.h"
 #include "bchunk.h"
 #include "bupdown.h"

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "buinet.h"
+#include <arpa/inet.h>
 #include "bthread.h"
 #include "bsocket.h"
 #include "btcodec.h"

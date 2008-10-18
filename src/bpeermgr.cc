@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <string>
 #include <assert.h>
+#include <arpa/inet.h>
 #include <queue>
 #include <set>
 
-#include "buinet.h"
 #include "bthread.h"
 #include "btcodec.h"
 #include "bpeermgr.h"
