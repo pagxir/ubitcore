@@ -19,7 +19,9 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h])
 AC_CHECK_HEADERS([stdlib.h string.h sys/socket.h])
 AC_CHECK_HEADERS([endian.h machine/endian.h])
 AC_CHECK_HEADERS([windows.h])
-AC_CHECK_HEADERS([winsock.h], WS2_LDADD="-lws2_32")
+AC_CHECK_HEADERS([winsock.h], WS2_LDADD="-lws2_32";
+                 WS2_INCLUDE="/include/win32")
+AC_SUBST(WS2_INCLUDE)
 AC_SUBST(WS2_LDADD)
 
 # Checks for typedefs, structures, and compiler characteristics.

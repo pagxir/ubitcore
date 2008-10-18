@@ -6,4 +6,4 @@ btload_LDADD = \
 	$(top_srcdir)/src/btdht/libsub_btdht.a \
 	$(WS2_LDADD)
 
-INCLUDES = -I$(srcdir) -I$(srcdir)/.. -I$(top_srcdir) -I$(top_srcdir)/include
+INCLUDES = -I$(srcdir) -I$(srcdir)/.. -I$(top_srcdir) -I$(top_srcdir)$(WS2_INCLUDE)

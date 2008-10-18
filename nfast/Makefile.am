@@ -1,7 +1,7 @@
 SUBDIRS = src
 
 EXTRA_DIST = autogen.sh \
-	include/sys/socket.h \
-	include/netdb.h \
-	include/arpa/inet.h \
-	include/netinet/in.h
+	include/win32/sys/socket.h \
+	include/win32/netdb.h \
+	include/win32/arpa/inet.h \
+	include/win32/netinet/in.h
