@@ -91,7 +91,7 @@ struct btimer
     int bwait() const
     {
         if (time(NULL) < btick()){
-            sleep(btick() - time(NULL));
+            //sleep(btick() - time(NULL));
         }
         return 0;
     }

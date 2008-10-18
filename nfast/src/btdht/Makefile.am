@@ -15,4 +15,4 @@ libsub_btdht_a_SOURCES = \
 	bdhtnet.h
 	
 
-INCLUDES = -I$(srcdir) -I$(srcdir)/.. -I$(top_srcdir)
+INCLUDES = -I$(srcdir) -I$(top_srcdir)/include -I$(srcdir)/.. -I$(top_srcdir)
