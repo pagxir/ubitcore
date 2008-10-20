@@ -23,6 +23,7 @@
 #include "bupdown.h"
 #include "bchunk.h"
 #include "bfiled.h"
+#include "bloader.h"
 #include "btdht/bdhtnet.h"
 
 #ifndef NDEBUG
