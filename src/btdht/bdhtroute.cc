@@ -45,7 +45,9 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
     }
 
     int i;
-    bdhtident one((uint8_t*)ident), self((uint8_t*)get_peer_ident());
+    char clientid[20];
+    getclientid(clientid);
+    bdhtident one((uint8_t*)ident), self((uint8_t*)clientid);
     bdhtident dist = one^self;
     int lg = dist.lg();
     for (i=0; i<8; i++){
@@ -64,10 +66,11 @@ void
 dump_route_table()
 {
     int i, j;
+    char clientid[20];
     printf("\nroute table begin\n");
     printf("myid:\t");
     for (i=0; i<20; i++){
-        printf("%02x", 0xff&(get_peer_ident()[i]));
+        printf("%02x", 0xff&(clientid[i]));
     }
     printf("\n---------------------------------\n");
     for (i=0; i<160; i++){
@@ -91,9 +94,11 @@ static bdhtorrent *__dhtorrent;
 void
 route_get_peers(bdhtnet *dhtnet)
 {
+    char clientid[20];
     __dhtorrent = new bdhtorrent(dhtnet);
     bdhtident info((uint8_t*)get_info_hash());
-    bdhtident ident((uint8_t*)get_peer_ident());
+    getclientid(clientid);
+    bdhtident ident((uint8_t*)clientid);
 
     bdhtident dist = info^ident;
 

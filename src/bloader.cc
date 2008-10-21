@@ -51,7 +51,7 @@ btseed_load(const char *buf, int len)
 }
 
 int
-gen_peer_ident(unsigned char ident[20])
+genclientid(char ident[20])
 {
     int i;
     srand(time(NULL));
@@ -65,9 +65,9 @@ int
 main(int argc, char *argv[])
 {
     int i;
-    unsigned char ident[20];
-    gen_peer_ident(ident);
-    set_peer_ident(ident);
+    char ident[20];
+    genclientid(ident);
+    setclientid(ident);
     signal(SIGPIPE, SIG_IGN);
     for (i=1; i<argc; i++){
         std::string btseed;

@@ -13,20 +13,23 @@ get_info_hash()
     return __info_hash;
 }
 
-const unsigned char *
-get_peer_ident()
+int
+getclientid(char clientid[20])
 {
-    return __peer_ident;
+    memcpy(clientid, __peer_ident, 20);
+    return 0;
 }
 
-void
+int
 set_info_hash(unsigned char hash[20])
 {
     memcpy(__info_hash, hash, 20);
+    return 0;
 }
 
-void
-set_peer_ident(unsigned char ident[20])
+int
+setclientid(char ident[20])
 {
     memcpy(__peer_ident, ident, 20);
+    return 0;
 }
