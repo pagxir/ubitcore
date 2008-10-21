@@ -91,7 +91,7 @@ bqueue::bdocall(time_t timeout)
             case 3:
                 memcpy(buffer, __protocol, sizeof(__protocol));
                 memcpy(buffer+28, get_info_hash(), 20);
-                memcpy(buffer+48, get_peer_ident(), 20);
+                getclientid(&buffer[48]);
                 error = b_ep->b_socket.bsend(buffer, 68);
                 break;
             case 4:
