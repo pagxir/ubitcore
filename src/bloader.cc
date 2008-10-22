@@ -254,7 +254,7 @@ main(int argc, char *argv[])
     srand(time(NULL));
     boffer_start(0);
     bfiled_start(30);
-    bdhtnet_start();
+    //bdhtnet_start();
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */

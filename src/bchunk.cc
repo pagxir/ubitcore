@@ -304,7 +304,11 @@ int bchunk_sync(const char *buf, int idx, int start, int len)
     bmgrchunk *chk = bget_mgrchunk(idx);
     assert(chk!=NULL);
     assert(len>0&&start>=0);
-    assert(start+len <= chk->b_length);
+    if(start+len > chk->b_length){
+        printf("one: %d two: %d\n",
+                start+len, chk->b_length);
+        assert(0);
+    }
     assert(chk->b_buffer != NULL);
     memcpy(chk->b_buffer+start, buf, len);
     std::map<int,int> &lm = chk->b_lostmap;

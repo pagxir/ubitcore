@@ -149,6 +149,9 @@ bupdown::real_decode(char *buf, int len)
             bpost_chunk(piece);
         }
     }else if (len>9 && buf[0]==BT_MSG_PIECE){
+        if (ntohl(text[1]) > 1024*1024){
+            return -1;
+        }
         bchunk_sync((const char*)&text[2],
                 ntohl(text[0]), ntohl(text[1]), len-9);
         b_requesting -= len;
