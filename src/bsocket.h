@@ -18,15 +18,15 @@ class bsocket
         bsocket();
         ~bsocket();
         bsocket &operator=(bsocket&);
-        int baccept(unsigned long *host, int *port);
+        int baccept(uint32_t *host, int *port);
         int bconnect(const char *host, int port);
-        int bconnect(unsigned long host, int port);
+        int bconnect(uint32_t host, int port);
         int bsend(const void *buf, size_t len);
         int breceive(void *buf, size_t len);
         int bsendto(const void *buf, size_t len,
-                unsigned long host, unsigned short port);
+                uint32_t host, unsigned short port);
         int brecvfrom(void *buf, size_t len,
-                unsigned long *host, unsigned short *port);
+                uint32_t *host, unsigned short *port);
         static int global_init();
         static int bselect(time_t timeout);
 

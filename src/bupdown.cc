@@ -102,8 +102,8 @@ bupdown::quick_decode(char *buf, int len, int readed)
     if (len>9 && buf[0]==BT_MSG_PIECE){
 #if 0
         printf("quick data piece: index=%d begin=%d len=%d/%d\n", 
-                ntohl(*(unsigned long*)(buf+1)),
-                ntohl(*(unsigned long*)(buf+5)),
+                ntohl(*(uint32_t*)(buf+1)),
+                ntohl(*(uint32_t*)(buf+5)),
                 readed, len
                 );
 #endif
@@ -114,7 +114,7 @@ bupdown::quick_decode(char *buf, int len, int readed)
 int
 bupdown::real_decode(char *buf, int len)
 {
-    unsigned long* text =(unsigned long *)(buf+1);
+    uint32_t* text =(uint32_t *)(buf+1);
     if (len == 0){
         b_keepalive = 1;
     }else if (len==1 && buf[0]==BT_MSG_CHOCK){
@@ -131,7 +131,7 @@ bupdown::real_decode(char *buf, int len)
     }else if (len==1 && buf[0]==BT_MSG_NOINTERESTED){
         b_rinterested = BT_MSG_NOINTERESTED;
     }else if (len==5 && buf[0]==BT_MSG_HAVE){
-        unsigned long idx = ntohl(text[0]); 
+        uint32_t idx = ntohl(text[0]); 
         b_bitfield.bitset(idx);
         b_ref_have++;
         b_new_linterested = BT_MSG_INTERESTED;
@@ -221,7 +221,7 @@ again:
     }
 
     if (bget_have(b_ptrhave) != -1){
-        unsigned long msglen = htonl(5);
+        uint32_t msglen = htonl(5);
         if (b_ptrhave == 0){
             int si=bsync_bitfield(b_upbuffer+b_upsize+5, &b_ptrhave);
             msglen = htonl(si+1);
@@ -245,7 +245,7 @@ again:
 
     if (b_lchoke!=b_new_lchoke && b_upsize+5<sizeof(b_upbuffer)){
         b_lchoke = b_new_lchoke;
-        unsigned long msglen = htonl(1);
+        uint32_t msglen = htonl(1);
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
         b_upbuffer[b_upsize] = b_new_lchoke;
@@ -260,7 +260,7 @@ again:
 
     if (b_linterested!=b_new_linterested && b_upsize+5<sizeof(b_upbuffer)){
         b_linterested = b_new_linterested;
-        unsigned long msglen = htonl(1);
+        uint32_t msglen = htonl(1);
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
         b_upbuffer[b_upsize] = b_new_linterested;
@@ -283,7 +283,7 @@ again:
                 b_queued.push_back(b_lastref);
             }
             b_requesting += chunk->b_length;
-            unsigned long msglen = htonl(12+1);
+            uint32_t msglen = htonl(12+1);
             memcpy(b_upbuffer+b_upsize, &msglen, 4);
             b_upsize += 4;
             b_upbuffer[b_upsize] = BT_MSG_REQUEST;
@@ -311,7 +311,7 @@ fail_exit:
         bchunk_t chunk = b_upload->queue().front();
         b_upload->queue().pop();
         int oupsize = b_upsize;
-        unsigned long msglen = htonl(9+chunk.b_length);
+        uint32_t msglen = htonl(9+chunk.b_length);
         memcpy(b_upbuffer+b_upsize, &msglen, 4);
         b_upsize += 4;
         b_upbuffer[b_upsize] = BT_MSG_PIECE;
@@ -392,7 +392,7 @@ bupdown::bdocall(time_t timeout)
                     int parsed = 0;
                     int parsed4 = parsed + 4;
                     while (parsed4 <= b_offset){
-                        unsigned long l = ntohl(*(unsigned long*)
+                        uint32_t l = ntohl(*(uint32_t*)
                                 (b_buffer+parsed));
                         if (b_offset < parsed4+l){
                             quick_decode(b_buffer+parsed4, l,

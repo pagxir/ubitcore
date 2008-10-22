@@ -12,7 +12,7 @@ public:
 
 struct ep1_t
 {
-    unsigned long b_host;
+    uint32_t b_host;
     unsigned short b_port;
     unsigned short b_flag;
 };

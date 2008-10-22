@@ -107,7 +107,7 @@ bload_peer(const char *buffer, size_t count)
     int i;
     for (i=0; i<(size/6); i++){
         ep1_t ep;
-        ep.b_host = *(unsigned long *)peers[i];
+        ep.b_host = *(uint32_t *)peers[i];
         ep.b_port = htons(*(unsigned short*)(peers[i]+4));
         benqueue(ep);
     }
