@@ -85,6 +85,7 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         if (b_filter.size()>=8){
             bdhtident dist = dident^self;
             if ((--b_filter.end())->first < dist){
+                printf("skip one node\n");
                 delete traper;
                 continue;
             }
