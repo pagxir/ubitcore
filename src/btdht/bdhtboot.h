@@ -21,6 +21,7 @@ class bdhtboot: public bdhtpoller
         bdhtnet *b_dhtnet;
         uint8_t  b_target[20];
         std::queue<bootstraper*> b_tryfinal;
+        std::map<bdhtident, bdhtident> b_filter;
         std::map<netpt, bootstraper*> b_trapmap;
         std::map<bdhtident, bootstraper*> b_findmap;
         std::map<bdhtident, bootstraper*> b_bootmap;

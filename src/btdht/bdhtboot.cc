@@ -55,7 +55,19 @@ bdhtboot::find_node_next(const void *buf, size_t len)
     size_t elen;
     btcodec codec;
     codec.bload((char*)buf, len);
+    char clientid[20];
+    getclientid(clientid);
+    bdhtident self((uint8_t*)clientid);
 
+    const char *ident = codec.bget().bget("r").bget("id").c_str(&elen);
+    if (ident!=NULL && elen==20){
+        bdhtident node((uint8_t*)ident); 
+        bdhtident dist = node^self;
+        b_filter.insert(std::make_pair(dist, node));
+        if (b_filter.size() > 8){
+            b_filter.erase(--b_filter.end());
+        }
+    }
     const char *np = codec.bget().bget("r").bget("nodes").c_str(&elen);
     if (np == NULL){
         printf("bad packet\n");
@@ -70,6 +82,13 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         memcpy(&traper->b_port, &p->port, 2);
         traper->b_port = htons(traper->b_port);
         netpt pt(traper->b_host, traper->b_port);
+        if (b_filter.size()>=8){
+            bdhtident dist = dident^self;
+            if ((--b_filter.end())->first < dist){
+                delete traper;
+                continue;
+            }
+        }
         if (false == b_trapmap.insert(std::make_pair(pt, traper)).second){
             delete traper;
             continue;

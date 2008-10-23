@@ -32,19 +32,22 @@ btseed_load(const char *buf, int len)
     int err;
     size_t eln;
     btcodec codec;
-    unsigned char digest[20];
+    uint8_t digest[20];
     codec.bload(buf, len);
     const char *info = codec.bget().bget("info").b_str(&eln);
-    SHA1Hash(digest, (unsigned char*)info, eln);
-    set_info_hash(digest);
+
+    if (info != NULL){
+        SHA1Hash(digest, info, eln);
+        set_info_hash(digest);
+    }
 
 #if 1
     bentity &nodes = codec.bget().bget("nodes");
     for (i=0; nodes.bget(i).b_str(&eln); i++){
         int port = nodes.bget(i).bget(1).bget(&err);
         const char* ip = nodes.bget(i).bget(0).c_str(&eln);
-        std::string ips(ip, eln);
-        bdhtnet_node(ips.c_str(), port);
+        std::string ipstr(ip, eln);
+        bdhtnet_node(ipstr.c_str(), port);
     }
 #endif
     return 0;
@@ -54,7 +57,6 @@ int
 genclientid(char ident[20])
 {
     int i;
-    srand(time(NULL));
     for (i=0; i<20; i++){
         ident[i] = rand()%256;
     }
@@ -66,6 +68,7 @@ main(int argc, char *argv[])
 {
     int i;
     char ident[20];
+    srand(time(NULL));
     genclientid(ident);
     setclientid(ident);
     signal(SIGPIPE, SIG_IGN);
@@ -78,7 +81,6 @@ main(int argc, char *argv[])
         btseed_load(btseed.c_str(), btseed.size());
     }
 
-    srand(time(NULL));
     bdhtnet_start();
 
 #ifndef DEFAULT_TCP_TIME_OUT
