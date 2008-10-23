@@ -20,16 +20,16 @@
 static bdhtnet __dhtnet;
 static bdhtboot __boot_bucket(&__dhtnet);
 
-uint8_t __ping_node[] = {
+char __ping_node[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
 };
 
-uint8_t __find_node[] = {
+char __find_node[] = {
     "d1:ad2:id20:abcdefghij01234567896:target"
         "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
 };
 
-uint8_t __get_peers[] =  {
+char __get_peers[] =  {
     "d1:ad2:id20:abcdefghij01234567899:info_hash"
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
@@ -74,8 +74,8 @@ int
 bdhtnet::get_peers(uint32_t tid, uint32_t host,
         uint16_t port, uint8_t ident[20])
 {
-    memcpy(__get_peers+46, ident, 20);
-    memcpy(__get_peers+86, &tid, 4);
+    memcpy(&__get_peers[46], ident, 20);
+    memcpy(&__get_peers[86], &tid, 4);
     return b_socket.bsendto(__get_peers,
             sizeof(__get_peers)-1,
             host, port);
@@ -93,8 +93,8 @@ bdhtnet::find_node(uint32_t tid, uint32_t host,
             inet_ntoa(addr), htons(port));
 #endif
 
-    memcpy(__find_node+43, ident, 20);
-    memcpy(__find_node+83, &tid, 4);
+    memcpy(&__find_node[43], ident, 20);
+    memcpy(&__find_node[83], &tid, 4);
     return b_socket.bsendto(__find_node,
             sizeof(__find_node)-1,
             host, port);
@@ -103,7 +103,7 @@ bdhtnet::find_node(uint32_t tid, uint32_t host,
 int
 bdhtnet::ping_node(uint32_t tid, uint32_t host, uint16_t port)
 {
-    memcpy(__ping_node+47, &tid, 4);
+    memcpy(&__ping_node[47], &tid, 4);
     return b_socket.bsendto(__ping_node,
             sizeof(__ping_node)-1,
             host, port);
@@ -168,18 +168,18 @@ bdhtnet_node(const char *host, int port)
 int
 bdhtnet_start()
 {
-    uint8_t boothash[20];
+    char bootid[20];
     static int __call_once_only = 0;
 
     if (__call_once_only++ > 0){
         return -1;
     }
-    getclientid((char*)&__ping_node[12]);
-    getclientid((char*)&__find_node[12]);
-    getclientid((char*)&__get_peers[12]);
-    getclientid((char*)boothash);
-    boothash[19]^=0x1;
-    __boot_bucket.set_target(boothash);
+    getclientid(&__ping_node[12]);
+    getclientid(&__find_node[12]);
+    getclientid(&__get_peers[12]);
+    getclientid(bootid);
+    bootid[19]^=0x1;
+    __boot_bucket.set_target((uint8_t*)bootid);
     __boot_bucket.bwakeup();
     __dhtnet.bwakeup();
     return 0;

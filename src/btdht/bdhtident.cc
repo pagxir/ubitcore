@@ -35,37 +35,19 @@ bdhtident::bdhtident(uint8_t ident[20])
 bool
 bdhtident::operator==(const bdhtident &ident)const
 {
-    int i;
-    for (i=0; i<20; i++){
-        if (b_ident[i]!=ident.b_ident[i]){
-            return false;
-        }
-    }
-    return true;
+    return 0==memcmp(b_ident, ident.b_ident, 20);;
 }
 
 bool
 bdhtident::operator<(const bdhtident &ident)const
 {
-    int i;
-    for (i=0; i<20; i++){
-        if (b_ident[i]<ident.b_ident[i]){
-            return true;
-        }
-    }
-    return false;
+    return memcmp(b_ident, ident.b_ident, 20)<0;
 }
 
 bool
 bdhtident::operator>(const bdhtident &ident)const
 {
-    int i;
-    for (i=0; i<20; i++){
-        if (b_ident[i]>ident.b_ident[i]){
-            return true;
-        }
-    }
-    return false;
+    return memcmp(b_ident, ident.b_ident, 20)>0;
 }
 
 const bdhtident
