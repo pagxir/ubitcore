@@ -4,7 +4,8 @@
 class bdhtboot: public bdhtpoller
 {
     public:
-        bdhtboot(bdhtnet *dhtnet);
+        bdhtboot(bdhtnet *dhtnet, int tableid);
+        int getbootcount(){ return b_count; }
         void set_target(uint8_t target[20]);
         void add_dhtnode(uint32_t host, uint16_t port);
         void find_node_next(const void *ibuf, size_t len);
@@ -12,6 +13,7 @@ class bdhtboot: public bdhtpoller
 
     private:
         int b_count;
+        int b_tableid;
         uint32_t b_hosts[8];
         uint16_t b_ports[8];
 

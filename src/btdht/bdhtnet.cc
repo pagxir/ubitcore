@@ -18,7 +18,7 @@
 #include "bdhtransfer.h"
 
 static bdhtnet __dhtnet;
-static bdhtboot __boot_bucket(&__dhtnet);
+static bdhtboot __boot_bucket(&__dhtnet, 159);
 
 char __ping_node[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"

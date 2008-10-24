@@ -15,6 +15,7 @@
 #include "bthread.h"
 #include "bdhtident.h"
 #include "bdhtnet.h"
+#include "bdhtboot.h"
 #include "bdhtorrent.h"
 
 typedef struct  _rib{
@@ -25,6 +26,7 @@ typedef struct  _rib{
 
 
 static int __ribcount = 0;
+static bdhtboot *__bootlist[160];
 static rib *__bucket[160][8];
 
 int getribcount()
@@ -32,8 +34,30 @@ int getribcount()
     return __ribcount;
 }
 
+static uint8_t __mask[8] = {0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+
+int
+gentarget(char target[20], int which)
+{
+    /* which: which slot */
+    int i;
+    getclientid(target);
+    for (i=0; i<20; i++){
+        if (which < 8){
+            break;
+        }
+        which -= 8;
+    }
+    target[i]=__mask[which]^target[i];
+    for (i++;i<20;i++){
+        target[i] = 0xFF&rand();
+    }
+    return 0;
+}
+
 void
-update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
+update_route(bdhtnet *net, const void *ibuf, size_t len,
+        uint32_t host, uint16_t port)
 {
     size_t idl;
     btcodec codec;
@@ -60,6 +84,26 @@ update_route(const void *ibuf, size_t len, uint32_t host, uint16_t port)
             break;
         }
     }
+#if 1
+    if (lg>0 && __bucket[lg-1][0]==NULL){
+        char target[20];
+        lg --;
+        if (__bootlist[lg] == NULL){
+            __bootlist[lg] = new bdhtboot(net, lg);
+        }
+        gentarget(target, lg);
+        __bootlist[lg]->set_target((uint8_t*)target);
+        __bootlist[lg]->add_dhtnode(host, port);
+        if (__bootlist[lg]->getbootcount() > 3){
+            __bootlist[lg]->bwakeup();
+        }
+        printf("wakup: %d:", lg);
+        for (i=0; i<20; i++){
+            printf("%02x", 0xff&target[i]);
+        }
+        printf("\n");
+    }
+#endif
 }
 
 void
@@ -68,6 +112,7 @@ dump_route_table()
     int i, j;
     char clientid[20];
     printf("\nroute table begin\n");
+    getclientid(clientid);
     printf("myid:\t");
     for (i=0; i<20; i++){
         printf("%02x", 0xff&(clientid[i]));
@@ -125,4 +170,13 @@ route_get_peers(bdhtnet *dhtnet)
     }
     __dhtorrent->set_infohash((uint8_t*)get_info_hash());
     __dhtorrent->bwakeup();
+}
+
+bool
+route_need_update(int index)
+{
+    if (__bucket[index][7] == NULL){
+        return true;
+    }
+    return false;
 }

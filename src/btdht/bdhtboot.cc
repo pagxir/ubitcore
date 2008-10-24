@@ -26,11 +26,12 @@ typedef struct _npack
 }npack;
 
 
-bdhtboot::bdhtboot(bdhtnet *dhtnet)
+bdhtboot::bdhtboot(bdhtnet *dhtnet, int tableid)
 {
     b_count = 0;
     b_state = 0;
     b_dhtnet = dhtnet;
+    b_tableid = tableid;
 }
 
 void
@@ -85,7 +86,6 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         if (b_filter.size()>=8){
             bdhtident dist = dident^self;
             if ((--b_filter.end())->first < dist){
-                printf("skip one node\n");
                 delete traper;
                 continue;
             }
@@ -187,9 +187,11 @@ bdhtboot::bdocall(time_t timeout)
                     delete trans;
                     p.b_transfer = NULL;
                     error = 0;
-                    state = 1;
-                    find_node_next(buffer, flag);
-                    update_route(buffer, flag, host, port);
+                    update_route(b_dhtnet, buffer, flag, host, port);
+                    if (route_need_update(b_tableid)){
+                        find_node_next(buffer, flag);
+                        state = 1;
+                    }
                 }
                 break;
             case 4:
@@ -200,12 +202,11 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 break;
             case 5:
-                if (!b_findmap.empty()){
+                if (!b_findmap.empty() && route_need_update(b_tableid)){
                     state = 2;
                 }
                 break;
             case 6:
-                printf("find ended\n");
                 for (inter=b_trapmap.begin();
                         inter!=b_trapmap.end();
                         inter++){
@@ -218,8 +219,10 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 break;
             case 7:
-                route_get_peers(b_dhtnet);
-                dump_route_table();
+                //route_get_peers(b_dhtnet);
+                if (b_tableid == 159){
+                    dump_route_table();
+                }
                 break;
             default:
                 return 0;
