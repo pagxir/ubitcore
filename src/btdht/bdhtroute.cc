@@ -237,16 +237,16 @@ update_all_bucket(bdhtnet *net)
         }
         if (need_boot==true&&count>8){
             char target[20];
-#if 0
+            gentarget(target, i);
             bdhtboot* &dhtboot = __bootnextlist[i];
             dhtboot = new bdhtboot(net, i);
-            gentarget(target, i);
             dhtboot->set_target((uint8_t*)target);
+#if 0
             for (j=0; j<8; j++){
                 dhtboot->add_dhtnode(lastrib[j]->host,
                         lastrib[j]->port);
             }
-            //dhtboot->bwakeup();
+            dhtboot->bwakeup();
 #endif
         }
     }
