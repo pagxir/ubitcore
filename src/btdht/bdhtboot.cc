@@ -214,7 +214,7 @@ bdhtboot::bdocall(time_t timeout)
                     delete inter->second;
                 }
                 b_trapmap.clear();
-                if (getribcount()<32){
+                if (getribcount()<32||b_filter.size()<4){
                     state = 0;
                 }
                 break;

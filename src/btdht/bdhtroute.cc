@@ -88,20 +88,19 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
     if (lg>0 && __bucket[lg-1][0]==NULL){
         char target[20];
         lg --;
-        if (__bootlist[lg] == NULL){
-            __bootlist[lg] = new bdhtboot(net, lg);
+        bdhtboot* &dhtboot = __bootlist[lg];
+        if (dhtboot == NULL){
+            dhtboot = new bdhtboot(net, lg);
+            gentarget(target, lg);
+            dhtboot->set_target((uint8_t*)target);
+            printf("wakup: %02d:\t", lg);
+            for (i=0; i<20; i++){
+                printf("%02x", 0xff&target[i]);
+            }
+            printf("\n");
+            dhtboot->bwakeup();
         }
-        gentarget(target, lg);
-        __bootlist[lg]->set_target((uint8_t*)target);
-        __bootlist[lg]->add_dhtnode(host, port);
-        if (__bootlist[lg]->getbootcount() > 3){
-            __bootlist[lg]->bwakeup();
-        }
-        printf("wakup: %d:", lg);
-        for (i=0; i<20; i++){
-            printf("%02x", 0xff&target[i]);
-        }
-        printf("\n");
+        dhtboot->add_dhtnode(host, port);
     }
 #endif
 }
