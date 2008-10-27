@@ -43,8 +43,14 @@ bdhtboot::set_target(uint8_t target[20])
 void
 bdhtboot::add_dhtnode(uint32_t host, uint16_t port)
 {
+    int i;
+    int end=std::min(8, b_count);
+    for (i=0; i<end; i++){
+        if (host == b_hosts[i]){
+            return ;
+        }
+    }
     int idx = 0x7&b_count++;
-
     b_hosts[idx] = host;
     b_ports[idx] = port;
 }
@@ -105,6 +111,27 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         }
         printf("\n");
 #endif
+        if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
+            continue;
+        }
+        traper->b_transfer = b_dhtnet->get_transfer();
+    }
+}
+
+void
+bdhtboot::add_node_list(uint32_t hosts[], uint16_t ports[],
+        uint8_t ident[][20], size_t count)
+{
+    int i;
+    uint8_t ibuf[20]={0};
+    for (i=0; i<count; i++){
+        bdhtident dident(ident[i]);
+        bootstraper *traper = new bootstraper();
+        netpt pt(hosts[i], ports[i]);
+        if (false == b_trapmap.insert(std::make_pair(pt, traper)).second){
+            delete traper;
+            continue;
+        }
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             continue;
         }
@@ -215,7 +242,12 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 b_trapmap.clear();
                 if (getribcount()<32||b_filter.size()<4){
-                    update_boot_nodes(this, b_tableid);
+                    uint32_t hosts[8];
+                    uint16_t ports[8];
+                    uint8_t  idents[8][20];
+                    int count = update_boot_nodes(b_tableid, hosts,
+                            ports, idents, 8);
+                    add_node_list(hosts, ports, idents, count);
                     state = 0;
                 }
                 break;

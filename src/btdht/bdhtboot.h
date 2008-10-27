@@ -8,6 +8,8 @@ class bdhtboot: public bdhtpoller
         int getbootcount(){ return b_count; }
         void set_target(uint8_t target[20]);
         void add_dhtnode(uint32_t host, uint16_t port);
+        void add_node_list(uint32_t hosts[], uint16_t ports[],
+                uint8_t ident[][20], size_t count);
         void find_node_next(const void *ibuf, size_t len);
         virtual int bdocall(time_t timeout);
 

@@ -133,22 +133,28 @@ dump_route_table()
     printf("route table finish\n");
 }
 
-bool
-update_boot_nodes(bdhtboot *boot, int tabidx)
+int
+update_boot_nodes(int tabidx, uint32_t host[],
+        uint16_t port[], uint8_t idents[][20], size_t size)
 {
     int i;
-    bool retval = false;
-    if (tabidx < 160){
+    int count = 0;
+    if (tabidx < 159){
         for (i=0; i<8; i++){
             if (__bucket[tabidx+1][i] == NULL){
-                continue;
+                return count;
             }
             rib *rib = __bucket[tabidx+1][i];
-            boot->add_dhtnode(rib->host, rib->port);
-            retval = true;
+            host[count] = rib->host;
+            port[count] = rib->port;
+            memcpy(idents[count], rib->ident, 20);
+            count++;
+            if (count >= size){
+                return count;
+            }
         }
     } 
-    return retval;
+    return count;
 }
 
 static bdhtorrent *__dhtorrent;
