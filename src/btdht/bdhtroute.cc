@@ -25,8 +25,14 @@ typedef struct  _rib{
 }rib;
 
 
+static int __kmax = 0;
 static int __ribcount = 0;
+static bool __boot0 = true;
+static char __reverse1[160];
 static bdhtboot *__bootlist[160];
+static char __reverse2[160];
+static bdhtboot *__bootnextlist[160];
+static char __reverse3[160];
 static rib *__bucket[160][8];
 
 int getribcount()
@@ -80,6 +86,7 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
             memcpy(__bucket[lg][i]->ident, ident, 20);
             __bucket[lg][i]->host = host;
             __bucket[lg][i]->port = port;
+            __kmax = std::max(lg, __kmax);
             __ribcount++;
             break;
         }else if (__bucket[lg][i]->host == host){
@@ -87,7 +94,7 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
         }
     }
 #if 1
-    if (lg>0 && __bucket[lg-1][0]==NULL){
+    if (lg>0 && __bucket[lg-1][0]==NULL && __boot0==true){
         char target[20];
         lg --;
         bdhtboot* &dhtboot = __bootlist[lg];
@@ -204,4 +211,44 @@ route_need_update(int index)
         return true;
     }
     return false;
+}
+
+int
+update_all_bucket(bdhtnet *net)
+{
+    int i, j;
+    int count = 0;
+    rib *lastrib[8];
+    if (__boot0 == false){
+        return -1;
+    }
+    __boot0 = false;
+    return -1;
+    bool need_boot = false;
+    for (i=__kmax; i>=0; i--){
+        need_boot = false;
+        for (j=0; j<8; j++){
+            lastrib[count&0x7] = __bucket[i][j];
+            if (lastrib[count&0x7] != NULL){
+                count++;
+            }else{
+                need_boot = true;
+            }
+        }
+        if (need_boot==true&&count>8){
+            char target[20];
+#if 0
+            bdhtboot* &dhtboot = __bootnextlist[i];
+            dhtboot = new bdhtboot(net, i);
+            gentarget(target, i);
+            dhtboot->set_target((uint8_t*)target);
+            for (j=0; j<8; j++){
+                dhtboot->add_dhtnode(lastrib[j]->host,
+                        lastrib[j]->port);
+            }
+            //dhtboot->bwakeup();
+#endif
+        }
+    }
+    return 0;
 }

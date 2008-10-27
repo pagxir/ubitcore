@@ -254,14 +254,42 @@ bdhtboot::bdocall(time_t timeout)
             case 7:
                 //route_get_peers(b_dhtnet);
                 if (b_tableid == 159){
-                    dump_route_table();
+                    update_all_bucket(b_dhtnet);
+                    b_touch = time(NULL);
+                    state = 10;
+                    error = 0;
                 }
                 break;
             default:
                 return 0;
                 break;
+            case 10:
+                error = btime_wait(b_touch+30);
+                break;
+            case 11:
+                b_touch = time(NULL);
+                dump_route_table();
+                state = 10;
+                break;
         }
     }
 
     return error;
+}
+
+int
+bdhtboot::reboot()
+{
+    if (b_state!=8 && b_state!=0){
+        return -1;
+    }
+    while (!b_tryfinal.empty()){
+        b_tryfinal.pop();
+    }
+    b_filter.clear();
+    b_trapmap.clear();
+    b_findmap.clear();
+    b_bootmap.clear();
+    b_state = 0;
+    bwakeup();
 }

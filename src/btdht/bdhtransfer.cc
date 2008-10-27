@@ -26,6 +26,12 @@ bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
 
 bdhtransfer::~bdhtransfer()
 {
+    while (!b_queue.empty()){
+        bdhtpack *pkg = b_queue.front();
+        b_queue.pop();
+        free(pkg->b_ibuf);
+        delete pkg;
+    }
     b_dhtnet->detach(b_ident);
 }
 
@@ -38,6 +44,7 @@ bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
         return -1;
     }
     bdhtpack *pkg = b_queue.front();
+    assert(pkg!=NULL);
     if (pkg->b_len > len){
         return -1;
     }
@@ -49,6 +56,7 @@ bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
     if (port != NULL){
         *port = pkg->b_port;
     }
+    free(pkg->b_ibuf);
     delete pkg;
     return pkg->b_len;
 }

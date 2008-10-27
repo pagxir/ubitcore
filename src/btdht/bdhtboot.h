@@ -5,6 +5,7 @@ class bdhtboot: public bdhtpoller
 {
     public:
         bdhtboot(bdhtnet *dhtnet, int tableid);
+        int reboot();
         int getbootcount(){ return b_count; }
         void set_target(uint8_t target[20]);
         void add_dhtnode(uint32_t host, uint16_t port);

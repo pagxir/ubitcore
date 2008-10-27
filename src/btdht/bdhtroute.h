@@ -10,4 +10,5 @@ void update_route(bdhtnet *net, const void *ibuf, size_t len,
 bool route_need_update(int index);
 int  update_boot_nodes(int tabidx, uint32_t host[], uint16_t port[],
         uint8_t idents[][20], size_t size);
+int  update_all_bucket(bdhtnet *net);
 #endif
