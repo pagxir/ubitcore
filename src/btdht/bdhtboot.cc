@@ -215,6 +215,7 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 b_trapmap.clear();
                 if (getribcount()<32||b_filter.size()<4){
+                    update_boot_nodes(this, b_tableid);
                     state = 0;
                 }
                 break;

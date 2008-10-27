@@ -98,9 +98,9 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
                 printf("%02x", 0xff&target[i]);
             }
             printf("\n");
+            dhtboot->add_dhtnode(host, port);
             dhtboot->bwakeup();
         }
-        dhtboot->add_dhtnode(host, port);
     }
 #endif
 }
@@ -131,6 +131,24 @@ dump_route_table()
         }
     }
     printf("route table finish\n");
+}
+
+bool
+update_boot_nodes(bdhtboot *boot, int tabidx)
+{
+    int i;
+    bool retval = false;
+    if (tabidx < 160){
+        for (i=0; i<8; i++){
+            if (__bucket[tabidx+1][i] == NULL){
+                continue;
+            }
+            rib *rib = __bucket[tabidx+1][i];
+            boot->add_dhtnode(rib->host, rib->port);
+            retval = true;
+        }
+    } 
+    return retval;
 }
 
 static bdhtorrent *__dhtorrent;
