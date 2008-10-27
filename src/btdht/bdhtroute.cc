@@ -82,6 +82,8 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
             __bucket[lg][i]->port = port;
             __ribcount++;
             break;
+        }else if (__bucket[lg][i]->host == host){
+            return;
         }
     }
 #if 1
