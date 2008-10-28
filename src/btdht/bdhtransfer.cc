@@ -17,6 +17,7 @@
 #include "bdhtnet.h"
 #include "bdhtransfer.h"
 
+    extern bdhtnet __dhtnet;
 bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
 {
     b_ident = ident;
@@ -39,6 +40,7 @@ int
 bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
+    assert(b_dhtnet==&__dhtnet);
     if (b_queue.empty()){
         bdopolling(poller);
         return -1;
@@ -46,6 +48,7 @@ bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
     bdhtpack *pkg = b_queue.front();
     assert(pkg!=NULL);
     if (pkg->b_len > len){
+        assert(pkg->b_len < len);
         return -1;
     }
     b_queue.pop();
@@ -85,6 +88,7 @@ void
 bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
+    assert(b_dhtnet==&__dhtnet);
     bdhtpack *pkg = new bdhtpack;
     pkg->b_ibuf = malloc(len);
     pkg->b_len = len;
@@ -97,6 +101,7 @@ bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         return;
     }
     if (b_poller->polling()){
+        b_poller->polling_dump();
         b_poller->bwakeup();
     }
     b_poller = NULL;

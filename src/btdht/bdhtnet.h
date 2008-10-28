@@ -23,7 +23,8 @@ class bdhtcodec
 class bdhtpoller: public bthread
 {
     public:
-        bool polling() { return b_polling; }
+        bool polling();
+        virtual void polling_dump()=0;
 
     protected:
         bool b_polling;
@@ -59,6 +60,7 @@ struct bootstraper
     uint16_t b_port;
     uint32_t b_host;
     bdhtransfer *b_transfer;
+    bootstraper();
 };
 
 int bdhtnet_node(const char *host, int port);

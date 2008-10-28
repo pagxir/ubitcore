@@ -28,6 +28,7 @@ typedef struct _npack
 
 bdhtboot::bdhtboot(bdhtnet *dhtnet, int tableid)
 {
+    b_ident=("bdhtboot");
     b_count = 0;
     b_state = 0;
     b_dhtnet = dhtnet;
@@ -53,6 +54,12 @@ bdhtboot::add_dhtnode(uint32_t host, uint16_t port)
     int idx = 0x7&b_count++;
     b_hosts[idx] = host;
     b_ports[idx] = port;
+}
+
+void
+bdhtboot::polling_dump()
+{
+    printf("is good: %p\n", b_dhtnet);
 }
 
 
@@ -92,12 +99,12 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         if (b_filter.size()>=8){
             bdhtident dist = dident^self;
             if ((--b_filter.end())->first < dist){
-                delete traper;
+                //delete traper;
                 continue;
             }
         }
         if (false == b_trapmap.insert(std::make_pair(pt, traper)).second){
-            delete traper;
+            //delete traper;
             continue;
         }
 #if 0
@@ -129,7 +136,7 @@ bdhtboot::add_node_list(uint32_t hosts[], uint16_t ports[],
         bootstraper *traper = new bootstraper();
         netpt pt(hosts[i], ports[i]);
         if (false == b_trapmap.insert(std::make_pair(pt, traper)).second){
-            delete traper;
+            //delete traper;
             continue;
         }
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
@@ -138,6 +145,8 @@ bdhtboot::add_node_list(uint32_t hosts[], uint16_t ports[],
         traper->b_transfer = b_dhtnet->get_transfer();
     }
 }
+
+extern bdhtnet __dhtnet;
 
 int
 bdhtboot::bdocall(time_t timeout)
@@ -150,6 +159,8 @@ bdhtboot::bdocall(time_t timeout)
     char buffer[8192];
     std::map<netpt, bootstraper*>::iterator inter;
     std::map<bdhtident, bootstraper*>::iterator iter, niter;
+
+    assert(b_dhtnet == &__dhtnet);
 
     while (error != -1){
         b_state = state++;
@@ -211,7 +222,7 @@ bdhtboot::bdocall(time_t timeout)
                     if (flag == -1){
                         continue;
                     }
-                    delete trans;
+                    //delete trans;
                     p.b_transfer = NULL;
                     error = 0;
                     update_route(b_dhtnet, buffer, flag, host, port);
@@ -237,8 +248,8 @@ bdhtboot::bdocall(time_t timeout)
                 for (inter=b_trapmap.begin();
                         inter!=b_trapmap.end();
                         inter++){
-                    delete inter->second->b_transfer;
-                    delete inter->second;
+                    //delete inter->second->b_transfer;
+                    //delete inter->second;
                 }
                 b_trapmap.clear();
                 if (getribcount()<32||b_filter.size()<4){

@@ -14,6 +14,8 @@ class bdhtboot: public bdhtpoller
         void find_node_next(const void *ibuf, size_t len);
         virtual int bdocall(time_t timeout);
 
+        virtual void polling_dump();
+
     private:
         int b_count;
         int b_tableid;

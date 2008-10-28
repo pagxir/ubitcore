@@ -17,7 +17,7 @@
 #include "bdhtboot.h"
 #include "bdhtransfer.h"
 
-static bdhtnet __dhtnet;
+bdhtnet __dhtnet;
 static bdhtboot __boot_bucket(&__dhtnet, 159);
 
 char __ping_node[] = {
@@ -183,4 +183,15 @@ bdhtnet_start()
     __boot_bucket.bwakeup();
     __dhtnet.bwakeup();
     return 0;
+}
+
+bool
+bdhtpoller::polling()
+{
+    return b_polling;
+}
+
+bootstraper::bootstraper()
+{
+    b_transfer = NULL;
 }

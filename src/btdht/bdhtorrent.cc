@@ -46,6 +46,12 @@ bdhtorrent::set_infohash(uint8_t infohash[20])
 }
 
 void
+bdhtorrent::polling_dump()
+{
+    printf("torrent dump\n");
+}
+
+void
 bdhtorrent::add_node(uint32_t host, uint16_t port)
 {
     uint8_t ibuf[20]={0};

@@ -243,7 +243,7 @@ update_all_bucket(bdhtnet *net)
             bdhtboot* &dhtboot = __bootnextlist[i];
             dhtboot = new bdhtboot(net, i);
             dhtboot->set_target((uint8_t*)target);
-#if 0
+#if 1
             for (j=0; j<8; j++){
                 dhtboot->add_dhtnode(lastrib[j]->host,
                         lastrib[j]->port);

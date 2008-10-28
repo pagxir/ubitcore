@@ -12,6 +12,7 @@ class bdhtorrent: public bdhtpoller
         void add_node(uint32_t host, uint16_t port);
         void get_peers(const void *ibuf, size_t len);
         virtual int bdocall(time_t timeout);
+        virtual void polling_dump();
 
     private:
         void get_peers_next(const void *ibuf, size_t len);
