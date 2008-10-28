@@ -38,7 +38,7 @@ btseed_load(const char *buf, int len)
 
     if (info != NULL){
         SHA1Hash(digest, info, eln);
-        set_info_hash(digest);
+        set_info_hash((char*)digest);
     }
 
 #if 1
@@ -91,10 +91,7 @@ main(int argc, char *argv[])
     bthread *j;
     time_t timeout;
     while (-1 != bthread::bpoll(&j, &timeout)){
-        bwait_cancel();
-        if (-1 == j->bdocall(timeout)){
-            j->bwait();
-        }
+        j->bdocall(timeout);
     }
     return 0;
 }

@@ -9,7 +9,7 @@ bclock::bclock(const char *text, int second):
 {
     b_ident = "bclock";
     b_second = second;
-    last_time = time(NULL);
+    last_time = now_time();
 }
 
 int

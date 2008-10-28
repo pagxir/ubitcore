@@ -58,7 +58,9 @@ int
 bsocket::bwait_connect()
 {
     if (errno == EINPROGRESS){
-	   	bthread_waiter(bsocket::__bwait_connect, 0, this);
+        b_flag |= BSF_CONN;
+        q_read(bthread::now_job());
+        q_write(bthread::now_job());
     }
     return 0;
 }
@@ -67,7 +69,7 @@ int
 bsocket::bwait_receive()
 {
     if (errno == EAGAIN){
-        bthread_waiter(bsocket::__bwait_receive, 0, this);
+        q_read(bthread::now_job());
     }else{
         perror("bad bwait_receive");
     }
@@ -78,7 +80,7 @@ int
 bsocket::bwait_send()
 {
     if (errno == EAGAIN){
-        bthread_waiter(bsocket::__bwait_send, 0, this);
+        q_write(bthread::now_job());
     }else{
         fprintf(stderr, "fd=%d ", b_fd);
         perror("bad bwait_send");
@@ -183,7 +185,7 @@ bsocket::bpoll(int count)
             count--;
         }
 #ifndef DEFAULT_TCP_TIME_OUT
-        if (b_syn_time+8 < time(NULL)){
+        if (b_syn_time+8 < bthread::now_time()){
             b_jwr->bwakeup();
             b_jrd->bwakeup();
             flag &= ~BSF_CONN;
@@ -286,8 +288,7 @@ bsocket::bselect(time_t outtime)
 {
     int count;
     timeval tval;
-    time_t now = time(NULL);
-    tval.tv_sec = outtime>now?outtime-now:0;
+    tval.tv_sec = outtime-bthread::now_time();
     tval.tv_usec = 0;
     bsocket marker;
 
@@ -334,7 +335,7 @@ bsocket::bconnect(unsigned long host, int port)
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;
 #ifndef DEFAULT_TCP_TIME_OUT
-        if (b_syn_time+8 < time(NULL)){
+        if (b_syn_time+8 < bthread::now_time()){
 			return -1;
 		}
 #endif
@@ -352,7 +353,7 @@ bsocket::bconnect(unsigned long host, int port)
     if (error==-1){
         f_flag |= FF_NOCONNECT;
 #ifndef DEFAULT_TCP_TIME_OUT
-        b_syn_time = time(NULL);
+        b_syn_time = bthread::now_time();
 #endif
         bwait_connect();
     }
@@ -396,35 +397,6 @@ bsocket::brecvfrom(void* buffer, size_t len,
         *port = htons(siaddr.sin_port);
     }
     return error;
-}
-
-int
-bsocket::__bwait_connect(bthread* job, int argc, void *argv)
-{
-    bsocket *bps = (bsocket*)argv;
-    bps->b_flag |= BSF_CONN;
-    bps->q_read(job);
-    bps->q_write(job);
-#if 0
-    printf("__bwait_connect: wait connect: %p!\n", job);
-#endif
-    return 0;
-}
-
-int
-bsocket::__bwait_receive(bthread* job, int argc, void *argv)
-{
-    bsocket *bps = (bsocket*)argv;
-    bps->q_read(job);
-    return 0;
-}
-
-int
-bsocket::__bwait_send(bthread* job, int argc, void *argv)
-{
-    bsocket *bps = (bsocket*)argv;
-    bps->q_write(job);
-    return 0;
 }
 
 int

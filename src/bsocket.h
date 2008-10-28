@@ -47,9 +47,6 @@ class bsocket
     public:
 #endif
         static int is_busy();
-        static int __bwait_send(bthread *job, int argc, void *argv);
-        static int __bwait_receive(bthread *job, int argc, void *argv);
-        static int __bwait_connect(bthread *job, int argc, void *argv);
 
     private:
         int b_fd;

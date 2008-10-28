@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include "butils.h"
 
-static unsigned char __info_hash[20];
-static unsigned char __peer_ident[20];
+static char __info_hash[20];
+static char __peer_ident[20];
 
-const unsigned char *
-get_info_hash()
+int
+get_info_hash(char hash[20])
 {
-    return __info_hash;
+    memcpy(hash, __info_hash, 20);
+    return 0;
 }
 
 int
@@ -21,7 +22,7 @@ getclientid(char clientid[20])
 }
 
 int
-set_info_hash(unsigned char hash[20])
+set_info_hash(char hash[20])
 {
     memcpy(__info_hash, hash, 20);
     return 0;

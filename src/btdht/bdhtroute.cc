@@ -172,8 +172,10 @@ void
 route_get_peers(bdhtnet *dhtnet)
 {
     char clientid[20];
+    char infohash[20];
     __dhtorrent = new bdhtorrent(dhtnet);
-    bdhtident info((uint8_t*)get_info_hash());
+    get_info_hash(infohash);
+    bdhtident info((uint8_t*)infohash);
     getclientid(clientid);
     bdhtident ident((uint8_t*)clientid);
 
@@ -200,7 +202,7 @@ route_get_peers(bdhtnet *dhtnet)
             }
         }
     }
-    __dhtorrent->set_infohash((uint8_t*)get_info_hash());
+    __dhtorrent->set_infohash((uint8_t*)infohash);
     __dhtorrent->bwakeup();
 }
 

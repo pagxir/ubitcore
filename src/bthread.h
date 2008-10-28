@@ -13,6 +13,8 @@ public:
     int bwait();
     int benqueue(time_t timeout);
     int flag(){ return b_flag; }
+    static time_t now_time();
+    static bthread *now_job();
     static int bpoll(bthread **pb, time_t *time);
     virtual int bfailed();
     virtual int bdocall(time_t  timeout);
@@ -22,12 +24,11 @@ public:
     time_t b_tick;
 
 protected:
+    static time_t _tnow;
+    static bthread *_jnow;
     std::string b_ident;
     int b_flag;
 };
 
-typedef int (*j_caller)(bthread *, int , void *);
-int bwait_cancel();
 int btime_wait(int t);
-int bthread_waiter(j_caller caller, int argc, void *argv);
 #endif
