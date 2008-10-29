@@ -35,6 +35,8 @@ static bdhtboot *__bootnextlist[160];
 static rib *__bucket[160][8];
 static rib *__backup_bucket[160][8];
 
+static std::map<bdhtident, rib*> __node_world;
+
 int getribcount()
 {
     return __ribcount;
@@ -79,33 +81,37 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
     getclientid(clientid);
     bdhtident one((uint8_t*)ident), self((uint8_t*)clientid);
     bdhtident dist = one^self;
+
+#define new_rib new rib
+
+    rib *this_rib = NULL;
+    if (__node_world.find(one) != __node_world.end()){
+        this_rib = __node_world.find(one)->second;
+    }else{
+        this_rib = new_rib;
+        __node_world.insert(std::make_pair(one, this_rib));
+    }
+    this_rib->host = host;
+    this_rib->port = port;
+    this_rib->ttl  = 5;
+    this_rib->addtime = time(NULL);
     int lg = dist.lg();
     for (i=0; i<8; i++){
         rib * &bucket = __bucket[lg][i];
         if (bucket == NULL){
             /*add new node */
-            bucket = new rib;
-            memcpy(bucket->ident, ident, 20);
-            bucket->host = host;
-            bucket->port = port;
-            bucket->ttl  = 5;
-            bucket->addtime = time(NULL);
+            bucket = this_rib;
             __kmax = std::max(lg, __kmax);
             __ribcount++;
             break;
-        }else if (bucket->host == host){
+        }else if (bucket == this_rib){
             /* update access time */
-            bucket->ttl = 5;
-            bucket->port = port;
-            bucket->addtime = time(NULL);
             return;
         }else if (bucket->ttl < 0){
             /* replace bad node */
-            memcpy(bucket->ident, ident, 20);
-            bucket->host = host;
-            bucket->port = port;
-            bucket->ttl = 5;
-            bucket->addtime = time(NULL);
+            bucket = this_rib;
+            __kmax = std::max(lg, __kmax);
+            __ribcount++;
             break;
         }else if (bucket->addtime+60*15<time(NULL)){
             /* replace a doule node, the replace node will ping */
