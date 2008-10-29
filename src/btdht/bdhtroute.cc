@@ -125,13 +125,13 @@ dump_route_table()
     for (i=0; i<20; i++){
         printf("%02x", 0xff&(clientid[i]));
     }
-    printf("\n---------------------------------\n");
+    printf("\n-----------------------------------------\n");
     for (i=0; i<160; i++){
         for (j=0; j<8; j++){
             rib *vp = __bucket[i][j];
             if (vp != NULL){
                 int u;
-                printf("0x%02x:\t", i);
+                printf("0x%02x.%d:\t", i, j);
                 for (u=0; u<20; u++){
                     printf("%02x", vp->ident[u]);
                 }

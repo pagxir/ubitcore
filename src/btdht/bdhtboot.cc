@@ -185,21 +185,25 @@ bdhtboot::bdocall(time_t timeout)
                 }
                 break;
             case 1:
-                for (iter=b_bootmap.begin();
-                        iter!=b_bootmap.end(); ){
-                    niter = iter++;
-                    bootstraper &p = *niter->second;
-                    bdhtransfer *trans = p.b_transfer;
-                    if (trans == NULL){
+                if (route_need_update(b_tableid)){
+                    fprintf(stderr, "F%d] ", b_tableid);
+                    for (iter=b_bootmap.begin();
+                            iter!=b_bootmap.end(); ){
+                        niter = iter++;
+                        bootstraper &p = *niter->second;
+                        bdhtransfer *trans = p.b_transfer;
+                        if (trans == NULL){
+                            b_bootmap.erase(niter);
+                            continue;
+                        }
+                        trans->find_node(p.b_host,
+                                p.b_port, b_target);
+                        b_findmap.insert(*niter);
                         b_bootmap.erase(niter);
-                        continue;
+                        b_tryfinal.push(&p);
                     }
-                    trans->find_node(p.b_host,
-                            p.b_port, b_target);
-                    b_findmap.insert(*niter);
-                    b_bootmap.erase(niter);
-                    b_tryfinal.push(&p);
                 }
+                b_bootmap.clear();
                 break;
             case 2:
                 b_polling = true;
