@@ -22,18 +22,18 @@ typedef struct  _rib{
     uint8_t ident[20];
     uint16_t port;
     uint32_t host;
+    time_t   addtime;
+    int      ttl;
 }rib;
 
 
 static int __kmax = 0;
 static int __ribcount = 0;
 static bool __boot0 = true;
-static char __reverse1[160];
 static bdhtboot *__bootlist[160];
-static char __reverse2[160];
 static bdhtboot *__bootnextlist[160];
-static char __reverse3[160];
 static rib *__bucket[160][8];
+static rib *__backup_bucket[160][8];
 
 int getribcount()
 {
@@ -81,17 +81,41 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
     bdhtident dist = one^self;
     int lg = dist.lg();
     for (i=0; i<8; i++){
-        if (__bucket[lg][i] == NULL){
-            __bucket[lg][i] = new rib;
-            memcpy(__bucket[lg][i]->ident, ident, 20);
-            __bucket[lg][i]->host = host;
-            __bucket[lg][i]->port = port;
+        rib * &bucket = __bucket[lg][i];
+        if (bucket == NULL){
+            /*add new node */
+            bucket = new rib;
+            memcpy(bucket->ident, ident, 20);
+            bucket->host = host;
+            bucket->port = port;
+            bucket->ttl  = 5;
+            bucket->addtime = time(NULL);
             __kmax = std::max(lg, __kmax);
             __ribcount++;
             break;
-        }else if (__bucket[lg][i]->host == host){
+        }else if (bucket->host == host){
+            /* update access time */
+            bucket->ttl = 5;
+            bucket->port = port;
+            bucket->addtime = time(NULL);
             return;
+        }else if (bucket->ttl < 0){
+            /* replace bad node */
+            memcpy(bucket->ident, ident, 20);
+            bucket->host = host;
+            bucket->port = port;
+            bucket->ttl = 5;
+            bucket->addtime = time(NULL);
+            break;
+        }else if (bucket->addtime+60*15<time(NULL)){
+            /* replace a doule node, the replace node will ping */
+            /* put the new node here, and add old node to ping_queue *
+             * when ping success the old node will put back again    */
+            break;
         }
+    }
+    /* when a doule node ping good, put it back. */
+    for (i=0; i<8; i++){
     }
 #if 1
     if (lg>0 && __bucket[lg-1][0]==NULL && __boot0==true){
@@ -209,8 +233,21 @@ route_get_peers(bdhtnet *dhtnet)
 bool
 route_need_update(int index)
 {
-    if (__bucket[index][7] == NULL){
-        return true;
+    int i;
+    for (i=7; i>=0; i--){
+        rib * &bucket = __bucket[index][i];
+        if (bucket == NULL){
+            /* can add more node */
+            return true;
+        }
+        if (bucket->ttl < 5){
+            /* have bad node */
+            return true;
+        }
+        if (bucket->addtime+60*15 < time(NULL)){
+            /* have double node */
+            return true;
+        }
     }
     return false;
 }
