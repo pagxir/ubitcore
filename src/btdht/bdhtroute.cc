@@ -220,18 +220,18 @@ update_all_bucket(bdhtnet *net)
 {
     int i, j;
     int count = 0;
-    rib *lastrib[8];
+    rib *lastrib[8]={NULL};
     if (__boot0 == false){
         return -1;
     }
     __boot0 = false;
-    return -1;
     bool need_boot = false;
     for (i=__kmax; i>=0; i--){
         need_boot = false;
         for (j=0; j<8; j++){
-            lastrib[count&0x7] = __bucket[i][j];
-            if (lastrib[count&0x7] != NULL){
+            rib *current = __bucket[i][j];
+            if (current != NULL){
+                lastrib[count&0x7] = current;
                 count++;
             }else{
                 need_boot = true;

@@ -251,7 +251,7 @@ bdhtboot::bdocall(time_t timeout)
                     delete inter->second->b_transfer;
                     delete inter->second;
                 }
-                b_findmap.empty();
+                b_findmap.clear();
                 assert(b_bootmap.empty());
                 b_trapmap.clear();
                 if (getribcount()<32||b_filter.size()<4){
