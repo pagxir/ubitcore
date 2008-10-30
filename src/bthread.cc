@@ -11,7 +11,7 @@
 bthread::bthread()
 {
     b_ident = "bthread";
-    b_flag = 0;
+    b_flag = BF_ACTIVE;
 }
 
 int
@@ -70,7 +70,6 @@ bthread::benqueue(time_t timeout)
     btimer __timer;
     __timer.tt_tick = timeout;
     __timer.tt_thread = this;
-    b_flag |= BF_ACTIVE;
     b_tick = timeout;
     __q_timer.insert(__timer);
     return 0;
@@ -79,7 +78,10 @@ bthread::benqueue(time_t timeout)
 int
 bthread::bwakeup()
 {
-    __q_running.push(this);
+    if (b_flag & BF_ACTIVE){
+        b_flag &= ~BF_ACTIVE;
+        __q_running.push(this);
+    }
     return 0;
 }
 
@@ -93,9 +95,17 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
         if (_tnow > item->b_tick){
-            item->b_tick = next_timer;
-            __q_running.push(item);
+            if (item->b_flag&BF_ACTIVE){
+                item->b_tick = next_timer;
+                item->b_flag &= ~BF_ACTIVE;
+                __q_running.push(item);
+            }
         }else if (_tnow <= THEADER->tt_tick){
+            if (__q_running.empty()){
+                _tnow = time(NULL);
+                THEADER->bwait();
+                continue;
+            }
             next_timer = THEADER->tt_tick;
             break;
         }
@@ -109,6 +119,7 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
     _jnow = __q_running.front();
     __q_running.pop();
     *pu = _jnow;
+    _jnow->b_flag |= BF_ACTIVE;
     if (timeout != NULL){
         if (__q_running.empty()){
             *timeout = next_timer;
