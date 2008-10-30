@@ -32,34 +32,26 @@ struct btimer
 {
     bool operator()(btimer const & t1, btimer const &t2)
     {
-        if (t1.btick() == t2.btick()){
-            return t1.bseed()<t2.bseed();
+        if (t1.tt_tick == t2.tt_tick){
+            return t1.tt_thread < t2.tt_thread;
         }
-        return t1.btick()<t2.btick();
+        return t1.tt_tick < t2.tt_tick;
     }
 
     int bwait() const
     {
-        if (bthread::now_time() < btick()){
-            sleep(btick() - bthread::now_time());
+        const time_t now = time(NULL);
+        if (now < tt_tick){
+            sleep(tt_tick - now);
         }
         return 0;
     }
 
-    time_t btick() const
-    {
-        return tt_thread->b_tick;
-    }
-
-    int bseed() const
-    {
-        return tt_thread->b_seed;
-    }
-
-    int tt_flag;
+    time_t tt_tick;
     bthread *tt_thread;
 };
 
+static std::queue<bthread*> __q_running;
 static std::set<btimer, btimer>__q_timer;
 
 int
@@ -76,20 +68,10 @@ int
 bthread::benqueue(time_t timeout)
 {
     btimer __timer;
+    __timer.tt_tick = timeout;
     __timer.tt_thread = this;
-    __timer.tt_flag = flag();
-    static int __generator = 0;
-    if (b_flag&BF_ACTIVE) {
-        assert(!__q_timer.empty());
-        if (timeout>__timer.btick()){
-            return 0;
-        }
-        __q_timer.erase(__timer);
-    }
     b_flag |= BF_ACTIVE;
     b_tick = timeout;
-    b_seed  = __generator++;
-    assert(__q_timer.find(__timer) == __q_timer.end());
     __q_timer.insert(__timer);
     return 0;
 }
@@ -97,39 +79,43 @@ bthread::benqueue(time_t timeout)
 int
 bthread::bwakeup()
 {
-    benqueue(_tnow);
+    __q_running.push(this);
     return 0;
 }
 
 int
 bthread::bpoll(bthread ** pu, time_t *timeout)
 {
-    bthread *item;
-    if (__q_timer.empty()) {
+    bthread *item = NULL;
+    _tnow = time(NULL);
+    time_t  next_timer = _tnow+36000;
+#define THEADER __q_timer.begin()
+    while (!__q_timer.empty()){
+        item = THEADER->tt_thread;
+        if (_tnow > item->b_tick){
+            item->b_tick = next_timer;
+            __q_running.push(item);
+        }else if (_tnow <= THEADER->tt_tick){
+            next_timer = THEADER->tt_tick;
+            break;
+        }
+        __q_timer.erase(THEADER);
+    }
+#undef THEADER
+    
+    if (__q_running.empty()){
         return -1;
     }
-#define THEADER __q_timer.begin()
-    while (THEADER->bwait() == -1){
-        /* do nothing */
+    _jnow = __q_running.front();
+    __q_running.pop();
+    *pu = _jnow;
+    if (timeout != NULL){
+        if (__q_running.empty()){
+            *timeout = next_timer;
+        }else{
+            *timeout = _tnow;
+        }
     }
-    item = THEADER->tt_thread;
-    item->b_flag &= ~BF_ACTIVE;
-    *pu = item;
-    __q_timer.erase(THEADER);
-    if (timeout == NULL){
-        return 0;
-    }
-    if (__q_timer.empty()){
-        *timeout = -1;
-        return 0;
-    }
-    _tnow = time(NULL);
-    if (_tnow < THEADER->btick())
-        *timeout = THEADER->btick();
-    else
-        *timeout = _tnow;
-    _jnow = item;
-#undef THEADER
     return 0;
 }
 
