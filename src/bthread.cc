@@ -40,7 +40,7 @@ struct btimer
 
     int bwait() const
     {
-        const time_t now = time(NULL);
+        time_t now = bthread::now_time();
         if (now < tt_tick){
             sleep(tt_tick - now);
         }
@@ -55,7 +55,7 @@ static std::queue<bthread*> __q_running;
 static std::set<btimer, btimer>__q_timer;
 
 int
-btime_wait(int t)
+btime_wait(time_t t)
 {
     if (t > bthread::now_time()) {
         bthread::now_job()->benqueue(t);
@@ -68,6 +68,7 @@ int
 bthread::benqueue(time_t timeout)
 {
     btimer __timer;
+    assert(BF_ACTIVE&b_flag);
     __timer.tt_tick = timeout;
     __timer.tt_thread = this;
     b_tick = timeout;
@@ -94,16 +95,18 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
-        if (_tnow > item->b_tick){
+        assert(THEADER->tt_tick <= item->b_tick);
+        if (_tnow >= item->b_tick){
             if (item->b_flag&BF_ACTIVE){
                 item->b_tick = next_timer;
                 item->b_flag &= ~BF_ACTIVE;
                 __q_running.push(item);
             }
-        }else if (_tnow <= THEADER->tt_tick){
+        }else if (_tnow < THEADER->tt_tick){
             if (__q_running.empty()){
-                _tnow = time(NULL);
                 THEADER->bwait();
+                _tnow = time(NULL);
+                printf("ok: waiting\n");
                 continue;
             }
             next_timer = THEADER->tt_tick;
@@ -118,7 +121,6 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
     }
     _jnow = __q_running.front();
     __q_running.pop();
-    *pu = _jnow;
     _jnow->b_flag |= BF_ACTIVE;
     if (timeout != NULL){
         if (__q_running.empty()){
@@ -127,6 +129,7 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
             *timeout = _tnow;
         }
     }
+    *pu = _jnow;
     return 0;
 }
 

@@ -17,11 +17,11 @@ bclock::bdocall(time_t timeout)
 {
     time_t now;
     time(&now);
-#if 0
+#if 1
     printf("bcall(%s): %s\n", ident_text.c_str(), ctime(&now));
 #endif
     while(-1 != btime_wait(last_time+b_second)){
-        last_time = time(NULL);
+        last_time = bthread::now_time(); 
     }
     return -1;
 }

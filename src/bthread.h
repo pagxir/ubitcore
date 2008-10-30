@@ -30,5 +30,5 @@ protected:
     int b_flag;
 };
 
-int btime_wait(int t);
+int btime_wait(time_t t);
 #endif

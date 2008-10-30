@@ -291,6 +291,7 @@ bsocket::bselect(time_t outtime)
     tval.tv_sec = outtime-bthread::now_time();
     tval.tv_usec = 0;
     bsocket marker;
+    
 
     if (is_busy()){
         count = select(maxfd+1, &b_nextfds->readfds,
