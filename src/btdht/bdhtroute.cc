@@ -32,8 +32,7 @@ static int __ribcount = 0;
 static bool __boot0 = true;
 static bdhtboot *__bootlist[160];
 static bdhtboot *__bootnextlist[160];
-static rib *__bucket[160][8];
-static rib *__backup_bucket[160][8];
+static rib *__bucket[160][16];
 
 static std::map<bdhtident, rib*> __node_world;
 
@@ -96,32 +95,59 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
     this_rib->ttl  = 5;
     this_rib->addtime = time(NULL);
     int lg = dist.lg();
+    int good = 0;
+    int keep = -1;
+    int last_rib = 0;
     for (i=0; i<8; i++){
         rib * &bucket = __bucket[lg][i];
         if (bucket == NULL){
-            /*add new node */
-            bucket = this_rib;
-            __kmax = std::max(lg, __kmax);
-            __ribcount++;
+            /*add new node, end of this bucket */
             break;
         }else if (bucket == this_rib){
             /* update access time */
-            return;
+            good++;
+            continue;
         }else if (bucket->ttl < 0){
             /* replace bad node */
-            bucket = this_rib;
-            __kmax = std::max(lg, __kmax);
-            __ribcount++;
-            break;
+            continue;
         }else if (bucket->addtime+60*15<time(NULL)){
             /* replace a doule node, the replace node will ping */
             /* put the new node here, and add old node to ping_queue *
              * when ping success the old node will put back again    */
-            break;
+            __bucket[lg][last_rib++] = bucket;
+        }else if (last_rib < i){
+            __bucket[lg][last_rib++] = bucket;
+            good++;
         }
     }
-    /* when a doule node ping good, put it back. */
-    for (i=0; i<8; i++){
+    if (last_rib < 8){
+        __bucket[lg][last_rib++] = this_rib;
+        __bucket[lg][last_rib] = NULL;
+        for (i=8; i<16; i++){
+            if (__bucket[lg][i] == NULL){
+                break;
+            }
+            __bucket[lg][i] = NULL;
+        }
+    }else if (good < 8){
+        /* add to queue and start ping */
+        for (i=8; i<16; i++){
+            rib * &bucket = __bucket[lg][i];
+            if (bucket == NULL){
+                bucket = this_rib;
+                /* start ping */
+                break;
+            }else if (bucket == this_rib){
+                break;
+            }else if (bucket->ttl < 0){
+                bucket = this_rib;
+                /* start ping */
+                break;
+            }else if (bucket->addtime+60*15<time(NULL)){
+                assert(0);
+                break;
+            }
+        }
     }
 #if 1
     if (lg>0 && __bucket[lg-1][0]==NULL && __boot0==true){
