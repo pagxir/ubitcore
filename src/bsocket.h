@@ -1,6 +1,7 @@
 #ifndef __BSOCKET_H__
 #define __BSOCKET_H__
 #include <queue>
+#include <netinet/in.h>
 #include "bthread.h"
 #define BSF_QUEUE 0x1000
 #define BSF_WRITE 0x2000
@@ -18,15 +19,15 @@ class bsocket
         bsocket();
         ~bsocket();
         bsocket &operator=(bsocket&);
-        int baccept(unsigned long *host, int *port);
-        int bconnect(const char *host, int port);
-        int bconnect(unsigned long host, int port);
+        int baccept(in_addr_t *host, in_port_t *port);
+        int bconnect(const char *host, in_port_t port);
+        int bconnect(in_addr_t host, in_port_t port);
         int bsend(const void *buf, size_t len);
         int breceive(void *buf, size_t len);
         int bsendto(const void *buf, size_t len,
-                unsigned long host, unsigned short port);
+                in_addr_t host, in_port_t port);
         int brecvfrom(void *buf, size_t len,
-                unsigned long *host, unsigned short *port);
+                in_addr_t *host, in_port_t *port);
         static int global_init();
         static int bselect(time_t timeout);
 

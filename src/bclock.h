@@ -10,7 +10,7 @@ class bclock: public bthread
 
     private:
         int b_second;
-        int last_time;
+        time_t last_time;
         std::string ident_text;
 };
 #endif

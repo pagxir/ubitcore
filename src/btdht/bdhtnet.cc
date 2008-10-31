@@ -142,7 +142,7 @@ bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
 int
 bdhtnet::bdocall(time_t timeout)
 {
-    unsigned long host;
+    in_addr_t host;
     unsigned short port;
     char buffer[8192];
     int error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);

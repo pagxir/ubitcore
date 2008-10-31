@@ -124,7 +124,7 @@ bsocket &bsocket::operator=(bsocket &src)
 }
 
 int
-bsocket::baccept(unsigned long *host, int *port)
+bsocket::baccept(in_addr_t *host, in_port_t *port)
 {
     return 0;
 }
@@ -313,7 +313,7 @@ bsocket::bselect(time_t outtime)
 }
 
 int
-bsocket::bconnect(const char *host, int port)
+bsocket::bconnect(const char *host, in_port_t port)
 {
     unsigned long rhost = inet_addr(host);
     if (inet_addr(host) == INADDR_NONE){
@@ -328,7 +328,7 @@ bsocket::bconnect(const char *host, int port)
 }
 
 int
-bsocket::bconnect(unsigned long host, int port)
+bsocket::bconnect(in_addr_t host, in_port_t port)
 {
     int error;
     int fflag;
@@ -363,7 +363,7 @@ bsocket::bconnect(unsigned long host, int port)
 
 int
 bsocket::bsendto(const void* buffer, size_t len,
-        unsigned long host, unsigned short port)
+        in_addr_t host, in_port_t port)
 {
     int fflag;
     sockaddr_in siaddr;
@@ -381,7 +381,7 @@ bsocket::bsendto(const void* buffer, size_t len,
 
 int
 bsocket::brecvfrom(void* buffer, size_t len,
-        unsigned long *host, unsigned short *port)
+        in_addr_t *host, in_port_t *port)
 {
     assert(b_fd != -1);
     sockaddr_in siaddr;
