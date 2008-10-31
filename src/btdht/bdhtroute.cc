@@ -83,6 +83,7 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
 
 #define new_rib new rib
 
+    rib **replce_rib = NULL;
     rib *this_rib = NULL;
     if (__node_world.find(one) != __node_world.end()){
         this_rib = __node_world.find(one)->second;
@@ -129,26 +130,32 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
             }
             __bucket[lg][i] = NULL;
         }
-    }else if (good < 8){
-        /* add to queue and start ping */
-        for (i=8; i<16; i++){
-            rib * &bucket = __bucket[lg][i];
-            if (bucket == NULL){
-                bucket = this_rib;
-                /* start ping */
-                break;
-            }else if (bucket == this_rib){
-                break;
-            }else if (bucket->ttl < 0){
-                bucket = this_rib;
-                /* start ping */
-                break;
-            }else if (bucket->addtime+60*15<time(NULL)){
-                assert(0);
-                break;
-            }
+    }else for (i=8; i<16; i++){
+        rib * &bucket = __bucket[lg][i];
+        if (bucket == NULL){
+            /* start ping */
+            replce_rib = &bucket;
+            break;
+        }
+        if (bucket == this_rib){
+            replce_rib = &bucket;
+            break;
+        }
+        if (bucket->ttl < 0){
+            replce_rib = &bucket;
+            /* start ping */
+            break;
+        }
+        if (replce_rib == NULL){
+            replce_rib = &bucket;
+        }else if ((*replce_rib)->addtime > bucket->addtime){
+            replce_rib = &bucket;
         }
     }
+    if (replce_rib != NULL){
+        *replce_rib = this_rib;
+    }
+    __kmax = std::max(__kmax, lg);
 #if 1
     if (lg>0 && __bucket[lg-1][0]==NULL && __boot0==true){
         char target[20];
@@ -181,7 +188,7 @@ dump_route_table()
     for (i=0; i<20; i++){
         printf("%02x", 0xff&(clientid[i]));
     }
-    printf("\n-----------------------------------------\n");
+    printf("\n------------------------------------------------------\n");
     for (i=0; i<160; i++){
         for (j=0; j<8; j++){
             rib *vp = __bucket[i][j];
