@@ -165,26 +165,6 @@ bdhtnet_node(const char *host, int port)
     return 0;
 }
 
-int
-bdhtnet_start()
-{
-    char bootid[20];
-    static int __call_once_only = 0;
-
-    if (__call_once_only++ > 0){
-        return -1;
-    }
-    getclientid(&__ping_node[12]);
-    getclientid(&__find_node[12]);
-    getclientid(&__get_peers[12]);
-    getclientid(bootid);
-    bootid[19]^=0x1;
-    __boot_bucket.set_target((uint8_t*)bootid);
-    __boot_bucket.bwakeup();
-    __dhtnet.bwakeup();
-    return 0;
-}
-
 bool
 bdhtpoller::polling()
 {
@@ -194,4 +174,68 @@ bdhtpoller::polling()
 bootstraper::bootstraper()
 {
     b_transfer = NULL;
+}
+
+class boothread: public bthread
+{
+    public:
+        boothread();
+        virtual int bdocall(time_t timeout);
+
+    private:
+        int b_state;
+        time_t b_start_time;
+};
+
+boothread::boothread()
+{
+    b_state = 0;
+    b_start_time = now_time();
+}
+
+int
+boothread::bdocall(time_t timeout)
+{
+    char bootid[20];
+    int state = b_state;
+    while (b_runable){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                getclientid(bootid);
+                bootid[19]^=0x1;
+                b_start_time = now_time();
+                __boot_bucket.set_target((uint8_t*)bootid);
+                __boot_bucket.bwakeup();
+                __dhtnet.bwakeup();
+                break;
+            case 1:
+                btime_wait(b_start_time+30);
+                break;
+            case 2:
+                printf("DHT: Hello World!\n");
+                break;
+            default:
+                b_runable = false;
+                break;
+        }
+    }
+}
+
+static boothread __static_boothread;
+
+int
+bdhtnet_start()
+{
+    static int __call_once_only = 0;
+
+    if (__call_once_only++ > 0){
+        return -1;
+    }
+    getclientid(&__ping_node[12]);
+    getclientid(&__find_node[12]);
+    getclientid(&__get_peers[12]);
+    __static_boothread.bwakeup();
+    return 0;
 }

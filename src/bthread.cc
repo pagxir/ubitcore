@@ -12,6 +12,7 @@ bthread::bthread()
 {
     b_ident = "bthread";
     b_flag = BF_ACTIVE;
+    b_runable = false;
 }
 
 int
@@ -26,6 +27,12 @@ bthread::bfailed()
 {
     printf("%s::bfailed()\n", b_ident.c_str());
     return 0;
+}
+
+void
+bthread::tsleep()
+{
+    b_runable = false;
 }
 
 struct btimer
@@ -55,10 +62,11 @@ static std::queue<bthread*> __q_running;
 static std::set<btimer, btimer>__q_timer;
 
 int
-btime_wait(time_t t)
+bthread::btime_wait(time_t t)
 {
     if (t > bthread::now_time()) {
-        bthread::now_job()->benqueue(t);
+        b_runable = false;
+        benqueue(t);
         return -1;
     }
     return 0;
@@ -122,6 +130,7 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
     _jnow = __q_running.front();
     __q_running.pop();
     _jnow->b_flag |= BF_ACTIVE;
+    _jnow->b_runable = true;
     if (timeout != NULL){
         if (__q_running.empty()){
             *timeout = next_timer;

@@ -11,6 +11,7 @@ public:
     bthread();
     int bwakeup();
     int bwait();
+    int btime_wait(time_t t);
     int benqueue(time_t timeout);
     int flag(){ return b_flag; }
     static time_t now_time();
@@ -22,13 +23,16 @@ public:
 public:
     int b_seed;
     time_t b_tick;
+    void   tsleep();
 
-protected:
+private:
     static time_t _tnow;
     static bthread *_jnow;
+
+protected:
+    bool b_runable;
     std::string b_ident;
     int b_flag;
 };
 
-int btime_wait(time_t t);
 #endif
