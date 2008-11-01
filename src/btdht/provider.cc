@@ -211,10 +211,14 @@ boothread::bdocall(time_t timeout)
                 __dhtnet.bwakeup();
                 break;
             case 1:
-                btime_wait(b_start_time+30);
+                //__boot_bucket.finish();
                 break;
             case 2:
-                printf("DHT: Hello World!\n");
+                btime_wait(b_start_time+60);
+                break;
+            case 3:
+                printf("DHT: Refresh Boot!\n");
+                state = 0;
                 break;
             default:
                 b_runable = false;
