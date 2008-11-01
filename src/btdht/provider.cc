@@ -12,10 +12,10 @@
 #include "btcodec.h"
 #include "bsocket.h"
 #include "butils.h"
-#include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtboot.h"
-#include "bdhtransfer.h"
+#include "ident.h"
+#include "provider.h"
+#include "boot.h"
+#include "transfer.h"
 
 bdhtnet __dhtnet;
 static bdhtboot __boot_bucket(&__dhtnet, 159);

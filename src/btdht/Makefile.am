@@ -1,18 +1,18 @@
 noinst_LIBRARIES = libsub_btdht.a
 
 libsub_btdht_a_SOURCES = \
-	bdhtnet.cc  \
-	bdhtident.cc   \
-	bdhtorrent.cc  \
-	bdhtboot.cc    \
-	bdhtroute.cc   \
-	bdhtransfer.cc \
-	bdhtransfer.h  \
-	bdhtroute.h    \
-	bdhtboot.h     \
-	bdhtorrent.h   \
-	bdhtident.h    \
-	bdhtnet.h
+	provider.cc  \
+	ident.cc   \
+	tracker.cc  \
+	boot.cc    \
+	route.cc   \
+	transfer.cc \
+	transfer.h  \
+	route.h    \
+	boot.h     \
+	tracker.h   \
+	ident.h    \
+	tracker.h
 	
 
 INCLUDES = -I$(srcdir) -I$(srcdir)/.. -I$(top_srcdir) -I$(top_srcdir)$(WS2_INCLUDE)

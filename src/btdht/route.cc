@@ -13,10 +13,10 @@
 #include "butils.h"
 #include "bsocket.h"
 #include "bthread.h"
-#include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtboot.h"
-#include "bdhtorrent.h"
+#include "ident.h"
+#include "provider.h"
+#include "boot.h"
+#include "tracker.h"
 
 typedef struct  _rib{
     uint8_t ident[20];

@@ -12,11 +12,11 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
-#include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtransfer.h"
-#include "bdhtroute.h"
-#include "bdhtorrent.h"
+#include "ident.h"
+#include "provider.h"
+#include "transfer.h"
+#include "route.h"
+#include "tracker.h"
 
 typedef struct _addrpack
 {

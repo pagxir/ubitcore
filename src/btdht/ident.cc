@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "bdhtident.h"
+#include "ident.h"
 
 netpt::netpt(uint32_t host, uint16_t port)
 {

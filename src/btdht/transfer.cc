@@ -13,9 +13,9 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
-#include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtransfer.h"
+#include "ident.h"
+#include "provider.h"
+#include "transfer.h"
 
     extern bdhtnet __dhtnet;
 bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)

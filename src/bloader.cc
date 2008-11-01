@@ -18,7 +18,7 @@
 #include "btcodec.h"
 #include "bclock.h"
 #include "bsocket.h"
-#include "btdht/bdhtnet.h"
+#include "btdht/provider.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"

@@ -12,11 +12,11 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
-#include "bdhtident.h"
-#include "bdhtnet.h"
-#include "bdhtboot.h"
-#include "bdhtransfer.h"
-#include "bdhtroute.h"
+#include "ident.h"
+#include "provider.h"
+#include "boot.h"
+#include "transfer.h"
+#include "route.h"
 
 typedef struct _npack
 {
