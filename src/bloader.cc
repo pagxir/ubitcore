@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <string>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 #include <fstream>
 #include <queue>
 
@@ -18,7 +19,7 @@
 #include "btcodec.h"
 #include "bclock.h"
 #include "bsocket.h"
-#include "btdht/provider.h"
+#include "btdht/btkad.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -42,12 +43,14 @@ btseed_load(const char *buf, int len)
     }
 
 #if 1
+    char nullid[20];
     bentity &nodes = codec.bget().bget("nodes");
     for (i=0; nodes.bget(i).b_str(&eln); i++){
         int port = nodes.bget(i).bget(1).bget(&err);
         const char* ip = nodes.bget(i).bget(0).c_str(&eln);
         std::string ipstr(ip, eln);
-        bdhtnet_node(ipstr.c_str(), port);
+        in_addr_t host = inet_addr(ipstr.c_str());
+        add_knode(nullid, host, port);
     }
 #endif
     return 0;
@@ -81,7 +84,7 @@ main(int argc, char *argv[])
         btseed_load(btseed.c_str(), btseed.size());
     }
 
-    bdhtnet_start();
+    //bdhtnet_start();
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */

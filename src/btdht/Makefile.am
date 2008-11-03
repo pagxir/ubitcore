@@ -8,6 +8,10 @@ libsub_btdht_a_SOURCES = \
 	route.cc   \
 	transfer.cc \
 	btkad.cc    \
+	knode.cc    \
+	kbucket.cc  \
+	kbucket.h   \
+	knode.h     \
 	btkad.h     \
 	transfer.h  \
 	route.h    \
