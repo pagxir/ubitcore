@@ -7,6 +7,8 @@ libsub_btdht_a_SOURCES = \
 	boot.cc    \
 	route.cc   \
 	transfer.cc \
+	btkad.cc    \
+	btkad.h     \
 	transfer.h  \
 	route.h    \
 	boot.h     \

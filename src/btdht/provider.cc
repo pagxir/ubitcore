@@ -16,6 +16,7 @@
 #include "provider.h"
 #include "boot.h"
 #include "transfer.h"
+#include "btkad.h"
 
 bdhtnet __dhtnet;
 static bdhtboot __boot_bucket(&__dhtnet, 159);
@@ -196,6 +197,7 @@ boothread::boothread()
 int
 boothread::bdocall(time_t timeout)
 {
+    int  count;
     char bootid[20];
     int state = b_state;
     while (b_runable){
@@ -206,17 +208,17 @@ boothread::bdocall(time_t timeout)
                 getclientid(bootid);
                 bootid[19]^=0x1;
                 b_start_time = now_time();
-                __boot_bucket.set_target((uint8_t*)bootid);
-                __boot_bucket.bwakeup();
-                __dhtnet.bwakeup();
                 break;
             case 1:
-                //__boot_bucket.finish();
+                count = btkad::find_node(bootid);
                 break;
             case 2:
-                btime_wait(b_start_time+60);
+                printf("DHT Network: %d\n", count);
                 break;
             case 3:
+                btime_wait(b_start_time+60);
+                break;
+            case 4:
                 printf("DHT: Refresh Boot!\n");
                 state = 0;
                 break;
