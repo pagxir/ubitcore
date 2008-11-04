@@ -12,6 +12,7 @@ libsub_btdht_a_SOURCES = \
 	kbucket.cc  \
 	kfind.cc    \
 	kfind.h     \
+	kutils.cc   \
 	kbucket.h   \
 	knode.h     \
 	btkad.h     \
