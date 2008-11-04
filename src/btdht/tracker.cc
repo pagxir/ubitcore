@@ -61,7 +61,7 @@ bdhtorrent::add_node(uint32_t host, uint16_t port)
     bootstraper *traper = new bootstraper();
     traper->b_host = host;
     traper->b_port = port;
-    traper->b_transfer = b_dhtnet->get_transfer();
+    traper->b_transfer = b_dhtnet->get_kship();
     b_trapmap.insert(std::make_pair(pt, traper));
     b_bootmap.insert(std::make_pair(dident, traper));
 }
@@ -122,7 +122,7 @@ bdhtorrent::get_peers_next(const void *buf, size_t len)
             //printf("node reenter DHT network!\n");
             continue;
         }
-        traper->b_transfer = b_dhtnet->get_transfer();
+        traper->b_transfer = b_dhtnet->get_kship();
     }
 }
 
@@ -145,7 +145,7 @@ bdhtorrent::bdocall(time_t timeout)
                         iter!=b_bootmap.end(); ){
                     niter = iter++;
                     bootstraper &p = *niter->second;
-                    bdhtransfer *trans = p.b_transfer;
+                    kship *trans = p.b_transfer;
                     if (trans == NULL){
                         b_bootmap.erase(niter);
                         continue;
@@ -166,7 +166,7 @@ bdhtorrent::bdocall(time_t timeout)
                         iter!=b_findmap.end(); ){
                     niter = iter++;
                     bootstraper &p = *niter->second;
-                    bdhtransfer *trans = p.b_transfer;
+                    kship *trans = p.b_transfer;
                     if (trans == NULL){
                         b_findmap.erase(niter);
                         continue;
@@ -195,7 +195,7 @@ bdhtorrent::bdocall(time_t timeout)
                 }
                 while (!b_tryagain.empty()){
                     bootstraper &p = *b_tryagain.front();
-                    bdhtransfer *trans = p.b_transfer;
+                    kship *trans = p.b_transfer;
                     b_tryagain.pop();
                     if (trans == NULL){
                         continue;

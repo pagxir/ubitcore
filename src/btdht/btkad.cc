@@ -21,7 +21,7 @@ int _find_node(char target[20])
 {
     int i;
     int concurrency = 0;
-    knode nodes[_K];
+    kitem_t nodes[_K];
     int count = get_knode(target, nodes, false);
     if (count == -1){
         return -1;
@@ -128,7 +128,9 @@ struct kping_arg{
     char kadid[20];
     in_addr_t host;
     in_port_t port;
-    bool      pinging;
+    time_t    age;
+    time_t    atime;
+    int       failed;
 };
 
 static bdhtnet __static_dhtnet;
@@ -143,7 +145,7 @@ class ping_thread: public bthread
     private:
         int b_state;
         int b_concurrency;
-        std::vector<bdhtransfer*> b_ping_queue;
+        std::vector<kship*> b_ping_queue;
 };
 
 ping_thread::ping_thread()
@@ -152,13 +154,43 @@ ping_thread::ping_thread()
 
 }
 
+static std::vector<kitem_t> __static_ping_cache;
+
+int
+post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
+{
+    size_t lid;
+    btcodec codec;
+    codec.bload(buffer, count);
+
+    const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
+    if (kadid!=NULL && lid==20){
+        kitem_t initem, oitem;
+        initem.host = host;
+        initem.port = port;
+        initem.atime = time(NULL);
+        memcpy(initem.kadid, kadid, 20);
+        if (update_contact(&initem, &oitem) > 0){
+            __static_ping_cache.push_back(initem);
+            kping_arg arg;
+            arg.host = oitem.host;
+            arg.port = oitem.port;
+            memcpy(arg.kadid, oitem.kadid, 20);
+            __static_ping_args.insert(
+                    std::make_pair(arg.host, arg));
+        }
+    }
+
+    return 0;
+}
+
 int
 ping_thread::bdocall(time_t timeout)
 {
     int retry = 0;
     int state = b_state;
     char buffer[8192];
-    std::vector<bdhtransfer*>::iterator iter;
+    std::vector<kship*>::iterator iter;
     std::map<in_addr_t, kping_arg> *args;
     while (b_runable){
         b_state = state++;
@@ -168,7 +200,7 @@ ping_thread::bdocall(time_t timeout)
                 while (!args->empty() && b_concurrency<_K){
                     kping_arg arg = args->begin()->second;
                     args->erase(args->begin());
-                    bdhtransfer *transfer = __static_dhtnet.get_transfer();
+                    kship *transfer = __static_dhtnet.get_kship();
                     b_ping_queue.push_back(transfer);
                     transfer->ping_node(arg.host, arg.port);
                     b_concurrency++;
@@ -187,10 +219,11 @@ ping_thread::bdocall(time_t timeout)
                     int count = (*iter)->get_response(buffer,
                             sizeof(buffer), &host, &port);
                     if (count > 0){
-                    printf("ping_thread::World: %p:%d\n", *iter, count);
+                        post_ping(buffer, count, host, port);
+                        b_concurrency--;
+                        b_runable = true;
                         retry++;
                         state = 0;
-                        b_runable = true;
                         delete (*iter);
                         *iter = NULL;
                     }
@@ -217,6 +250,7 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
             != __static_ping_args.end()){
         return 0;
     }
+    update_boot_contact(host, port);
     __static_ping_args.insert(
             std::make_pair(host, arg));
     __static_ping_thread.bwakeup(NULL);

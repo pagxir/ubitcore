@@ -119,11 +119,11 @@ bdhtnet::ping_node(uint32_t tid, uint32_t host, uint16_t port)
             host, port);
 }
 
-bdhtransfer *
-bdhtnet::get_transfer()
+kship *
+bdhtnet::get_kship()
 {
     int tid = b_tid++;
-    bdhtransfer *transfer = new bdhtransfer(this, tid);
+    kship *transfer = new kship(this, tid);
     b_requests.insert(std::make_pair(tid, transfer));
     return transfer;
 }
@@ -136,7 +136,7 @@ bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         /* process response */
         int id = codec->transid();
         if (b_requests.find(id) != b_requests.end()){
-            bdhtransfer *t = (*b_requests.find(id)).second;
+            kship *t = (*b_requests.find(id)).second;
             t->binput(codec, ibuf, len,host, port);
         }
     }else if (codec->type() == 'q'){
@@ -207,7 +207,7 @@ boothread::bdocall(time_t timeout)
                 count = btkad::find_node(bootid);
                 break;
             case 2:
-                printf("DHT Network: %d\n", count);
+                printf("DHT Wait Network: %d\n", count);
                 break;
             case 3:
                 btime_wait(b_start_time+60);
@@ -236,5 +236,6 @@ bdhtnet_start()
     getclientid(&__ping_node[12]);
     getclientid(&__find_node[12]);
     getclientid(&__get_peers[12]);
+    __static_boothread.bwakeup(NULL);
     return 0;
 }

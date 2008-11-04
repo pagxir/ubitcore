@@ -14,10 +14,10 @@ struct bdhtpack
     uint16_t b_align;
 };
 
-class bdhtransfer{
+class kship{
     public:
-        bdhtransfer(bdhtnet *bdhtnet, uint32_t id);
-        ~bdhtransfer();
+        kship(bdhtnet *bdhtnet, uint32_t id);
+        ~kship();
         int ping_node(uint32_t host, uint16_t port);
         int find_node(uint32_t host, uint16_t port, uint8_t ident[20]);
         int get_peers(uint32_t host, uint16_t port, uint8_t ident[20]);

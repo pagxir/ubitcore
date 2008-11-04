@@ -120,7 +120,7 @@ bdhtboot::find_node_next(const void *buf, size_t len)
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             continue;
         }
-        traper->b_transfer = b_dhtnet->get_transfer();
+        traper->b_transfer = b_dhtnet->get_kship();
     }
 }
 
@@ -141,7 +141,7 @@ bdhtboot::add_node_list(uint32_t hosts[], uint16_t ports[],
         if (b_bootmap.insert(std::make_pair(dident, traper)).second == false){
             continue;
         }
-        traper->b_transfer = b_dhtnet->get_transfer();
+        traper->b_transfer = b_dhtnet->get_kship();
     }
 }
 
@@ -178,7 +178,7 @@ bdhtboot::bdocall(time_t timeout)
                     bootstraper *traper = new bootstraper();
                     traper->b_host = host;
                     traper->b_port = port;
-                    traper->b_transfer = b_dhtnet->get_transfer();
+                    traper->b_transfer = b_dhtnet->get_kship();
                     b_trapmap.insert(std::make_pair(pt, traper));
                     b_bootmap.insert(std::make_pair(dident, traper));
                 }
@@ -190,7 +190,7 @@ bdhtboot::bdocall(time_t timeout)
                             iter!=b_bootmap.end(); ){
                         niter = iter++;
                         bootstraper &p = *niter->second;
-                        bdhtransfer *trans = p.b_transfer;
+                        kship *trans = p.b_transfer;
                         if (trans == NULL){
                             b_bootmap.erase(niter);
                             continue;
@@ -212,7 +212,7 @@ bdhtboot::bdocall(time_t timeout)
                         iter!=b_findmap.end(); ){
                     niter = iter++;
                     bootstraper &p = *niter->second;
-                    bdhtransfer *trans = p.b_transfer;
+                    kship *trans = p.b_transfer;
                     if (trans == NULL){
                         b_findmap.erase(niter);
                         continue;

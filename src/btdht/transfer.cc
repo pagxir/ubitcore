@@ -17,13 +17,13 @@
 #include "provider.h"
 #include "transfer.h"
 
-bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
+kship::kship(bdhtnet *net, uint32_t ident)
 {
     b_ident = ident;
     b_dhtnet = net;
 }
 
-bdhtransfer::~bdhtransfer()
+kship::~kship()
 {
     while (!b_queue.empty()){
         bdhtpack *pkg = b_queue.front();
@@ -35,7 +35,7 @@ bdhtransfer::~bdhtransfer()
 }
 
 int
-bdhtransfer::get_response(void *buf, size_t len,
+kship::get_response(void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
     if (b_queue.empty()){
@@ -63,27 +63,27 @@ bdhtransfer::get_response(void *buf, size_t len,
 }
 
 int
-bdhtransfer::get_peers(uint32_t host, 
+kship::get_peers(uint32_t host, 
         uint16_t port, uint8_t ident[20])
 {
     return b_dhtnet->get_peers(b_ident, host, port, ident);
 }
 
 int
-bdhtransfer::find_node(uint32_t host, 
+kship::find_node(uint32_t host, 
         uint16_t port, uint8_t ident[20])
 {
     return b_dhtnet->find_node(b_ident, host, port, ident);
 }
 
 int
-bdhtransfer::ping_node(uint32_t host, uint16_t port)
+kship::ping_node(uint32_t host, uint16_t port)
 {
     return b_dhtnet->ping_node(b_ident, host, port);
 }
 
 void
-bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
+kship::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
     bdhtpack *pkg = new bdhtpack;

@@ -4,7 +4,7 @@
 #include <map>
 
 class bdhtnet;
-class bdhtransfer;
+class kship;
 
 class bdhtcodec
 {
@@ -27,7 +27,7 @@ class bdhtnet: public bthread
         virtual int bdocall(time_t timeout);
 
     public:
-        bdhtransfer *get_transfer();
+        kship *get_kship();
         int detach(uint32_t id);
         int ping_node(uint32_t tid, uint32_t host, uint16_t port);
         int find_node(uint32_t tid, uint32_t host,
@@ -38,7 +38,7 @@ class bdhtnet: public bthread
     private:
         void binput(bdhtcodec *codec, const void *ibuf, size_t len,
                 uint32_t host, uint16_t port);
-        std::map<int, bdhtransfer*> b_requests;
+        std::map<int, kship*> b_requests;
         bsocket b_socket;
         bool    b_inited;
         time_t  b_last;
@@ -50,9 +50,8 @@ struct bootstraper
     uint16_t b_flag;
     uint16_t b_port;
     uint32_t b_host;
-    bdhtransfer *b_transfer;
+    kship *b_transfer;
     bootstraper();
 };
 
-int bdhtnet_start();
 #endif
