@@ -1,5 +1,6 @@
 #ifndef __BDHTRANSFER_H__
 #define __BDHTRANSFER_H__
+#include <queue>
 
 class bthread;
 class bdhtnet;

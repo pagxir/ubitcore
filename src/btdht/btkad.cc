@@ -10,77 +10,41 @@
 #include "knode.h"
 #include "kbucket.h"
 #include "bthread.h"
+#include "kfind.h"
 #include "bsocket.h"
 #include "btcodec.h"
 #include "transfer.h"
 #include "provider.h"
 
-static std::map<bthread*, std::string> __find_node_sleep_queue;
+struct kping_arg{
+    char kadid[20];
+    in_addr_t host;
+    in_port_t port;
+    time_t    age;
+    time_t    atime;
+    int       failed;
+};
 
-int _find_node(char target[20])
+class ping_thread: public bthread
 {
-    int i;
-    int concurrency = 0;
-    kitem_t nodes[_K];
-    int count = get_knode(target, nodes, false);
-    if (count == -1){
-        return -1;
-    }
-#if 0
-    if (valid_count(nodes, _K) < 4){
-        count = get_knode(nodes, _K, false);
-    }
-    int rds[CONCURRENT_REQUEST];
-    for(;;){
-        i = 0;
-        while (i<_K && concurrency<CONCURRENT_REQUEST){
-            if (nodes[i].requested()){
-                if (nodes[i].timeout()){
-                    mark_result_timeout(nodes[i]);
-                }
-                continue;
-            }
-            int rd = nodes[i]->find_node(target);
-            if (rd != -1){
-                nodes[i].mark_requested();
-                rds[concurrency++] = rd;
-            }
-        }
-        if (concurrency == 0){
-            break;
-        }
-        wait_for_result(rds, concurrency, 5);
-        int end = 0;
-        for (i=0; i<concurrency; i++){
-            if (find_finish(rds[i])){
-                continue;
-            }
-            if (end < i){
-                rds[end] = rds[i];
-            }
-            end++;
-        }
-        concurrency = end;
-    }
-#endif
-    return 0;
-}
+    public:
+        ping_thread();
+        virtual int bdocall(time_t timeout);
 
-int
+    private:
+        int b_state;
+        int b_concurrency;
+        std::vector<kship*> b_ping_queue;
+};
+
+static bdhtnet __static_dhtnet;
+static std::map<in_addr_t, kping_arg> __static_ping_args;
+static ping_thread __static_ping_thread;
+
+kfind *
 btkad::find_node(char target[20])
 {
-    static int __ident;
-    bthread *curthread = bthread::now_job();
-
-    if (__find_node_sleep_queue.find(curthread)
-            == __find_node_sleep_queue.end()){
-        __find_node_sleep_queue.insert(
-                std::make_pair(curthread, target));
-        curthread->tsleep(&__ident, 36000);
-        return -1;
-    }
-    __find_node_sleep_queue.erase(curthread);
-    return 0;
+    return new kfind(&__static_dhtnet, target);
 }
 
 static char __kadid[20];
@@ -89,6 +53,17 @@ int
 getkadid(char kadid[20])
 {
     memcpy(kadid, __kadid, 20);
+    return 0;
+}
+
+int
+genkadid(char kadid[20])
+{
+    int i;
+    uint32_t *vp = (uint32_t*)kadid;
+    for (i=0; i<5; i++){
+        vp[i] = rand();
+    }
     return 0;
 }
 
@@ -123,30 +98,6 @@ get_kbucket_index(const char kadid[20])
     }
     return (i<<3)+mask[orkid];
 }
-
-struct kping_arg{
-    char kadid[20];
-    in_addr_t host;
-    in_port_t port;
-    time_t    age;
-    time_t    atime;
-    int       failed;
-};
-
-static bdhtnet __static_dhtnet;
-static std::map<in_addr_t, kping_arg> __static_ping_args;
-
-class ping_thread: public bthread
-{
-    public:
-        ping_thread();
-        virtual int bdocall(time_t timeout);
-
-    private:
-        int b_state;
-        int b_concurrency;
-        std::vector<kship*> b_ping_queue;
-};
 
 ping_thread::ping_thread()
     :b_state(0), b_concurrency(0)
@@ -237,7 +188,6 @@ ping_thread::bdocall(time_t timeout)
     return 0;
 }
 
-static ping_thread __static_ping_thread;
 
 int
 add_knode(char id[20], in_addr_t host, in_port_t port)

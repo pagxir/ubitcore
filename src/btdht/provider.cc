@@ -180,10 +180,12 @@ class boothread: public bthread
     private:
         int b_state;
         time_t b_start_time;
+        kfind  *b_find;
 };
 
 boothread::boothread()
 {
+    b_find = NULL;
     b_state = 0;
     b_start_time = now_time();
 }
@@ -191,7 +193,6 @@ boothread::boothread()
 int
 boothread::bdocall(time_t timeout)
 {
-    int  count;
     char bootid[20];
     int state = b_state;
     while (b_runable){
@@ -204,10 +205,9 @@ boothread::bdocall(time_t timeout)
                 b_start_time = now_time();
                 break;
             case 1:
-                count = btkad::find_node(bootid);
+                b_find = btkad::find_node(bootid);
                 break;
             case 2:
-                printf("DHT Wait Network: %d\n", count);
                 break;
             case 3:
                 btime_wait(b_start_time+60);

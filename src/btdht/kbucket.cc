@@ -62,11 +62,14 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
 }
 
 static kbucket *__static_routing_table[160] = {NULL};
+static int __boot_count = 0;
+static kitem_t __boot_contacts[8];
+
 
 int
 get_knode(char target[20], kitem_t nodes[], bool valid)
 {
-    int count = -1;
+    int count = 0;
     int i = get_kbucket_index(target);
     assert(i >= 0);
     kbucket *bucket = __static_routing_table[i];
@@ -75,8 +78,12 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
     }
     if (count == 0){
         /* route table is empty */
-        printf("get default node\n");
-        
+        int max = std::min(_K, __boot_count);
+        for (i=0; i<max; i++){
+            nodes[i] = __boot_contacts[i];
+            genkadid(nodes[i].kadid);
+        }
+        count = max;
     }
     return count;
 }
@@ -99,9 +106,6 @@ update_contact(const kitem_t *in, kitem_t *out)
     }
     return bucket->update_contact(in, out);
 }
-
-static int __boot_count = 0;
-static kitem_t __boot_contacts[8];
 
 int
 update_boot_contact(in_addr_t addr, in_port_t port)

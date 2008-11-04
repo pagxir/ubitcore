@@ -2,11 +2,13 @@
 #define __BTKAD_H__
 #define  _K 8
 #define CONCURRENT_REQUEST _K
+class kfind;
 class btkad{
     public:
-        static int find_node(char target[20]);
+        static kfind *find_node(char target[20]);
 };
 int bdhtnet_start();
+int genkadid(char ident[20]);
 int getkadid(char ident[20]);
 int setkadid(const char ident[20]);
 int get_kbucket_index(const char ident[20]);
