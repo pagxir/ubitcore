@@ -4,7 +4,7 @@
 
 class bdhtnet;
 
-class bdhtorrent: public bdhtpoller
+class bdhtorrent
 {
     public:
         bdhtorrent(bdhtnet *dhtnet);

@@ -16,18 +16,8 @@ class bdhtcodec
     private:
         int b_type;
         int b_transid;
-        std::string b_ident;
         btcodec b_codec;
-};
-
-class bdhtpoller: public bthread
-{
-    public:
-        bool polling();
-        virtual void polling_dump()=0;
-
-    protected:
-        bool b_polling;
+        std::string b_ident;
 };
 
 class bdhtnet: public bthread
@@ -50,7 +40,8 @@ class bdhtnet: public bthread
                 uint32_t host, uint16_t port);
         std::map<int, bdhtransfer*> b_requests;
         bsocket b_socket;
-        time_t b_last;
+        bool    b_inited;
+        time_t  b_last;
         uint32_t b_tid;
 };
 
@@ -63,6 +54,5 @@ struct bootstraper
     bootstraper();
 };
 
-int bdhtnet_node(const char *host, int port);
 int bdhtnet_start();
 #endif

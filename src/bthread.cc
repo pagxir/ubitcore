@@ -13,6 +13,7 @@ bthread::bthread()
     b_ident = "bthread";
     b_flag = BF_ACTIVE;
     b_runable = false;
+    b_swaitident = NULL;
 }
 
 int
@@ -30,9 +31,17 @@ bthread::bfailed()
 }
 
 void
-bthread::tsleep()
+bthread::tsleep(void *ident, time_t timeout)
 {
+    assert(b_runable==true);
     b_runable = false;
+    b_swaitident = ident;
+    if (timeout > bthread::now_time()){
+        benqueue(timeout);
+    }else if (timeout > 0){
+        b_runable = true;
+        b_swaitident = NULL;
+    }
 }
 
 struct btimer
@@ -64,12 +73,9 @@ static std::set<btimer, btimer>__q_timer;
 int
 bthread::btime_wait(time_t t)
 {
-    if (t > bthread::now_time()) {
-        b_runable = false;
-        benqueue(t);
-        return -1;
-    }
-    return 0;
+    static int __btime;
+    tsleep(&__btime, t);
+    return b_runable?0:-1;
 }
 
 int
@@ -85,8 +91,9 @@ bthread::benqueue(time_t timeout)
 }
 
 int
-bthread::bwakeup()
+bthread::bwakeup(void *wait)
 {
+    assert(b_swaitident==wait);
     if (b_flag & BF_ACTIVE){
         b_flag &= ~BF_ACTIVE;
         __q_running.push(this);
@@ -114,7 +121,6 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
             if (__q_running.empty()){
                 THEADER->bwait();
                 _tnow = time(NULL);
-                printf("ok: waiting\n");
                 continue;
             }
             next_timer = THEADER->tt_tick;

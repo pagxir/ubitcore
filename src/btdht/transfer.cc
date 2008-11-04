@@ -17,12 +17,10 @@
 #include "provider.h"
 #include "transfer.h"
 
-    extern bdhtnet __dhtnet;
 bdhtransfer::bdhtransfer(bdhtnet *net, uint32_t ident)
 {
     b_ident = ident;
     b_dhtnet = net;
-    b_poller = NULL;
 }
 
 bdhtransfer::~bdhtransfer()
@@ -37,12 +35,12 @@ bdhtransfer::~bdhtransfer()
 }
 
 int
-bdhtransfer::get_response(bdhtpoller *poller, void *buf, size_t len,
+bdhtransfer::get_response(void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
-    assert(b_dhtnet==&__dhtnet);
     if (b_queue.empty()){
-        bdopolling(poller);
+        bthread::now_job()->tsleep(this, 0);
+        b_thread = bthread::now_job();
         return -1;
     }
     bdhtpack *pkg = b_queue.front();
@@ -88,7 +86,6 @@ void
 bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
-    assert(b_dhtnet==&__dhtnet);
     bdhtpack *pkg = new bdhtpack;
     pkg->b_ibuf = malloc(len);
     pkg->b_len = len;
@@ -97,29 +94,5 @@ bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
     assert(pkg->b_ibuf != NULL);
     memcpy(pkg->b_ibuf, ibuf, len);
     b_queue.push(pkg);
-    if (b_poller == NULL){
-        return;
-    }
-    if (b_poller->polling()){
-        b_poller->polling_dump();
-        b_poller->bwakeup();
-    }
-    b_poller = NULL;
 }
 
-int
-bdhtransfer::bdopolling(bdhtpoller *poller)
-{
-    if (!b_queue.empty()){
-        return 0;
-    }
-#if 1
-    if (poller != b_poller){
-        if (b_poller != NULL){
-            printf("warn: bdhtransfer::bpoll conflict!\n");
-        }
-    }
-#endif
-    b_poller = poller;
-    return -1;
-}

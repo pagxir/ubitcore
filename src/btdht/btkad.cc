@@ -2,12 +2,18 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string>
+#include <netinet/in.h>
+#include <string.h>
 #include <map>
 
 #include "btkad.h"
 #include "knode.h"
 #include "kbucket.h"
 #include "bthread.h"
+#include "bsocket.h"
+#include "btcodec.h"
+#include "transfer.h"
+#include "provider.h"
 
 static std::map<bthread*, std::string> __find_node_sleep_queue;
 
@@ -63,13 +69,14 @@ int _find_node(char target[20])
 int
 btkad::find_node(char target[20])
 {
+    static int __ident;
     bthread *curthread = bthread::now_job();
 
     if (__find_node_sleep_queue.find(curthread)
             == __find_node_sleep_queue.end()){
         __find_node_sleep_queue.insert(
                 std::make_pair(curthread, target));
-        curthread->tsleep();
+        curthread->tsleep(&__ident, 36000);
         return -1;
     }
     __find_node_sleep_queue.erase(curthread);
@@ -124,6 +131,7 @@ struct kping_arg{
     bool      pinging;
 };
 
+static bdhtnet __static_dhtnet;
 static std::map<in_addr_t, kping_arg> __static_ping_args;
 
 class ping_thread: public bthread
@@ -134,24 +142,51 @@ class ping_thread: public bthread
 
     private:
         int b_state;
+        int b_concurrency;
+        std::vector<bdhtransfer*> b_ping_queue;
 };
 
 ping_thread::ping_thread()
-    :b_state(0)
+    :b_state(0), b_concurrency(0)
 {
+
 }
 
 int
 ping_thread::bdocall(time_t timeout)
 {
     int state = b_state;
+    char buffer[8192];
+    std::vector<bdhtransfer*>::iterator iter;
+    std::map<in_addr_t, kping_arg> *args;
     while (b_runable){
         b_state = state++;
         switch(b_state){
             case 0:
-                printf("ping_thread::Hello\n");
+                args = &__static_ping_args;
+                while (!args->empty() && b_concurrency<_K){
+                    kping_arg arg = args->begin()->second;
+                    args->erase(args->begin());
+                    bdhtransfer *transfer = __static_dhtnet.get_transfer();
+                    b_ping_queue.push_back(transfer);
+                    b_concurrency++;
+                }
                 break;
             case 1:
+                for (iter=b_ping_queue.begin();
+                        iter!=b_ping_queue.end(); iter++){
+                    in_addr_t host;
+                    in_port_t port;
+                    if (*iter == NULL){
+                        continue;
+                    }
+                    int count = (*iter)->get_response(buffer,
+                            sizeof(buffer), &host, &port);
+                    if (count > 0){
+                        delete (*iter);
+                        *iter = NULL;
+                    }
+                }
                 printf("ping_thread::World\n");
                 break;
             default:
@@ -177,6 +212,6 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
     }
     __static_ping_args.insert(
             std::make_pair(host, arg));
-    __static_ping_thread.bwakeup();
+    __static_ping_thread.bwakeup(NULL);
     return 0;
 }

@@ -1,6 +1,10 @@
 #ifndef __BDHTRANSFER_H__
 #define __BDHTRANSFER_H__
 
+class bthread;
+class bdhtnet;
+class bdhtcodec;
+
 struct bdhtpack
 {
     void *b_ibuf;
@@ -19,14 +23,13 @@ class bdhtransfer{
         int get_peers(uint32_t host, uint16_t port, uint8_t ident[20]);
         void binput(bdhtcodec *codec, const void *buf, size_t len,
                 uint32_t host, uint16_t port);
-        int get_response(bdhtpoller *poller, void *buf, size_t size,
+        int get_response(void *buf, size_t size,
                 uint32_t *phost, uint16_t *pport);
-        int bdopolling(bdhtpoller *poller);
 
     private:
         uint32_t b_ident;
         bdhtnet *b_dhtnet;
         std::queue<bdhtpack*> b_queue;
-        bdhtpoller *b_poller;
+        bthread *b_thread;
 };
 #endif

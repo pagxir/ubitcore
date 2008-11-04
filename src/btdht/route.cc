@@ -171,7 +171,6 @@ update_route(bdhtnet *net, const void *ibuf, size_t len,
             }
             printf("\n");
             dhtboot->add_dhtnode(host, port);
-            dhtboot->bwakeup();
         }
     }
 #endif
@@ -266,7 +265,6 @@ route_get_peers(bdhtnet *dhtnet)
         }
     }
     __dhtorrent->set_infohash((uint8_t*)infohash);
-    __dhtorrent->bwakeup();
 }
 
 bool
@@ -324,7 +322,6 @@ update_all_bucket(bdhtnet *net)
                 dhtboot->add_dhtnode(lastrib[j]->host,
                         lastrib[j]->port);
             }
-            dhtboot->bwakeup();
 #endif
         }
     }

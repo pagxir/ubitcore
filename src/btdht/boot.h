@@ -1,7 +1,7 @@
 #ifndef __BDHTBOOT_H__
 #define __BDHTBOOT_H__
 
-class bdhtboot: public bdhtpoller
+class bdhtboot
 {
     public:
         bdhtboot(bdhtnet *dhtnet, int tableid);

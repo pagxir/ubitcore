@@ -18,9 +18,6 @@
 #include "transfer.h"
 #include "btkad.h"
 
-bdhtnet __dhtnet;
-static bdhtboot __boot_bucket(&__dhtnet, 159);
-
 char __ping_node[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
 };
@@ -60,7 +57,7 @@ bdhtcodec::bload(const char *buffer, size_t length)
 }
 
 bdhtnet::bdhtnet()
-    :b_tid(0)
+    :b_tid(0), b_inited(false)
 {
 }
 
@@ -77,6 +74,10 @@ bdhtnet::get_peers(uint32_t tid, uint32_t host,
 {
     memcpy(&__get_peers[46], ident, 20);
     memcpy(&__get_peers[86], &tid, 4);
+    if (b_inited == false){
+        b_inited = true;
+        bwakeup(NULL);
+    }
     return b_socket.bsendto(__get_peers,
             sizeof(__get_peers)-1,
             host, port);
@@ -96,6 +97,10 @@ bdhtnet::find_node(uint32_t tid, uint32_t host,
 
     memcpy(&__find_node[43], ident, 20);
     memcpy(&__find_node[83], &tid, 4);
+    if (b_inited == false){
+        b_inited = true;
+        bwakeup(NULL);
+    }
     return b_socket.bsendto(__find_node,
             sizeof(__find_node)-1,
             host, port);
@@ -105,6 +110,10 @@ int
 bdhtnet::ping_node(uint32_t tid, uint32_t host, uint16_t port)
 {
     memcpy(&__ping_node[47], &tid, 4);
+    if (b_inited == false){
+        b_inited = true;
+        bwakeup(NULL);
+    }
     return b_socket.bsendto(__ping_node,
             sizeof(__ping_node)-1,
             host, port);
@@ -155,21 +164,6 @@ bdhtnet::bdocall(time_t timeout)
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
     }
     return error;
-}
-
-
-int
-bdhtnet_node(const char *host, int port)
-{
-    uint32_t ihost = inet_addr(host);
-    __boot_bucket.add_dhtnode(ihost, port);
-    return 0;
-}
-
-bool
-bdhtpoller::polling()
-{
-    return b_polling;
 }
 
 bootstraper::bootstraper()
@@ -242,6 +236,5 @@ bdhtnet_start()
     getclientid(&__ping_node[12]);
     getclientid(&__find_node[12]);
     getclientid(&__get_peers[12]);
-    __static_boothread.bwakeup();
     return 0;
 }

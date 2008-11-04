@@ -34,6 +34,6 @@ static biothread __iothread;
 int
 biorun()
 {
-    __iothread.bwakeup();
+    __iothread.bwakeup(NULL);
     return 0;
 }

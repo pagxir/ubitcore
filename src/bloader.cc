@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
     bclock c("socket connect clock", 7);
-    c.bwakeup(); 
+    c.bwakeup(NULL); 
 #endif
     bthread *j;
     time_t timeout;

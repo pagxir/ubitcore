@@ -45,8 +45,9 @@ conflict::conflict()
 int
 conflict::bdocall(time_t timeout)
 {
+    static int swconflict;
     while(!__q_conflict.empty()){
-        __q_conflict.front()->bwakeup();
+        __q_conflict.front()->bwakeup(&swconflict);
         __q_conflict.pop();
     }
     return 0;
@@ -175,19 +176,19 @@ bsocket::bpoll(int count)
     b_flag = 0;
     if (BSF_CONN&flag){
         if (count>0 && ok_read()){
-            b_jrd->bwakeup();
+            b_jrd->bwakeup(&b_jrd);
             flag &= ~BSF_CONN;
             count--;
         }
         if (count>0 && ok_write()){
-            b_jwr->bwakeup();
+            b_jwr->bwakeup(&b_jwr);
             flag &= ~BSF_CONN;
             count--;
         }
 #ifndef DEFAULT_TCP_TIME_OUT
         if (b_syn_time+8 < bthread::now_time()){
-            b_jwr->bwakeup();
-            b_jrd->bwakeup();
+            b_jwr->bwakeup(&b_jwr);
+            b_jrd->bwakeup(&b_jrd);
             flag &= ~BSF_CONN;
         }
 #endif
@@ -203,7 +204,7 @@ bsocket::bpoll(int count)
     }
     if (BSF_READ&flag){
         if (count>0 && ok_read()){
-            b_jrd->bwakeup();
+            b_jrd->bwakeup(&b_jrd);
             b_jrd = NULL;
             count --;
         }else{
@@ -212,7 +213,7 @@ bsocket::bpoll(int count)
     }
     if (BSF_WRITE&flag){
         if (count>0 && ok_write()){
-            b_jwr->bwakeup();
+            b_jwr->bwakeup(&b_jwr);
             b_jwr = NULL;
             count --;
         }else{
@@ -228,7 +229,7 @@ bsocket::q_write(bthread *job)
     if (b_jwr == NULL){
         b_jwr = job;
     }
-    job->tsleep();
+    job->tsleep(&b_jwr, 0);
     if (job!=b_jwr){
         if (b_jwr != &__conflict){
             __q_conflict.push(b_jwr);
@@ -253,7 +254,7 @@ bsocket::q_read(bthread *job)
     if (b_jrd == NULL){
         b_jrd = job;
     }
-    job->tsleep();
+    job->tsleep(&b_jrd, 0);
     if (job!=b_jrd){
         if (b_jrd != &__conflict){
             __q_conflict.push(b_jrd);

@@ -158,11 +158,10 @@ bdhtorrent::bdocall(time_t timeout)
                 }
                 break;
             case 1:
-                b_polling = true;
                 b_touch = time(NULL);
                 break;
             case 2:
-                error = btime_wait(b_touch+2);
+                //error = btime_wait(b_touch+2);
                 for (iter=b_findmap.begin();
                         iter!=b_findmap.end(); ){
                     niter = iter++;
@@ -172,12 +171,15 @@ bdhtorrent::bdocall(time_t timeout)
                         b_findmap.erase(niter);
                         continue;
                     }
+                    int flag = 0;
+#if 0
                     int flag = trans->get_response(
                             this, buffer, sizeof(buffer),
                             &host, &port);
                     if (flag == -1){
                         continue;
                     }
+#endif
                     delete trans;
                     p.b_transfer = NULL;
                     state = error = 0;

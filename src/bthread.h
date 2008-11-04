@@ -9,8 +9,7 @@ class bthread
 {
 public:
     bthread();
-    int bwakeup();
-    int bwait();
+    int bwakeup(void *ident);
     int btime_wait(time_t t);
     int benqueue(time_t timeout);
     int flag(){ return b_flag; }
@@ -23,16 +22,17 @@ public:
 public:
     int b_seed;
     time_t b_tick;
-    void   tsleep();
+    void   tsleep(void *ident, time_t timeout);
 
 private:
+    void   *b_swaitident;
     static time_t _tnow;
     static bthread *_jnow;
 
 protected:
+    int  b_flag;
     bool b_runable;
     std::string b_ident;
-    int b_flag;
 };
 
 #endif

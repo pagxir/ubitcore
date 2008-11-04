@@ -28,7 +28,6 @@ typedef struct _npack
 
 bdhtboot::bdhtboot(bdhtnet *dhtnet, int tableid)
 {
-    b_ident=("bdhtboot");
     b_count = 0;
     b_state = 0;
     b_dhtnet = dhtnet;
@@ -206,11 +205,9 @@ bdhtboot::bdocall(time_t timeout)
                 b_bootmap.clear();
                 break;
             case 2:
-                b_polling = true;
                 b_touch = time(NULL);
                 break;
             case 3:
-                error = btime_wait(b_touch+5);
                 for (iter=b_findmap.begin();
                         iter!=b_findmap.end(); ){
                     niter = iter++;
@@ -220,18 +217,10 @@ bdhtboot::bdocall(time_t timeout)
                         b_findmap.erase(niter);
                         continue;
                     }
-                    int flag = trans->get_response(
-                            this, buffer, sizeof(buffer),
-                            &host, &port);
-                    if (flag == -1){
-                        continue;
-                    }
                     delete trans;
                     p.b_transfer = NULL;
                     error = 0;
-                    update_route(b_dhtnet, buffer, flag, host, port);
                     if (route_need_update(b_tableid)){
-                        find_node_next(buffer, flag);
                         state = 1;
                     }
                 }
@@ -281,7 +270,6 @@ bdhtboot::bdocall(time_t timeout)
                 return 0;
                 break;
             case 10:
-                error = btime_wait(b_touch+30);
                 break;
             case 11:
                 b_touch = time(NULL);
@@ -308,5 +296,4 @@ bdhtboot::reboot()
     b_findmap.clear();
     b_bootmap.clear();
     b_state = 0;
-    bwakeup();
 }
