@@ -39,7 +39,7 @@ bdhtransfer::get_response(void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
     if (b_queue.empty()){
-        bthread::now_job()->tsleep(this, 0);
+        //bthread::now_job()->tsleep(this, 0);
         b_thread = bthread::now_job();
         return -1;
     }
@@ -93,6 +93,10 @@ bdhtransfer::binput(bdhtcodec *codec, const void *ibuf, size_t len,
     pkg->b_port = port;
     assert(pkg->b_ibuf != NULL);
     memcpy(pkg->b_ibuf, ibuf, len);
+    if (b_thread != NULL){
+        b_thread->bwakeup(NULL);
+        b_thread = NULL;
+    }
     b_queue.push(pkg);
 }
 

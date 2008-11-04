@@ -155,6 +155,7 @@ ping_thread::ping_thread()
 int
 ping_thread::bdocall(time_t timeout)
 {
+    int retry = 0;
     int state = b_state;
     char buffer[8192];
     std::vector<bdhtransfer*>::iterator iter;
@@ -169,10 +170,13 @@ ping_thread::bdocall(time_t timeout)
                     args->erase(args->begin());
                     bdhtransfer *transfer = __static_dhtnet.get_transfer();
                     b_ping_queue.push_back(transfer);
+                    transfer->ping_node(arg.host, arg.port);
                     b_concurrency++;
                 }
                 break;
             case 1:
+                retry = 0;
+                b_runable = false;
                 for (iter=b_ping_queue.begin();
                         iter!=b_ping_queue.end(); iter++){
                     in_addr_t host;
@@ -183,14 +187,17 @@ ping_thread::bdocall(time_t timeout)
                     int count = (*iter)->get_response(buffer,
                             sizeof(buffer), &host, &port);
                     if (count > 0){
+                    printf("ping_thread::World: %p:%d\n", *iter, count);
+                        retry++;
+                        state = 0;
+                        b_runable = true;
                         delete (*iter);
                         *iter = NULL;
                     }
                 }
-                printf("ping_thread::World\n");
                 break;
             default:
-                b_runable = false;
+                printf("what\n");
                 break;
         }
     }

@@ -33,7 +33,6 @@ bthread::bfailed()
 void
 bthread::tsleep(void *ident, time_t timeout)
 {
-    assert(b_runable==true);
     b_runable = false;
     b_swaitident = ident;
     if (timeout > bthread::now_time()){
