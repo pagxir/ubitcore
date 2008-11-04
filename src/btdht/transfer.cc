@@ -39,7 +39,6 @@ kship::get_response(void *buf, size_t len,
         uint32_t *host, uint16_t *port)
 {
     if (b_queue.empty()){
-        //bthread::now_job()->tsleep(this, 0);
         b_thread = bthread::now_job();
         return -1;
     }

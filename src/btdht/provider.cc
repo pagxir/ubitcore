@@ -16,6 +16,7 @@
 #include "provider.h"
 #include "boot.h"
 #include "transfer.h"
+#include "kfind.h"
 #include "btkad.h"
 
 char __ping_node[] = {
@@ -159,6 +160,7 @@ bdhtnet::bdocall(time_t timeout)
     while (error != -1){ 
         bdhtcodec codec;
         if (0==codec.bload(buffer, error)){
+            printf("recv packet\n");
             binput(&codec, buffer, error, host, port);
         }
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
@@ -208,6 +210,10 @@ boothread::bdocall(time_t timeout)
                 b_find = btkad::find_node(bootid);
                 break;
             case 2:
+                if (b_find->vcall() == -1){
+                    printf("Hell oworld\n");
+                    state = 2;
+                }
                 break;
             case 3:
                 btime_wait(b_start_time+60);
