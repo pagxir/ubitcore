@@ -1,7 +1,7 @@
 #ifndef __BTKAD_H__
 #define __BTKAD_H__
 #define  _K 8
-#define CONCURRENT_REQUEST _K
+#define CONCURRENT_REQUEST 3
 class kfind;
 class btkad{
     public:

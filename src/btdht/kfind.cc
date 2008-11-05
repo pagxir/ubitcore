@@ -32,6 +32,7 @@ kfind::kfind(bdhtnet *net, const char target[20])
     b_net   = net;
     b_trim  = false;
     b_concurrency = 0;
+    b_sumumery = 0;
     memcpy(b_target, target, 20);
 }
 
@@ -50,6 +51,7 @@ kfind::decode_packet(const char buffer[], size_t count,
     btcodec codec;
     codec.bload(buffer, count);
 
+    b_sumumery++;
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
 #if 0
     if (vip != NULL && len==20){
@@ -154,6 +156,7 @@ kfind::vcall()
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
+                    printf("summery: %d\n", b_sumumery);
                     return 0;
                 }
                 b_last_update = time(NULL);
