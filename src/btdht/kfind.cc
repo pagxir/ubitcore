@@ -37,8 +37,18 @@ void
 kfind::decode_packet(const char buffer[], size_t count,
         in_addr_t address, in_port_t port)
 {
+    size_t len;
     btcodec codec;
     codec.bload(buffer, count);
+
+    const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
+    if (vip != NULL && len==20){
+        printf("find_node: ");
+        for (int i=0; i<20; i++){
+            printf("%02x", vip[i]&0xff);
+        }
+        printf("\n");
+    }
 }
 
 int
@@ -62,11 +72,6 @@ kfind::vcall()
                 if (count == -1){
                     return 0;
                 }
-                printf("trying find node: %d\n", count);
-                b_kfind_queue.clear();
-                b_kfind_out.clear();
-                b_concurrency = 0;
-                assert(b_kfind_out.empty());
                 for (i=0; i<count; i++){
                     kfind_arg *arg = new kfind_arg;
                     arg->host = nodes[i].host;
@@ -83,10 +88,10 @@ kfind::vcall()
                         break;
                     }
                     kfind_arg *arg = b_kfind_queue.begin()->second;
+                    b_kfind_queue.erase(b_kfind_queue.begin());
                     arg->ship = b_net->get_kship();
                     arg->ship->find_node(arg->host, arg->port,
                             (uint8_t*)b_target);
-                    b_kfind_queue.erase(b_kfind_queue.begin());
                     b_kfind_out.push_back(arg);
                     b_concurrency++;
                 }
@@ -96,9 +101,12 @@ kfind::vcall()
                 if (b_last_update+10 > bthread::now_time()){
                     error = -1;
                     bthread::now_job()->tsleep(NULL, b_last_update+10);
+                    printf("");
                 }else{
-                    printf("time out: retry find node\n");
-                    error = state = 0;
+                    b_concurrency = 0;
+                    error = 0;
+                    state = 1;
+                    break;
                 }
                 for (iter = b_kfind_out.begin(); 
                         iter != b_kfind_out.end();
