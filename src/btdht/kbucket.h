@@ -17,4 +17,5 @@ class kbucket{
 int update_boot_contact(in_addr_t addr, in_port_t port);
 int update_contact(const kitem_t *in, kitem_t *out);
 int get_knode(char target[20], kitem_t nodes[_K], bool valid);
+void dump_routing_table();
 #endif

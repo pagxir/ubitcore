@@ -44,6 +44,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
     for (i=0; i<b_count; i++){
         kn = b_knodes[i];
         if (0==kn->replace(in, &tout)){
+            printf("replace it\n");
             return 0;
         }
         if (tout.atime < lru){
@@ -55,9 +56,10 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
         kn  = new knode(in->kadid, in->host, in->port);
         kn->touch();
         b_knodes[b_count++] = kn;
-        //printf("adding one knode\n");
+        printf("adding one knode\n");
         return 0;
     }
+    printf("drop: %d\n", b_count);
     return (now-lru>15*60);
 }
 
@@ -93,6 +95,7 @@ update_contact(const kitem_t *in, kitem_t *out)
 {
     int i;
     const char *kadid = in->kadid;
+    printf("update_contact: ");
     for (i=0; i<20; i++){
         printf("%02x", kadid[i]&0xFF);
     }
@@ -103,6 +106,7 @@ update_contact(const kitem_t *in, kitem_t *out)
     if (bucket == NULL){
         bucket = new kbucket;
         __static_routing_table[i] = bucket;
+        printf("new bucket\n");
     }
     return bucket->update_contact(in, out);
 }
@@ -117,4 +121,39 @@ update_boot_contact(in_addr_t addr, in_port_t port)
     __boot_contacts[idx].host = addr;
     __boot_contacts[idx].port = port;
     return 0;
+}
+
+void dump_kbucket(kbucket *bucket)
+{
+    int i;
+    kitem_t nodes[_K];
+    int count = bucket->get_knode(nodes);
+    for (i=0; i<count; i++){
+        int j;
+        printf("\t%02x: ", i);
+        for (j=0; j<20; j++){
+            printf("%02x", 0xff&nodes[i].kadid[j]);
+        }
+        printf("\n");
+    }
+}
+
+void
+dump_routing_table()
+{
+    int i;
+    char selfid[20];
+    getkadid(selfid);
+    printf("selfid: ");
+    for (i=0; i<20; i++){
+        printf("%02x", selfid[i]&0xff);
+    }
+    printf("\n");
+    for(i=0; i<160; i++){
+        if (__static_routing_table[i]){
+            printf("kbucket: %02x\n", i);
+            dump_kbucket(__static_routing_table[i]);
+            printf("\n");
+        }
+    }
 }

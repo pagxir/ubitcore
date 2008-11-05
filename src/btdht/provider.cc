@@ -18,6 +18,7 @@
 #include "transfer.h"
 #include "kfind.h"
 #include "btkad.h"
+#include "kbucket.h"
 
 char __ping_node[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
@@ -201,7 +202,7 @@ boothread::bdocall(time_t timeout)
         switch(b_state)
         {
             case 0:
-                getclientid(bootid);
+                getkadid(bootid);
                 bootid[19]^=0x1;
                 b_start_time = now_time();
                 break;
@@ -214,6 +215,7 @@ boothread::bdocall(time_t timeout)
                 }
                 break;
             case 3:
+                dump_routing_table();
                 btime_wait(b_start_time+60*15);
                 break;
             case 4:
@@ -237,9 +239,12 @@ bdhtnet_start()
     if (__call_once_only++ > 0){
         return -1;
     }
-    getclientid(&__ping_node[12]);
-    getclientid(&__find_node[12]);
-    getclientid(&__get_peers[12]);
+    char bootid[20];
+    genkadid(bootid);
+    setkadid(bootid);
+    getkadid(&__ping_node[12]);
+    getkadid(&__find_node[12]);
+    getkadid(&__get_peers[12]);
     __static_boothread.bwakeup(NULL);
     return 0;
 }

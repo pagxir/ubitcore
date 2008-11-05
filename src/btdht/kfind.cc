@@ -51,6 +51,7 @@ kfind::decode_packet(const char buffer[], size_t count,
     codec.bload(buffer, count);
 
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
+#if 0
     if (vip != NULL && len==20){
         printf("find_node: ");
         for (int i=0; i<20; i++){
@@ -58,6 +59,7 @@ kfind::decode_packet(const char buffer[], size_t count,
         }
         printf("\n");
     }
+#endif
     kaddist_t dist(vip, b_target);
     b_kfind_ined.insert(std::make_pair(dist, 1));
     std::map<kaddist_t, int>::iterator backdist = b_kfind_ined.end();
@@ -86,11 +88,9 @@ kfind::decode_packet(const char buffer[], size_t count,
 #endif
             kaddist_t dist(in.kadid, b_target);
             if (b_kfind_outed.find(dist) != b_kfind_outed.end()){
-                printf("skip this outed\n");
                 continue;
             }
             if (b_trim && b_ended < dist){
-                printf("skip this for more K\n");
                 continue;
             }
             kfind_arg *arg = new kfind_arg;
@@ -99,7 +99,6 @@ kfind::decode_packet(const char buffer[], size_t count,
             memcpy(arg->kadid, in.kadid, 20);
             if (b_kfind_queue.insert(
                     std::make_pair(dist, arg)).second == false) {
-                printf("inser failed\n");
             }
         }
     }
@@ -139,11 +138,9 @@ kfind::vcall()
             case 1:
                 while (b_concurrency<CONCURRENT_REQUEST){
                     if (b_kfind_queue.empty()){
-                        printf("empty\n");
                         break;
                     }
                     if (b_trim && b_ended<b_kfind_queue.begin()->first){
-                        printf("empty0\n");
                         break;
                     }
                     kfind_arg *arg = b_kfind_queue.begin()->second;
@@ -157,7 +154,6 @@ kfind::vcall()
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    printf("find key ended\n");
                     return 0;
                 }
                 b_last_update = time(NULL);

@@ -36,10 +36,7 @@ knode::replace(const kitem_t *in, kitem_t *out)
         touch();
         return 0;
     }
-    memcpy(out->kadid, b_ident, 20);
-    out->port = b_port;
-    out->host = b_address;
-    out->atime = b_last_seen;
+    getnode(out);
     return b_last_seen;
 }
 
