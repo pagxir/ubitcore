@@ -211,7 +211,6 @@ boothread::bdocall(time_t timeout)
                 break;
             case 2:
                 if (b_find->vcall() == -1){
-                    printf("Hell oworld\n");
                     state = 2;
                 }
                 break;

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <map>
 
 #include "btkad.h"
@@ -33,6 +34,13 @@ kfind::kfind(bdhtnet *net, const char target[20])
     memcpy(b_target, target, 20);
 }
 
+struct compat_t
+{
+    char ident[20];
+    char host[4];
+    char port[2];
+};
+
 void
 kfind::decode_packet(const char buffer[], size_t count,
         in_addr_t address, in_port_t port)
@@ -48,6 +56,20 @@ kfind::decode_packet(const char buffer[], size_t count,
             printf("%02x", vip[i]&0xff);
         }
         printf("\n");
+    }
+    const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
+    if (compat != NULL && (len%26)==0){
+        kitem_t in, out;
+        compat_t *iter = (compat_t*)compat;
+        compat_t *compated = (compat_t*)(compat+len);
+        for (iter; iter<compated; iter++){
+            memcpy(&in.kadid, &iter->ident, 20);
+            memcpy(&in.host, &iter->host, sizeof(in_addr_t));
+            memcpy(&in.port, &iter->port, sizeof(in_port_t));
+            update_contact(&in, &out);
+            printf("kfind: %s:%d\n", 
+                    inet_ntoa(*(in_addr*)&in.host), ntohs(in.port));
+        }
     }
 }
 
