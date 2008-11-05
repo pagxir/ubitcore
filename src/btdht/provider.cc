@@ -160,7 +160,6 @@ bdhtnet::bdocall(time_t timeout)
     while (error != -1){ 
         bdhtcodec codec;
         if (0==codec.bload(buffer, error)){
-            printf("recv packet\n");
             binput(&codec, buffer, error, host, port);
         }
         error = b_socket.brecvfrom(buffer, sizeof(buffer), &host, &port);
@@ -215,7 +214,7 @@ boothread::bdocall(time_t timeout)
                 }
                 break;
             case 3:
-                btime_wait(b_start_time+60);
+                btime_wait(b_start_time+60*15);
                 break;
             case 4:
                 printf("DHT: Refresh Boot!\n");

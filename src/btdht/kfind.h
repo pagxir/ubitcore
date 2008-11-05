@@ -17,8 +17,12 @@ class kfind{
         int b_state;
         bdhtnet *b_net;
         time_t   b_last_update;
+        bool      b_trim;
+        kaddist_t b_ended;
         std::vector<kfind_arg*> b_kfind_out;
         std::map<kaddist_t, kfind_arg*> b_kfind_queue;
+        std::map<kaddist_t, int> b_kfind_outed;
+        std::map<kaddist_t, int> b_kfind_ined;
 };
 int _find_node(char target[20]);
 #endif

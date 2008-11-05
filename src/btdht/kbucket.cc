@@ -55,7 +55,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
         kn  = new knode(in->kadid, in->host, in->port);
         kn->touch();
         b_knodes[b_count++] = kn;
-        printf("adding one knode\n");
+        //printf("adding one knode\n");
         return 0;
     }
     return (now-lru>15*60);

@@ -30,6 +30,7 @@ kfind::kfind(bdhtnet *net, const char target[20])
 {
     b_state = 0;
     b_net   = net;
+    b_trim  = false;
     b_concurrency = 0;
     memcpy(b_target, target, 20);
 }
@@ -57,18 +58,49 @@ kfind::decode_packet(const char buffer[], size_t count,
         }
         printf("\n");
     }
+    kaddist_t dist(vip, b_target);
+    b_kfind_ined.insert(std::make_pair(dist, 1));
+    std::map<kaddist_t, int>::iterator backdist = b_kfind_ined.end();
+    backdist --;
+    if (b_kfind_ined.size() > 8){
+        b_kfind_ined.erase(backdist--);
+    }
+    if (b_kfind_ined.size() == 8){
+        b_trim = true;
+        b_ended =  backdist->first;
+    }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
     if (compat != NULL && (len%26)==0){
         kitem_t in, out;
         compat_t *iter = (compat_t*)compat;
         compat_t *compated = (compat_t*)(compat+len);
         for (iter; iter<compated; iter++){
-            memcpy(&in.kadid, &iter->ident, 20);
+            memcpy(&in.kadid, iter->ident, 20);
             memcpy(&in.host, &iter->host, sizeof(in_addr_t));
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
+            in.port = htons(in.port);
             update_contact(&in, &out);
+#if 0
             printf("kfind: %s:%d\n", 
                     inet_ntoa(*(in_addr*)&in.host), ntohs(in.port));
+#endif
+            kaddist_t dist(in.kadid, b_target);
+            if (b_kfind_outed.find(dist) != b_kfind_outed.end()){
+                printf("skip this outed\n");
+                continue;
+            }
+            if (b_trim && b_ended < dist){
+                printf("skip this for more K\n");
+                continue;
+            }
+            kfind_arg *arg = new kfind_arg;
+            arg->host = in.host;
+            arg->port = in.port;
+            memcpy(arg->kadid, in.kadid, 20);
+            if (b_kfind_queue.insert(
+                    std::make_pair(dist, arg)).second == false) {
+                printf("inser failed\n");
+            }
         }
     }
 }
@@ -107,15 +139,26 @@ kfind::vcall()
             case 1:
                 while (b_concurrency<CONCURRENT_REQUEST){
                     if (b_kfind_queue.empty()){
+                        printf("empty\n");
+                        break;
+                    }
+                    if (b_trim && b_ended<b_kfind_queue.begin()->first){
+                        printf("empty0\n");
                         break;
                     }
                     kfind_arg *arg = b_kfind_queue.begin()->second;
+                    b_kfind_outed.insert(
+                            std::make_pair(b_kfind_queue.begin()->first, 1));
                     b_kfind_queue.erase(b_kfind_queue.begin());
                     arg->ship = b_net->get_kship();
                     arg->ship->find_node(arg->host, arg->port,
                             (uint8_t*)b_target);
                     b_kfind_out.push_back(arg);
                     b_concurrency++;
+                }
+                if (b_concurrency == 0){
+                    printf("find key ended\n");
+                    return 0;
                 }
                 b_last_update = time(NULL);
                 break;
@@ -140,12 +183,21 @@ kfind::vcall()
                     count = ship->get_response(buffer,
                                 sizeof(buffer), &host, &port);
                     if (count > 0){
-                        b_concurrency--;
+                        if (b_concurrency > 0){
+                            b_concurrency--;
+                        }
                         decode_packet(buffer, count, host, port);
                         delete ship;
                         (*iter)->ship = NULL;
                         error = 0;
                         state = 1;
+                    }else{
+#if 0
+                    if (b_trim && b_ended<b_kfind_queue.begin()->first){
+                        printf("empty0\n");
+                        break;
+                    }
+#endif
                     }
                 }
                 break;
