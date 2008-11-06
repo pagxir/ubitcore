@@ -21,7 +21,6 @@ static biothread __iothread;
 biothread::biothread()
 {
     b_ident = "biothread";
-    b_pollable = 0;
     b_swaitident = &__wait;
     bsocket::global_init();
 }

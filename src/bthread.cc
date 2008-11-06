@@ -15,7 +15,6 @@ bthread::bthread()
     b_ident = "bthread";
     b_runable = false;
     b_swaitident = NULL;
-    b_pollable = 1;
 }
 
 int
@@ -52,6 +51,7 @@ bthread::bwakeup(void *wait)
     if (b_swaitident!=wait){
         return 0;
     }
+    _b_count++;
     __q_running.push(this);
     b_swaitident = NULL;
     b_runable = true;
@@ -70,7 +70,6 @@ bthread::bpoll(bthread ** pu)
         __q_running.pop();
     }while(!_jnow->b_runable);
     __q_running.push(_jnow);
-    _b_count += _jnow->b_pollable;
     *pu = _jnow;
     return 0;
 }

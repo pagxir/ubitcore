@@ -20,7 +20,6 @@ public:
     void tsleep(void *ident);
 
 protected:
-    int    b_pollable;
     void  *b_swaitident;
     static bthread *_jnow;
     static int _b_count;

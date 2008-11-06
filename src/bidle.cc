@@ -20,7 +20,6 @@ static bidlethread __idlethread;
 
 bidlethread::bidlethread()
 {
-    b_pollable = 0;
     b_ident = "bidlethread";
 }
 
@@ -33,11 +32,9 @@ bidlethread::bdocall()
         return 0;
     }
     time_t sel = comming_time();
-    printf("idle called: %d\n", (int)(sel-now));
     int twait = sel-now;
-    if (twait <= 0){
-        twait = 1;
-    }
+    assert(twait >= 0);
+    printf("idle called: %d\n", twait);
     bsocket::bselect(twait);
     return 0;
 }

@@ -49,6 +49,7 @@ conflict::bdocall(time_t timeout)
 {
     static int swconflict;
     while(!__q_conflict.empty()){
+        printf("bugfix: conflict not work now!\n");
         __q_conflict.front()->bwakeup(&swconflict);
         __q_conflict.pop();
     }

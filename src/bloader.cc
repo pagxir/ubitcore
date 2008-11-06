@@ -90,7 +90,7 @@ main(int argc, char *argv[])
     biorun();
     bidlerun();
     btimerdrun();
-    //bdhtnet_start();
+    bdhtnet_start();
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
