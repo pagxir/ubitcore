@@ -54,7 +54,7 @@ kfind::decode_packet(const char buffer[], size_t count,
 
     b_sumumery++;
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
-#if 0
+#if 1
     if (vip != NULL && len==20){
         printf("find_node: ");
         for (int i=0; i<20; i++){
@@ -126,6 +126,7 @@ kfind::vcall()
             case 0:
                 count = get_knode(b_target, nodes, false);
                 if (count == -1){
+                    printf("kfind: timeasfd out\n");
                     return 0;
                 }
                 for (i=0; i<count; i++){
@@ -163,9 +164,10 @@ kfind::vcall()
                 b_last_update = time(NULL);
                 break;
             case 2:
-                if (b_last_update+10 > now_time()){
+                if (b_last_update+5 > now_time()){
                     error = -1;
                     bthread::now_job()->tsleep(NULL);
+                    benqueue(b_last_update+5);
                     printf("");
                 }else{
                     b_concurrency = 0;

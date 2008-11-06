@@ -30,6 +30,7 @@ biothread::bdocall()
     __iowait = true;
     bsocket::bselect(0);
     __iowait = false;
+    tsleep(NULL);
     return 0;
 }
 

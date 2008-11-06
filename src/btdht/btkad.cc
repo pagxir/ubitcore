@@ -102,7 +102,7 @@ get_kbucket_index(const char kadid[20])
 ping_thread::ping_thread()
     :b_state(0), b_concurrency(0)
 {
-
+    b_ident = "ping_thread";
 }
 
 static std::vector<kitem_t> __static_ping_cache;
@@ -201,8 +201,10 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
         return 0;
     }
     update_boot_contact(host, port);
+#if 0
     __static_ping_args.insert(
             std::make_pair(host, arg));
     __static_ping_thread.bwakeup(NULL);
+#endif
     return 0;
 }

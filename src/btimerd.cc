@@ -65,14 +65,14 @@ time_t
 btimerd::check_timer()
 {
     _tnow = time(NULL);
-    next_timer = _tnow;
+    next_timer = _tnow+360000;
     bthread *item = NULL;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
         assert(THEADER->tt_tick <= item->b_tick);
         if (_tnow >= item->b_tick){
-            item->bwakeup(&__btime);
+            item->bwakeup(NULL);
         }else if (_tnow < THEADER->tt_tick){
             next_timer = THEADER->tt_tick;
             break;
@@ -98,7 +98,6 @@ btimerd::benqueue(time_t timeout)
 int
 btimerd::bdocall()
 {
-    printf("timed run\n");
     check_timer();
     tsleep(NULL);
     return 0;
@@ -132,7 +131,7 @@ int
 btime_wait(time_t t)
 {
     if (t > now_time()){
-        bthread::now_job()->tsleep(&__btime);
+        bthread::now_job()->tsleep(NULL);
         benqueue(t);
         return -1;
     }

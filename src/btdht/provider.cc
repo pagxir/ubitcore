@@ -62,6 +62,7 @@ bdhtcodec::bload(const char *buffer, size_t length)
 bdhtnet::bdhtnet()
     :b_tid(0), b_inited(false)
 {
+    b_ident = "bdhtnet";
 }
 
 int
@@ -191,6 +192,7 @@ boothread::boothread()
     b_find = NULL;
     b_state = 0;
     b_start_time = now_time();
+    b_ident = "boothread";
 }
 
 int

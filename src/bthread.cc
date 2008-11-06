@@ -34,9 +34,10 @@ bthread::bfailed()
 void
 bthread::tsleep(void *ident)
 {
-    assert(b_runable==true);
-    b_runable = false;
-    b_swaitident = ident;
+    if (b_runable == true){
+        b_runable = false;
+        b_swaitident = ident;
+    }
 }
 
 static std::queue<bthread*> __q_running;
