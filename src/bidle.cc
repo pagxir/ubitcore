@@ -27,11 +27,11 @@ int
 bidlethread::bdocall()
 {
     time_t now = time(NULL);
-    time_t sel = comming_timer();
+    time_t sel = comming_time();
     if (sel > now){
         bsocket::bselect(sel-now);
     }else{
-        btimercheck();
+        btimerdrun();
     }
     return 0;
 }

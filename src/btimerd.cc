@@ -13,12 +13,12 @@ class btimerd: public bthread
 {
     public:
         btimerd();
-        static time_t now_time();
-        int benqueue(time_t timeout);
         time_t check_timer();
         virtual int bdocall();
+        int benqueue(void *ident, time_t timeout);
 
     public: 
+        static time_t now_time();
         static time_t _tnow;
 };
 
@@ -43,52 +43,54 @@ struct btimer
     }
 
     time_t tt_tick;
+    void  *tt_ident;
     bthread *tt_thread;
 };
 
-static int __btime;
 static std::set<btimer, btimer>__q_timer;
 
 btimerd::btimerd()
 {
     b_ident = "btimerd";
+    b_swaitident = &__q_timer;
 }
 
-static time_t next_timer;
+static time_t __comming_time;
 
-time_t comming_timer()
+time_t comming_time()
 {
-    return next_timer;
+    return __comming_time;
 }
 
 time_t
 btimerd::check_timer()
 {
     _tnow = time(NULL);
-    next_timer = _tnow+360000;
+    __comming_time = _tnow+360000;
     bthread *item = NULL;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
         assert(THEADER->tt_tick <= item->b_tick);
         if (_tnow >= item->b_tick){
-            item->bwakeup(NULL);
+            item->bwakeup(THEADER->tt_ident);
         }else if (_tnow < THEADER->tt_tick){
-            next_timer = THEADER->tt_tick;
+            __comming_time = THEADER->tt_tick;
             break;
         }
         __q_timer.erase(THEADER);
     }
 #undef THEADER
-    return next_timer;
+    return __comming_time;
 }
 
 int
-btimerd::benqueue(time_t timeout)
+btimerd::benqueue(void *ident, time_t timeout)
 {
     btimer __timer;
     bthread *thr = bthread::now_job();
     __timer.tt_tick = timeout;
+    __timer.tt_ident = ident;
     __timer.tt_thread = thr;
     thr->b_tick = timeout;
     __q_timer.insert(__timer);
@@ -99,7 +101,7 @@ int
 btimerd::bdocall()
 {
     check_timer();
-    tsleep(NULL);
+    tsleep(&__q_timer);
     return 0;
 }
 
@@ -107,9 +109,9 @@ time_t btimerd::_tnow;
 static btimerd __timer_daemon;
 
 int
-btimercheck()
+btimerdrun()
 {
-    __timer_daemon.bwakeup(NULL);
+    __timer_daemon.bwakeup(&__q_timer);
     return 0;
 }
 
@@ -120,21 +122,23 @@ now_time()
 }
 
 int
-benqueue(time_t timeout)
+benqueue(void *ident, time_t timeout)
 {
-    __timer_daemon.benqueue(timeout);
-    __timer_daemon.bwakeup(NULL);
+    __timer_daemon.benqueue(ident, timeout);
+    btimerdrun();
     return 0;
 }
 
 int
 btime_wait(time_t t)
 {
-    if (t > now_time()){
-        bthread::now_job()->tsleep(NULL);
-        benqueue(t);
-        return -1;
+    static int _twait;
+    if (t <= now_time()){
+        return 0;
     }
-    return 0;
+    bthread *thr = bthread::now_job();
+    thr->tsleep(&_twait);
+    __timer_daemon.benqueue(&_twait, t);
+    return -1;
 }
 

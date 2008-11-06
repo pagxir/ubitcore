@@ -10,20 +10,17 @@ class bthread
 public:
     bthread();
     int bwakeup(void *ident);
-    int flag(){ return b_flag; }
     static bthread *now_job();
     static int bpoll(bthread **pb);
     virtual int bfailed();
     virtual int bdocall();
 
 public:
-    int b_seed;
-    int  b_flag;
     time_t b_tick;
     void   tsleep(void *ident);
 
-private:
-    void   *b_swaitident;
+protected:
+    void  *b_swaitident;
     static bthread *_jnow;
 
 protected:

@@ -28,5 +28,3 @@ bclock::bdocall()
     }
     return -1;
 }
-
-

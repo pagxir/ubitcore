@@ -49,11 +49,16 @@ kfind::decode_packet(const char buffer[], size_t count,
         in_addr_t address, in_port_t port)
 {
     size_t len;
+    kitem_t in, out;
     btcodec codec;
     codec.bload(buffer, count);
 
     b_sumumery++;
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
+    memcpy(in.kadid, vip, 20);
+    in.host = address;
+    in.port = port;
+    update_contact(&in, &out);
 #if 1
     if (vip != NULL && len==20){
         printf("find_node: ");
@@ -76,11 +81,10 @@ kfind::decode_packet(const char buffer[], size_t count,
     }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
     if (compat != NULL && (len%26)==0){
-        kitem_t in, out;
         compat_t *iter = (compat_t*)compat;
         compat_t *compated = (compat_t*)(compat+len);
         for (iter; iter<compated; iter++){
-            memcpy(&in.kadid, iter->ident, 20);
+            memcpy(in.kadid, iter->ident, 20);
             memcpy(&in.host, &iter->host, sizeof(in_addr_t));
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
             in.port = htons(in.port);
@@ -166,8 +170,8 @@ kfind::vcall()
             case 2:
                 if (b_last_update+5 > now_time()){
                     error = -1;
-                    bthread::now_job()->tsleep(NULL);
-                    benqueue(b_last_update+5);
+                    bthread::now_job()->tsleep(this);
+                    benqueue(this, b_last_update+5);
                     printf("");
                 }else{
                     b_concurrency = 0;

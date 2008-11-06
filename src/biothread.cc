@@ -15,30 +15,29 @@ class biothread: public bthread
         virtual int bdocall();
 };
 
-static bool __iowait = false;
 static biothread __iothread;
+static void *__iowait = &__iothread;
 
 biothread::biothread()
 {
     b_ident = "biothread";
     bsocket::global_init();
+    b_swaitident = this;
 }
 
 int
 biothread::bdocall()
 {
-    __iowait = true;
+    __iowait = NULL;
+    tsleep(this);
     bsocket::bselect(0);
-    __iowait = false;
-    tsleep(NULL);
+    __iowait = this;
     return 0;
 }
 
 int
 biorun()
 {
-    if (__iowait == false){
-        __iothread.bwakeup(NULL);
-    }
+    __iothread.bwakeup(__iowait);
     return 0;
 }
