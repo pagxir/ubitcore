@@ -15,6 +15,7 @@ public:
     int flag(){ return b_flag; }
     static time_t now_time();
     static bthread *now_job();
+    static time_t check_timer();
     static int bpoll(bthread **pb, time_t *time);
     virtual int bfailed();
     virtual int bdocall(time_t  timeout);

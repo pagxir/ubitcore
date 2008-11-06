@@ -100,12 +100,12 @@ bthread::bwakeup(void *wait)
     return 0;
 }
 
-int
-bthread::bpoll(bthread ** pu, time_t *timeout)
+time_t
+bthread::check_timer()
 {
-    bthread *item = NULL;
-    _tnow = time(NULL);
     time_t  next_timer = _tnow+36000;
+    _tnow = time(NULL);
+    bthread *item = NULL;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
@@ -128,6 +128,14 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
         __q_timer.erase(THEADER);
     }
 #undef THEADER
+    return next_timer;
+}
+
+int
+bthread::bpoll(bthread ** pu, time_t *timeout)
+{
+
+    time_t next_timer = check_timer();
     
     if (__q_running.empty()){
         return -1;
