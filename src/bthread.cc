@@ -117,12 +117,6 @@ bthread::check_timer()
                 __q_running.push(item);
             }
         }else if (_tnow < THEADER->tt_tick){
-            if (__q_running.empty()){
-                THEADER->bwait();
-                _tnow = time(NULL);
-                continue;
-            }
-            next_timer = THEADER->tt_tick;
             break;
         }
         __q_timer.erase(THEADER);
@@ -135,8 +129,6 @@ int
 bthread::bpoll(bthread ** pu, time_t *timeout)
 {
 
-    time_t next_timer = check_timer();
-    
     if (__q_running.empty()){
         return -1;
     }
@@ -144,13 +136,6 @@ bthread::bpoll(bthread ** pu, time_t *timeout)
     __q_running.pop();
     _jnow->b_flag |= BF_ACTIVE;
     _jnow->b_runable = true;
-    if (timeout != NULL){
-        if (__q_running.empty()){
-            *timeout = next_timer;
-        }else{
-            *timeout = _tnow;
-        }
-    }
     *pu = _jnow;
     return 0;
 }
