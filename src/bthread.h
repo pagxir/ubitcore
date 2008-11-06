@@ -17,11 +17,14 @@ public:
 
 public:
     time_t b_tick;
-    void   tsleep(void *ident);
+    void tsleep(void *ident);
+    void rdump();
 
 protected:
+    int    b_pollable;
     void  *b_swaitident;
     static bthread *_jnow;
+    static int _b_count;
 
 protected:
     bool b_runable;

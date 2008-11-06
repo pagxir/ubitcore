@@ -20,6 +20,7 @@ static bidlethread __idlethread;
 
 bidlethread::bidlethread()
 {
+    b_pollable = 0;
     b_ident = "bidlethread";
 }
 
@@ -27,18 +28,21 @@ int
 bidlethread::bdocall()
 {
     time_t now = time(NULL);
+    if (_b_count > 0){
+        _b_count = 0;
+        return 0;
+    }
     time_t sel = comming_time();
+    printf("idle called: %d\n", sel-now);
     if (sel > now){
         bsocket::bselect(sel-now);
-    }else{
-        btimerdrun();
     }
     return 0;
 }
 
 int
-get_idle(bthread **pu)
+bidlerun()
 {
-    *pu = &__idlethread;
+    __idlethread.bwakeup(NULL);
     return 0;
 }

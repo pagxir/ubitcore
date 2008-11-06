@@ -16,6 +16,8 @@
 #include "butils.h"
 #include "bthread.h"
 #include "biothread.h"
+#include "bidle.h"
+#include "btimerd.h"
 #include "btcodec.h"
 #include "bclock.h"
 #include "bsocket.h"
@@ -92,6 +94,9 @@ main(int argc, char *argv[])
     bclock c("socket connect clock", 7);
     c.bwakeup(NULL); 
 #endif
+    biorun();
+    btimerdrun();
+    bidlerun();
     bthread *j;
     while (-1 != bthread::bpoll(&j)){
         j->bdocall();

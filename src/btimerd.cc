@@ -33,15 +33,6 @@ struct btimer
         return t1.tt_tick < t2.tt_tick;
     }
 
-    int bwait() const
-    {
-        time_t now = now_time();
-        if (now < tt_tick){
-            sleep(tt_tick - now);
-        }
-        return 0;
-    }
-
     time_t tt_tick;
     void  *tt_ident;
     bthread *tt_thread;
@@ -52,10 +43,10 @@ static std::set<btimer, btimer>__q_timer;
 btimerd::btimerd()
 {
     b_ident = "btimerd";
-    b_swaitident = &__q_timer;
+    b_pollable = 0;
 }
 
-static time_t __comming_time;
+static time_t __comming_time = time(NULL);
 
 time_t comming_time()
 {
@@ -101,7 +92,6 @@ int
 btimerd::bdocall()
 {
     check_timer();
-    tsleep(&__q_timer);
     return 0;
 }
 

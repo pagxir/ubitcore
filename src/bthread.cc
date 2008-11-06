@@ -15,6 +15,7 @@ bthread::bthread()
     b_ident = "bthread";
     b_runable = false;
     b_swaitident = NULL;
+    b_pollable = 1;
 }
 
 int
@@ -22,6 +23,12 @@ bthread::bdocall()
 {
     printf("Hello World\n");
     return 0;
+}
+
+void
+bthread::rdump()
+{
+    printf("rdump: %s\n", b_ident.c_str());
 }
 
 int
@@ -62,14 +69,17 @@ bthread::bpoll(bthread ** pu)
 {
     do {
         if (__q_running.empty()){
-            get_idle(&_jnow);
-            *pu = _jnow;
+            assert(0);
             return 0;
         }
         _jnow = __q_running.front();
         __q_running.pop();
     }while(!_jnow->b_runable);
     __q_running.push(_jnow);
+    _b_count += _jnow->b_pollable;
+    if (_jnow->b_pollable){
+        _jnow->rdump();
+    }
     *pu = _jnow;
     return 0;
 }
@@ -81,3 +91,4 @@ bthread::now_job()
 }
 
 bthread *bthread::_jnow = NULL;
+int bthread::_b_count = 0;
