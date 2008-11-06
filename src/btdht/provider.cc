@@ -153,7 +153,7 @@ bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
 }
 
 int
-bdhtnet::bdocall(time_t timeout)
+bdhtnet::bdocall()
 {
     in_addr_t host;
     unsigned short port;
@@ -178,7 +178,7 @@ class boothread: public bthread
 {
     public:
         boothread();
-        virtual int bdocall(time_t timeout);
+        virtual int bdocall();
 
     private:
         int b_state;
@@ -194,7 +194,7 @@ boothread::boothread()
 }
 
 int
-boothread::bdocall(time_t timeout)
+boothread::bdocall()
 {
     char bootid[20];
     int state = b_state;

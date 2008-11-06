@@ -29,7 +29,7 @@ class ping_thread: public bthread
 {
     public:
         ping_thread();
-        virtual int bdocall(time_t timeout);
+        virtual int bdocall();
 
     private:
         int b_state;
@@ -136,7 +136,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
 }
 
 int
-ping_thread::bdocall(time_t timeout)
+ping_thread::bdocall()
 {
     int retry = 0;
     int state = b_state;

@@ -298,21 +298,23 @@ bsocket::bselect(time_t outtime)
     bsocket marker;
     
 
-    if (is_busy()){
-        count = select(maxfd+1, &b_nextfds->readfds,
-                &b_nextfds->writefds, NULL, outtime==-1?NULL:&tval);
-        assert(count != -1);
-        b_nextfds = b_nextfds->next;
-        FD_ZERO(&b_nextfds->readfds);
-        FD_ZERO(&b_nextfds->writefds);
-        bqueue.push(&marker);
-        bsocket *header = bqueue.front();
+    if (!is_busy()){
+        sleep(outtime);
+        return 0;
+    }
+    count = select(maxfd+1, &b_nextfds->readfds,
+            &b_nextfds->writefds, NULL, outtime==-1?NULL:&tval);
+    assert(count != -1);
+    b_nextfds = b_nextfds->next;
+    FD_ZERO(&b_nextfds->readfds);
+    FD_ZERO(&b_nextfds->writefds);
+    bqueue.push(&marker);
+    bsocket *header = bqueue.front();
+    bqueue.pop();
+    while(header != &marker){
+        count = header->bpoll(count);
+        header = bqueue.front();
         bqueue.pop();
-        while(header != &marker){
-            count = header->bpoll(count);
-            header = bqueue.front();
-            bqueue.pop();
-        }
     }
     return 0;
 }

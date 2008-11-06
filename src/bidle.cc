@@ -6,6 +6,7 @@
 
 #include "bthread.h"
 #include "btimerd.h"
+#include "bsocket.h"
 #include "bidle.h"
 
 class bidlethread: public bthread
@@ -25,9 +26,13 @@ bidlethread::bidlethread()
 int
 bidlethread::bdocall()
 {
-    sleep(1);
-    printf("idle call\n");
-    btimercheck();
+    time_t now = time(NULL);
+    time_t sel = comming_timer();
+    if (sel > now){
+        bsocket::bselect(sel-now);
+    }else{
+        btimercheck();
+    }
     return 0;
 }
 

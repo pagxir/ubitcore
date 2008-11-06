@@ -54,11 +54,18 @@ btimerd::btimerd()
     b_ident = "btimerd";
 }
 
+static time_t next_timer;
+
+time_t comming_timer()
+{
+    return next_timer;
+}
+
 time_t
 btimerd::check_timer()
 {
-    time_t  next_timer = _tnow+36000;
     _tnow = time(NULL);
+    next_timer = _tnow;
     bthread *item = NULL;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
@@ -67,6 +74,7 @@ btimerd::check_timer()
         if (_tnow >= item->b_tick){
             item->bwakeup(&__btime);
         }else if (_tnow < THEADER->tt_tick){
+            next_timer = THEADER->tt_tick;
             break;
         }
         __q_timer.erase(THEADER);

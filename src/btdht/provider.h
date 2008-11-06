@@ -24,7 +24,7 @@ class bdhtnet: public bthread
 {
     public:
         bdhtnet();
-        virtual int bdocall(time_t timeout);
+        virtual int bdocall();
 
     public:
         kship *get_kship();
