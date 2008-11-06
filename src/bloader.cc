@@ -91,12 +91,12 @@ main(int argc, char *argv[])
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
-    bclock c("socket connect clock", 7);
+    bclock c("socket connect clock", 17);
     c.bwakeup(NULL); 
 #endif
     biorun();
-    btimerdrun();
     bidlerun();
+    btimerdrun();
     bthread *j;
     while (-1 != bthread::bpoll(&j)){
         j->bdocall();
