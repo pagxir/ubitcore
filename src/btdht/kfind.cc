@@ -7,6 +7,7 @@
 #include <map>
 
 #include "btkad.h"
+#include "btimerd.h"
 #include "bthread.h"
 #include "kbucket.h"
 #include "kfind.h"
@@ -162,7 +163,7 @@ kfind::vcall()
                 b_last_update = time(NULL);
                 break;
             case 2:
-                if (b_last_update+10 > bthread::now_time()){
+                if (b_last_update+10 > now_time()){
                     error = -1;
                     bthread::now_job()->tsleep(NULL, b_last_update+10);
                     printf("");

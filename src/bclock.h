@@ -6,7 +6,7 @@ class bclock: public bthread
 {
     public:
         bclock(const char *text, int second);
-        virtual int bdocall(time_t timeout);
+        virtual int bdocall();
 
     private:
         int b_second;

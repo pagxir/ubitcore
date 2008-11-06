@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "bclock.h"
+#include "btimerd.h"
 
 bclock::bclock(const char *text, int second):
     ident_text(text)
@@ -13,7 +14,7 @@ bclock::bclock(const char *text, int second):
 }
 
 int
-bclock::bdocall(time_t timeout)
+bclock::bdocall()
 {
     time_t now;
     time(&now);
@@ -22,7 +23,7 @@ bclock::bdocall(time_t timeout)
 #endif
     while (b_runable){
         if(0 == btime_wait(last_time+b_second)){
-            last_time = bthread::now_time(); 
+            last_time = now_time(); 
         }
     }
     return -1;

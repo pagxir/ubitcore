@@ -15,6 +15,8 @@ class biothread: public bthread
         virtual int bdocall(time_t timeout);
 };
 
+static bool __iowait = false;
+static biothread __iothread;
 
 biothread::biothread()
 {
@@ -25,15 +27,17 @@ biothread::biothread()
 int
 biothread::bdocall(time_t timeout)
 {
-    bsocket::bselect(timeout);
+    __iowait = true;
+    bsocket::bselect(0);
+    __iowait = false;
     return 0;
 }
-
-static biothread __iothread;
 
 int
 biorun()
 {
-    __iothread.bwakeup(NULL);
+    if (__iowait == false){
+        __iothread.bwakeup(NULL);
+    }
     return 0;
 }

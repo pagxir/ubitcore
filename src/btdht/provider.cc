@@ -9,6 +9,7 @@
 #include <map>
 
 #include "arpa/inet.h"
+#include "btimerd.h"
 #include "btcodec.h"
 #include "bsocket.h"
 #include "butils.h"

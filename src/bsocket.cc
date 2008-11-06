@@ -9,7 +9,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
 #include "bthread.h"
+#include "btimerd.h"
 #include "biothread.h"
 #include "bsocket.h"
 
@@ -186,7 +188,7 @@ bsocket::bpoll(int count)
             count--;
         }
 #ifndef DEFAULT_TCP_TIME_OUT
-        if (b_syn_time+8 < bthread::now_time()){
+        if (b_syn_time+8 < now_time()){
             b_jwr->bwakeup(&b_jwr);
             b_jrd->bwakeup(&b_jrd);
             flag &= ~BSF_CONN;
@@ -291,7 +293,7 @@ bsocket::bselect(time_t outtime)
 {
     int count;
     timeval tval;
-    tval.tv_sec = outtime-bthread::now_time();
+    tval.tv_sec = outtime;
     tval.tv_usec = 0;
     bsocket marker;
     
@@ -339,9 +341,9 @@ bsocket::bconnect(in_addr_t host, in_port_t port)
     if (f_flag & FF_NOCONNECT){
         f_flag &= ~FF_NOCONNECT;
 #ifndef DEFAULT_TCP_TIME_OUT
-        if (b_syn_time+8 < bthread::now_time()){
-			return -1;
-		}
+        if (b_syn_time+8 < now_time()){
+            return -1;
+        }
 #endif
         return (f_flag&FF_MASK);
     }
@@ -357,7 +359,7 @@ bsocket::bconnect(in_addr_t host, in_port_t port)
     if (error==-1){
         f_flag |= FF_NOCONNECT;
 #ifndef DEFAULT_TCP_TIME_OUT
-        b_syn_time = bthread::now_time();
+        b_syn_time = now_time();
 #endif
         bwait_connect();
     }

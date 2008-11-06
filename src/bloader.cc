@@ -92,9 +92,8 @@ main(int argc, char *argv[])
     c.bwakeup(NULL); 
 #endif
     bthread *j;
-    time_t timeout;
-    while (-1 != bthread::bpoll(&j, &timeout)){
-        j->bdocall(timeout);
+    while (-1 != bthread::bpoll(&j)){
+        j->bdocall();
     }
     return 0;
 }
