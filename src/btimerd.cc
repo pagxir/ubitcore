@@ -115,7 +115,6 @@ int
 benqueue(void *ident, time_t timeout)
 {
     __timer_daemon.benqueue(ident, timeout);
-    btimerdrun();
     return 0;
 }
 
@@ -127,7 +126,6 @@ btime_wait(time_t t)
         return 0;
     }
     bthread *thr = bthread::now_job();
-    thr->tsleep(&_twait);
     __timer_daemon.benqueue(&_twait, t);
     return -1;
 }
