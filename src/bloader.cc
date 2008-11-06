@@ -87,7 +87,6 @@ main(int argc, char *argv[])
 
     //bdhtnet_start();
 
-    bidlerun();
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
     bclock c("socket connect clock", 7);

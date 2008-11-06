@@ -8,6 +8,7 @@
 
 #include "bthread.h"
 #include "btimerd.h"
+#include "bidle.h"
 
 bthread::bthread()
 {
@@ -46,6 +47,9 @@ bthread::bwakeup(void *wait)
     if (b_runable == true){
         return 0;
     }
+    if (b_swaitident != wait){
+        printf("crash: %s\n", b_ident.c_str());
+    }
     assert(b_swaitident==wait);
     __q_running.push(this);
     b_runable = true;
@@ -57,7 +61,8 @@ bthread::bpoll(bthread ** pu)
 {
     do {
         if (__q_running.empty()){
-            return -1;
+            get_idle(pu);
+            return 0;
         }
         _jnow = __q_running.front();
         __q_running.pop();
