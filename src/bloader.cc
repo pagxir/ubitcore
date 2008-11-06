@@ -19,6 +19,7 @@
 #include "btcodec.h"
 #include "bclock.h"
 #include "bsocket.h"
+#include "bidle.h"
 #include "btdht/btkad.h"
 
 #ifndef NDEBUG
@@ -84,8 +85,9 @@ main(int argc, char *argv[])
         btseed_load(btseed.c_str(), btseed.size());
     }
 
-    bdhtnet_start();
+    //bdhtnet_start();
 
+    bidlerun();
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
     bclock c("socket connect clock", 7);

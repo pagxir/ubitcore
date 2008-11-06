@@ -20,7 +20,7 @@ public:
     int b_seed;
     int  b_flag;
     time_t b_tick;
-    void   tsleep(void *ident, time_t timeout);
+    void   tsleep(void *ident);
 
 private:
     void   *b_swaitident;

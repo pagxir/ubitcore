@@ -231,7 +231,7 @@ bsocket::q_write(bthread *job)
     if (b_jwr == NULL){
         b_jwr = job;
     }
-    job->tsleep(&b_jwr, 0);
+    job->tsleep(&b_jwr);
     if (job!=b_jwr){
         if (b_jwr != &__conflict){
             __q_conflict.push(b_jwr);
@@ -256,7 +256,7 @@ bsocket::q_read(bthread *job)
     if (b_jrd == NULL){
         b_jrd = job;
     }
-    job->tsleep(&b_jrd, 0);
+    job->tsleep(&b_jrd);
     if (job!=b_jrd){
         if (b_jrd != &__conflict){
             __q_conflict.push(b_jrd);

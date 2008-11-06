@@ -1,6 +1,6 @@
 SUBDIRS = btdht
 bin_PROGRAMS = kadmin
-kadmin_SOURCES = startup.cc bthread.cc bsocket.cc biothread.cc main.cc btcodec.cc sha1.cc bclock.cc butils.cc bclock.h biothread.h bsocket.h btcodec.h bthread.h butils.h sha1.h bloader.cc bloader.h btimerd.cc btimerd.h
+kadmin_SOURCES = startup.cc bthread.cc bsocket.cc biothread.cc main.cc btcodec.cc sha1.cc bclock.cc butils.cc bclock.h biothread.h bsocket.h btcodec.h bthread.h butils.h sha1.h bloader.cc bloader.h btimerd.cc btimerd.h bidle.cc bidle.h
 
 kadmin_LDADD = \
 	$(top_srcdir)/src/btdht/libsub_btdht.a \

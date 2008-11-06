@@ -165,7 +165,7 @@ kfind::vcall()
             case 2:
                 if (b_last_update+10 > now_time()){
                     error = -1;
-                    bthread::now_job()->tsleep(NULL, b_last_update+10);
+                    bthread::now_job()->tsleep(NULL);
                     printf("");
                 }else{
                     b_concurrency = 0;

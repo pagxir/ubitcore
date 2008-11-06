@@ -12,7 +12,6 @@
 bthread::bthread()
 {
     b_ident = "bthread";
-    b_flag = BF_ACTIVE;
     b_runable = false;
     b_swaitident = NULL;
 }
@@ -32,16 +31,11 @@ bthread::bfailed()
 }
 
 void
-bthread::tsleep(void *ident, time_t timeout)
+bthread::tsleep(void *ident)
 {
+    assert(b_runable==true);
     b_runable = false;
     b_swaitident = ident;
-    if (timeout > now_time()){
-        benqueue(timeout);
-    }else if (timeout > 0){
-        b_runable = true;
-        b_swaitident = NULL;
-    }
 }
 
 static std::queue<bthread*> __q_running;
@@ -49,25 +43,26 @@ static std::queue<bthread*> __q_running;
 int
 bthread::bwakeup(void *wait)
 {
-    assert(b_swaitident==wait);
-    if (b_flag & BF_ACTIVE){
-        b_flag &= ~BF_ACTIVE;
-        __q_running.push(this);
+    if (b_runable == true){
+        return 0;
     }
+    assert(b_swaitident==wait);
+    __q_running.push(this);
+    b_runable = true;
     return 0;
 }
 
 int
 bthread::bpoll(bthread ** pu)
 {
-
-    if (__q_running.empty()){
-        return -1;
-    }
-    _jnow = __q_running.front();
-    __q_running.pop();
-    _jnow->b_flag |= BF_ACTIVE;
-    _jnow->b_runable = true;
+    do {
+        if (__q_running.empty()){
+            return -1;
+        }
+        _jnow = __q_running.front();
+        __q_running.pop();
+    }while(!_jnow->b_runable);
+    __q_running.push(_jnow);
     *pu = _jnow;
     return 0;
 }
