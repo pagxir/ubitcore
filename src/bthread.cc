@@ -25,12 +25,6 @@ bthread::bdocall()
     return 0;
 }
 
-void
-bthread::rdump()
-{
-    printf("rdump: %s\n", b_ident.c_str());
-}
-
 int
 bthread::bfailed()
 {
@@ -77,9 +71,6 @@ bthread::bpoll(bthread ** pu)
     }while(!_jnow->b_runable);
     __q_running.push(_jnow);
     _b_count += _jnow->b_pollable;
-    if (_jnow->b_pollable){
-        _jnow->rdump();
-    }
     *pu = _jnow;
     return 0;
 }

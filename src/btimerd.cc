@@ -57,14 +57,16 @@ time_t
 btimerd::check_timer()
 {
     _tnow = time(NULL);
-    __comming_time = _tnow+360000;
+    __comming_time = _tnow;
     bthread *item = NULL;
+    b_pollable = 0;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
         item = THEADER->tt_thread;
         assert(THEADER->tt_tick <= item->b_tick);
         if (_tnow >= item->b_tick){
             item->bwakeup(THEADER->tt_ident);
+            b_pollable = 1;
         }else if (_tnow < THEADER->tt_tick){
             __comming_time = THEADER->tt_tick;
             break;
@@ -72,6 +74,7 @@ btimerd::check_timer()
         __q_timer.erase(THEADER);
     }
 #undef THEADER
+    /* assert(__comming_time>_tnow); */
     return __comming_time;
 }
 
@@ -95,13 +98,13 @@ btimerd::bdocall()
     return 0;
 }
 
-time_t btimerd::_tnow;
+time_t btimerd::_tnow = time(NULL);
 static btimerd __timer_daemon;
 
 int
 btimerdrun()
 {
-    __timer_daemon.bwakeup(&__q_timer);
+    __timer_daemon.bwakeup(NULL);
     return 0;
 }
 
@@ -126,6 +129,7 @@ btime_wait(time_t t)
         return 0;
     }
     bthread *thr = bthread::now_job();
+    thr->tsleep(&_twait);
     __timer_daemon.benqueue(&_twait, t);
     return -1;
 }

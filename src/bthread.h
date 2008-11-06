@@ -18,7 +18,6 @@ public:
 public:
     time_t b_tick;
     void tsleep(void *ident);
-    void rdump();
 
 protected:
     int    b_pollable;

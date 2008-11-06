@@ -87,16 +87,16 @@ main(int argc, char *argv[])
         btseed_load(btseed.c_str(), btseed.size());
     }
 
-    bdhtnet_start();
-
-#ifndef DEFAULT_TCP_TIME_OUT
-    /* NOTICE: Keep this to less socket connect timeout work ok! */
-    bclock c("socket connect clock", 17);
-    c.bwakeup(NULL); 
-#endif
     biorun();
     bidlerun();
     btimerdrun();
+    //bdhtnet_start();
+
+#ifndef DEFAULT_TCP_TIME_OUT
+    /* NOTICE: Keep this to less socket connect timeout work ok! */
+    bclock c("socket connect clock", 7);
+    c.bwakeup(NULL); 
+#endif
     bthread *j;
     while (-1 != bthread::bpoll(&j)){
         j->bdocall();

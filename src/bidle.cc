@@ -27,17 +27,18 @@ bidlethread::bidlethread()
 int
 bidlethread::bdocall()
 {
-    time_t now = time(NULL);
+    time_t now = now_time();
     if (_b_count > 0){
         _b_count = 0;
         return 0;
     }
     time_t sel = comming_time();
-    printf("idle called: %s\n", ctime(&sel));
-    printf("baidu called: %s\n", ctime(&now));
-    if (sel > now){
-        bsocket::bselect(sel-now);
+    printf("idle called: %d\n", (int)(sel-now));
+    int twait = sel-now;
+    if (twait <= 0){
+        twait = 1;
     }
+    bsocket::bselect(twait);
     return 0;
 }
 
