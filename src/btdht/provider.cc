@@ -175,6 +175,52 @@ bootstraper::bootstraper()
     b_transfer = NULL;
 }
 
+class checkthread: public bthread
+{
+    public:
+        checkthread();
+        virtual int bdocall();
+
+    private:
+        int b_state;
+        time_t b_random;
+        time_t b_start_time;
+};
+
+checkthread::checkthread()
+{
+    b_state = 0;
+    b_start_time = now_time();
+    b_ident = "checkthread";
+}
+
+int
+checkthread::bdocall()
+{
+    int state = b_state;
+    while (b_runable){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_start_time = now_time();
+                break;
+            case 1:
+                btime_wait(b_start_time+b_random);
+                break;
+            case 2:
+                dump_routing_table();
+                state = 0;
+                break;
+            default:
+                assert(0);
+                break;
+        }
+    }
+    return 0;
+}
+
 class boothread: public bthread
 {
     public:
@@ -233,6 +279,7 @@ boothread::bdocall()
     }
 }
 
+static checkthread __static_checkthread;
 static boothread __static_boothread;
 
 int
@@ -250,5 +297,6 @@ bdhtnet_start()
     getkadid(&__find_node[12]);
     getkadid(&__get_peers[12]);
     __static_boothread.bwakeup(NULL);
+    __static_checkthread.bwakeup(NULL);
     return 0;
 }
