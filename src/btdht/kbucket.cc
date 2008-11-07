@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <time.h>
+#include <vector>
 #include <algorithm>
 
 #include "btkad.h"
@@ -70,46 +71,89 @@ static kbucket *__static_routing_table[160] = {NULL};
 static int __boot_count = 0;
 static kitem_t __boot_contacts[8];
 
+struct ktarget_op{
+    ktarget_op(const char *target);
+    bool operator () (const kitem_t &l, const kitem_t &r);
+
+    const char *b_target;
+};
+
+ktarget_op::ktarget_op(const char *target)
+    :b_target(target)
+{
+}
+
+bool ktarget_op::operator () (const kitem_t &l, const kitem_t &r)
+{
+    kaddist_t d1(l.kadid, b_target), d2(r.kadid, b_target);
+
+    return d1 < d2;
+}
+
+int
+kitem_trim(kitem_t nodes[], size_t size, char target[20], int vsize)
+{
+    std::vector<kitem_t> vect;
+    std::partial_sort(vect.begin(), vect.begin()+vsize,
+            vect.end(), ktarget_op(target));
+    std::vector<kitem_t>::iterator iter=vect.begin();
+    for (int i=0; i<vsize; i++){
+        nodes[i] = *iter++;
+    }
+    return 0;
+}
 
 int
 get_knode(char target[20], kitem_t nodes[], bool valid)
 {
+    kbucket *bucket;
+    kitem_t  vnodes[_K];
     int count = 0;
+    int vcall = 1;
+    int vcount = 0;
     int i = get_kbucket_index(target);
+    int min = i-1, max = i+1;
     assert(i >= 0);
-    if (i >= __rfirst){
-        int j; 
-        int retval = 0;
-        kbucket *rbucket; 
-        kitem_t  tmpnodes[_K];
-        for (j=__rfirst; j<__rsecond; j++){
-            rbucket = __static_routing_table[j];
-            if (rbucket == NULL){
+    if (i < __rfirst){
+        bucket = __static_routing_table[i];
+        count = bucket->get_knode(nodes);
+        while(count<8 && vcall>0){
+            vcount = 0;
+            if (min >= 0){
+                bucket = __static_routing_table[min];
+                vcount += bucket->get_knode(&vnodes[vcount]);
+                vcall++;
+            }
+            if (max < __rsecond){
+                bucket = __static_routing_table[max];
+                vcount += bucket->get_knode(&vnodes[vcount]);
+                vcall++;
+            }
+            if (vcount+count < 8){
+                memcpy(&nodes[count], vnodes, sizeof(kitem_t)*vcount);
+                count += vcount;
                 continue;
             }
-            retval = rbucket->get_knode(tmpnodes);
-            assert(retval+count <= 8);
-            memcpy(&nodes[count], tmpnodes, sizeof(kitem_t)*retval);
-            count += retval;
+            kitem_trim(vnodes, vcount, target, 8-count);
+            memcpy(&nodes[count], vnodes, sizeof(kitem_t)*(8-count));
+            count = 8;
+            break;
         }
-        if (count > 0){
-            printf("get limited node: %d\n", count);
-            return count;
-        }
+        return count;
     }
-    kbucket *bucket = __static_routing_table[i];
-    if (bucket != NULL){
-        count = bucket->get_knode(nodes);
-    }
-    if (count == 0){
-        /* route table is empty */
-        int max = std::min(_K, __boot_count);
-        for (i=0; i<max; i++){
-            nodes[i] = __boot_contacts[i];
-            genkadid(nodes[i].kadid);
+    if (i < __rsecond){
+        for (int j=__rfirst; j<__rsecond; j++){
+            bucket = __static_routing_table[j];
+            assert(bucket != NULL);
+            count += bucket->get_knode(&nodes[count]);
         }
-        count = max;
-        printf("return bootup node: %d\n", count);
+        return count;
+    }
+    /* route table is empty */
+    count = std::min(_K, __boot_count);
+    for (i=0; i<count; i++){
+        nodes[i] = __boot_contacts[i];
+        genkadid(nodes[i].kadid);
     }
     return count;
 }
