@@ -18,7 +18,7 @@ bclock::bdocall()
 {
     time_t now;
     time(&now);
-#if 1
+#if 0
     printf("bcall(%s): %s\n", ident_text.c_str(), ctime(&now));
 #endif
     while (b_runable){

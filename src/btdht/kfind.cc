@@ -121,6 +121,7 @@ kfind::vcall()
     char buffer[8192];
     in_addr_t host;
     in_port_t port;
+    bthread  *thr = NULL;
     std::vector<kfind_arg*>::iterator iter;
     kitem_t nodes[_K];
 
@@ -166,13 +167,14 @@ kfind::vcall()
                     return 0;
                 }
                 b_last_update = time(NULL);
+                thr = bthread::now_job();
+                thr->tsleep(thr);
                 break;
             case 2:
                 if (b_last_update+5 > now_time()){
                     error = -1;
-                    bthread::now_job()->tsleep(this);
-                    benqueue(this, b_last_update+5);
-                    printf("");
+                    thr = bthread::now_job();
+                    benqueue(thr, b_last_update+5);
                 }else{
                     b_concurrency = 0;
                     error = 0;

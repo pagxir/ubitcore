@@ -34,7 +34,6 @@ bidlethread::bdocall()
     time_t sel = comming_time();
     int twait = sel-now;
     assert(twait >= 0);
-    printf("idle called: %d\n", twait);
     bsocket::bselect(twait);
     return 0;
 }
