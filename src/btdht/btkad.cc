@@ -200,8 +200,9 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
             != __static_ping_args.end()){
         return 0;
     }
+    printf("add boot contact\n");
     update_boot_contact(host, port);
-#if 1
+#if 0
     __static_ping_args.insert(
             std::make_pair(host, arg));
     __static_ping_thread.bwakeup(NULL);

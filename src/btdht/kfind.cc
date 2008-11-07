@@ -134,6 +134,7 @@ kfind::vcall()
                     printf("kfind: timeasfd out\n");
                     return 0;
                 }
+                printf("get knode: %d\n", count);
                 for (i=0; i<count; i++){
                     kfind_arg *arg = new kfind_arg;
                     arg->host = nodes[i].host;

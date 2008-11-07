@@ -77,6 +77,26 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
     int count = 0;
     int i = get_kbucket_index(target);
     assert(i >= 0);
+    if (i >= __rfirst){
+        int j; 
+        int retval = 0;
+        kbucket *rbucket; 
+        kitem_t  tmpnodes[_K];
+        for (j=__rfirst; j<__rsecond; j++){
+            rbucket = __static_routing_table[j];
+            if (rbucket == NULL){
+                continue;
+            }
+            retval = rbucket->get_knode(tmpnodes);
+            assert(retval+count <= 8);
+            memcpy(&nodes[count], tmpnodes, sizeof(kitem_t)*retval);
+            count += retval;
+        }
+        if (count > 0){
+            printf("get limited node: %d\n", count);
+            return count;
+        }
+    }
     kbucket *bucket = __static_routing_table[i];
     if (bucket != NULL){
         count = bucket->get_knode(nodes);
@@ -89,6 +109,7 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
             genkadid(nodes[i].kadid);
         }
         count = max;
+        printf("return bootup node: %d\n", count);
     }
     return count;
 }
