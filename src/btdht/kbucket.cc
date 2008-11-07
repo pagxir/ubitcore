@@ -117,6 +117,7 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
 int
 update_contact(const kitem_t *in, kitem_t *out)
 {
+    kbucket *bucket;
     const char *kadid = in->kadid;
 #if 1
     printf("update_contact: ");
@@ -125,35 +126,23 @@ update_contact(const kitem_t *in, kitem_t *out)
     }
     printf("\n");
 #endif
-    int i = get_kbucket_index(in->kadid);
-    assert(i >= 0);
-    kbucket *bucket = __static_routing_table[i];
-    if (bucket == NULL){
-        bucket = new kbucket;
-        __static_routing_table[i] = bucket;
-        __rsecond = std::max(i+1, __rsecond);
-        printf("new bucket\n");
+    int rsecond = get_kbucket_index(kadid);
+    int index = rsecond++;
+    for (;__rsecond<rsecond; __rsecond++){
+        kbucket **table = __static_routing_table;
+        table[__rsecond] = new kbucket;
     }
-    if (i < __rfirst){
-        return bucket->update_contact(in, out);
-    }
-    __rself_count++;
-    int j = __rfirst;
-    while (__rself_count > 8){
-        if (j >= __rsecond){
-            printf("assert: %d %d\n", j, __rsecond);
-        }
+    __rself_count ++;
+    for (int j=__rfirst; __rself_count>8; j++){
+        kitem_t items[_K];
         assert(j<__rsecond);
-        kitem_t nodes[_K];
-        __rfirst++;
-        bucket = __static_routing_table[j++];
-        if (bucket == NULL){
-            continue;
-        }
-        int count = bucket->get_knode(nodes);
-        __rself_count -= count;
-        assert(__rself_count > 0);
+        bucket = __static_routing_table[j];
+        __rself_count -= bucket->get_knode(items);
     }
+    if (index < __rfirst){
+        __rself_count--;
+    }
+    bucket = __static_routing_table[index];
     return bucket->update_contact(in, out);
 }
 
