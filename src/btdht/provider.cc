@@ -183,6 +183,7 @@ class boothread: public bthread
 
     private:
         int b_state;
+        time_t b_random;
         time_t b_start_time;
         kfind  *b_find;
 };
@@ -207,10 +208,11 @@ boothread::bdocall()
             case 0:
                 getkadid(bootid);
                 bootid[19]^=0x1;
-                b_start_time = now_time();
+                b_find = btkad::find_node(bootid);
                 break;
             case 1:
-                b_find = btkad::find_node(bootid);
+                b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_start_time = now_time();
                 break;
             case 2:
                 if (b_find->vcall() == -1){
@@ -218,8 +220,7 @@ boothread::bdocall()
                 }
                 break;
             case 3:
-                dump_routing_table();
-                btime_wait(b_start_time+60*15);
+                btime_wait(b_start_time+b_random);
                 break;
             case 4:
                 printf("DHT: Refresh Boot!\n");

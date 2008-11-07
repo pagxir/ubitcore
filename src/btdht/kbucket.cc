@@ -63,6 +63,9 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
     return (now-lru>15*60);
 }
 
+static int __rfirst = 0;
+static int __rsecond = 0;
+static int __rself_count = 0;
 static kbucket *__static_routing_table[160] = {NULL};
 static int __boot_count = 0;
 static kitem_t __boot_contacts[8];
@@ -108,6 +111,22 @@ update_contact(const kitem_t *in, kitem_t *out)
         __static_routing_table[i] = bucket;
         printf("new bucket\n");
     }
+    if (i < __rfirst){
+        return bucket->update_contact(in, out);
+    }
+    __rself_count++;
+    int j = __rfirst;
+    while (__rself_count > 8){
+        assert(j<__rsecond);
+        kitem_t nodes[_K];
+        int count = bucket->get_knode(nodes);
+        __rself_count -= count;
+        assert(__rself_count > 0);
+    }
+    if (i < __rsecond){
+        return bucket->update_contact(in, out);
+    }
+    __rsecond = i+1;
     return bucket->update_contact(in, out);
 }
 
