@@ -15,7 +15,6 @@
 #include "butils.h"
 #include "ident.h"
 #include "provider.h"
-#include "boot.h"
 #include "transfer.h"
 #include "kfind.h"
 #include "btkad.h"
@@ -258,6 +257,7 @@ boothread::bdocall()
                 break;
             case 1:
                 b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_random = 60;
                 b_start_time = now_time();
                 break;
             case 2:
@@ -266,6 +266,7 @@ boothread::bdocall()
                 }
                 break;
             case 3:
+                dump_routing_table();
                 btime_wait(b_start_time+b_random);
                 break;
             case 4:

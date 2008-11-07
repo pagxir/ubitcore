@@ -89,14 +89,17 @@ int
 get_kbucket_index(const char kadid[20])
 {
     int i;
-    uint8_t orkid;
+    int index = 0;
+    uint8_t orkid = 0;
     for (i=0; i<20; i++){
         orkid = __kadid[i]^kadid[i];
         if (orkid != 0){
+            index = mask[orkid];
             break;
         }
     }
-    return (i<<3)+mask[orkid];
+    index += (i<<3);
+    return index;
 }
 
 ping_thread::ping_thread()
@@ -200,7 +203,6 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
             != __static_ping_args.end()){
         return 0;
     }
-    printf("add boot contact\n");
     update_boot_contact(host, port);
 #if 0
     __static_ping_args.insert(

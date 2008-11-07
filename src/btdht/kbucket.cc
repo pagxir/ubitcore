@@ -67,8 +67,8 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
 static int __rfirst = 0;
 static int __rsecond = 0;
 static int __rself_count = 0;
-static kbucket *__static_routing_table[160] = {NULL};
 static int __boot_count = 0;
+static kbucket *__static_routing_table[160] = {NULL};
 static kitem_t __boot_contacts[8];
 
 struct ktarget_op{
@@ -118,14 +118,14 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
         bucket = __static_routing_table[i];
         count = bucket->get_knode(nodes);
         while(count<8 && vcall>0){
-            vcount = 0;
+            vcount = vcall = 0;
             if (min >= 0){
-                bucket = __static_routing_table[min];
+                bucket = __static_routing_table[min--];
                 vcount += bucket->get_knode(&vnodes[vcount]);
                 vcall++;
             }
             if (max < __rsecond){
-                bucket = __static_routing_table[max];
+                bucket = __static_routing_table[max++];
                 vcount += bucket->get_knode(&vnodes[vcount]);
                 vcall++;
             }
@@ -139,6 +139,7 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
             count = 8;
             break;
         }
+        assert(count < 8);
         return count;
     }
     if (i < __rsecond){
@@ -147,6 +148,8 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
             assert(bucket != NULL);
             count += bucket->get_knode(&nodes[count]);
         }
+        printf("%d %d %d\n", __rfirst, __rsecond, count);
+        assert(count < 8);
         return count;
     }
     /* route table is empty */
@@ -172,13 +175,17 @@ update_contact(const kitem_t *in, kitem_t *out)
 #endif
     int rsecond = get_kbucket_index(kadid);
     int index = rsecond++;
+    if (index == 160){
+        return 0;
+    }
     for (;__rsecond<rsecond; __rsecond++){
         kbucket **table = __static_routing_table;
         table[__rsecond] = new kbucket;
     }
     __rself_count ++;
-    for (int j=__rfirst; __rself_count>8; j++){
+    for (; __rself_count>8; __rfirst++){
         kitem_t items[_K];
+        int j = __rfirst;
         assert(j<__rsecond);
         bucket = __static_routing_table[j];
         __rself_count -= bucket->get_knode(items);
