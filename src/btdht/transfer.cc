@@ -93,7 +93,6 @@ kship::binput(bdhtcodec *codec, const void *ibuf, size_t len,
     assert(pkg->b_ibuf != NULL);
     memcpy(pkg->b_ibuf, ibuf, len);
     if (b_thread != NULL){
-        printf("kship wakeup: %p\n", b_thread);
         b_thread->bwakeup(b_thread);
         b_thread = NULL;
     }

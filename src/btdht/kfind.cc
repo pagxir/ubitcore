@@ -59,7 +59,7 @@ kfind::decode_packet(const char buffer[], size_t count,
     in.host = address;
     in.port = port;
     update_contact(&in, &out);
-#if 1
+#if 0
     if (vip != NULL && len==20){
         printf("find_node: ");
         for (int i=0; i<20; i++){
@@ -133,7 +133,6 @@ kfind::vcall()
                 if (count == -1){
                     return 0;
                 }
-                printf("get knode: %d\n", count);
                 for (i=0; i<count; i++){
                     kfind_arg *arg = new kfind_arg;
                     arg->host = nodes[i].host;
@@ -176,7 +175,6 @@ kfind::vcall()
                     thr = bthread::now_job();
                     benqueue(thr, b_last_update+5);
                 }else{
-                    printf("kfind timeouted\n");
                     b_concurrency = 0;
                     error = 0;
                     state = 1;

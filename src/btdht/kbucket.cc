@@ -63,7 +63,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
     for (i=0; i<b_count; i++){
         kn = b_knodes[i];
         if (0==kn->replace(in, &tout)){
-            printf("replace it\n");
+            //printf("replace it\n");
             return 0;
         }
         if (tout.atime < lru){
@@ -75,10 +75,10 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
         kn  = new knode(in->kadid, in->host, in->port);
         kn->touch();
         b_knodes[b_count++] = kn;
-        printf("adding one knode\n");
+        //printf("adding one knode\n");
         return 0;
     }
-    printf("drop: %d\n", b_count);
+    //printf("drop: %d\n", b_count);
     return (now-lru>15*60);
 }
 
@@ -113,6 +113,9 @@ int
 kitem_trim(kitem_t nodes[], size_t size, char target[20], int vsize)
 {
     std::vector<kitem_t> vect;
+    for (int i=0; i<size; i++){
+        vect.push_back(nodes[i]);
+    }
     std::partial_sort(vect.begin(), vect.begin()+vsize,
             vect.end(), ktarget_op(target));
     std::vector<kitem_t>::iterator iter=vect.begin();
@@ -126,7 +129,7 @@ int
 get_knode(char target[20], kitem_t nodes[], bool valid)
 {
     kbucket *bucket;
-    kitem_t  vnodes[_K];
+    kitem_t  vnodes[_K*2];
     int count = 0;
     int vcall = 1;
     int vcount = 0;
@@ -148,7 +151,7 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
                 vcount += bucket->get_knode(&vnodes[vcount]);
                 vcall++;
             }
-            if (vcount+count < 8){
+            if (vcount+count <= 8){
                 memcpy(&nodes[count], vnodes, sizeof(kitem_t)*vcount);
                 count += vcount;
                 continue;
@@ -158,7 +161,7 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
             count = 8;
             break;
         }
-        assert(count < 8);
+        assert(count <= 8);
         return count;
     }
     if (i < __rsecond){
@@ -167,7 +170,6 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
             assert(bucket != NULL);
             count += bucket->get_knode(&nodes[count]);
         }
-        printf("%d %d %d\n", __rfirst, __rsecond, count);
         assert(count < 8);
         return count;
     }
@@ -185,7 +187,7 @@ update_contact(const kitem_t *in, kitem_t *out)
 {
     kbucket *bucket;
     const char *kadid = in->kadid;
-#if 1
+#if 0
     printf("update_contact: ");
     for (int l=0; l<20; l++){
         printf("%02x", kadid[l]&0xFF);
@@ -322,6 +324,7 @@ int refresh_routing_table()
 {
     int i;
     for (i=0; i<__rfirst; i++){
+        assert(__static_refresh[i]);
         __static_refresh[i]->bwakeup(__mask);
     }
     return 0;
