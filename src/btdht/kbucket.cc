@@ -266,7 +266,7 @@ dump_routing_table()
     }
 }
 
-static uint8_t __mask[] = {0xFF, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE};
+static uint8_t __mask[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF};
 
 refreshthread::refreshthread(int index)
 {
@@ -281,7 +281,8 @@ refreshthread::refreshthread(int index)
 int
 refreshthread::bdocall()
 {
-    int i, j;
+    int u, i, j;
+    uint8_t mask;
     char tmpid[20];
     char bootid[20];
     int state = b_state;
@@ -293,15 +294,16 @@ refreshthread::bdocall()
                 genkadid(bootid);
                 getkadid(tmpid);
                 j = 0;
-                for (i=0; i<b_index;i+=8){
-                    if (i+8 > b_index){
-                        uint8_t mask =  __mask[b_index-i];
-                        bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
-                        break;
-                    }
+                u = b_index;
+                while (u >= 8){
                     bootid[j] = tmpid[j];
+                    u -= 8;
                     j++;
                 }
+                mask =  __mask[u];
+                bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
+                bootid[j] ^= (0x80>>u);
+                assert(b_index == get_kbucket_index(bootid));
                 b_find = btkad::find_node(bootid);
                 break;
             case 1:

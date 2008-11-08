@@ -31,7 +31,7 @@ knode::replace(const kitem_t *in, kitem_t *out)
     if (cmpid(in->kadid)==0){
         if (cmphost(in->host)!=0
                 || cmpport(in->port)!=0){
-            printf("undef\n");
+            //printf("undef\n");
         }
         touch();
         return 0;

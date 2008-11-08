@@ -184,12 +184,15 @@ class checkthread: public bthread
         int b_state;
         time_t b_random;
         time_t b_start_time;
+        time_t b_last_refresh;
 };
 
 checkthread::checkthread()
 {
     b_state = 0;
+    b_random = 60;
     b_start_time = now_time();
+    b_last_refresh = now_time();
     b_ident = "checkthread";
 }
 
@@ -203,24 +206,16 @@ checkthread::bdocall()
         {
             case 0:
                 btime_wait(b_start_time+60);
+                if (now_time() > b_last_refresh+b_random){
+                    b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                    b_last_refresh = now_time();
+                    refresh_routing_table();
+                }
                 break;
             case 1:
-                refresh_routing_table();
-                btime_wait(b_start_time+120);
-                break;
-            case 2:
                 dump_routing_table();
-                break;
-            case 3:
-                b_random = (60*15*0.9)+(rand()%(60*15))/5;
                 b_start_time = now_time();
-                break;
-            case 4:
-                btime_wait(b_start_time+b_random);
-                break;
-            case 5:
-                dump_routing_table();
-                state = 3;
+                state = 0;
                 break;
             default:
                 assert(0);
