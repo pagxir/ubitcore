@@ -4,12 +4,30 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <time.h>
+#include <map>
 #include <vector>
 #include <algorithm>
 
 #include "btkad.h"
 #include "knode.h"
 #include "kbucket.h"
+#include "btimerd.h"
+#include "kfind.h"
+#include "bthread.h"
+
+class refreshthread: public bthread
+{
+    public:
+        refreshthread(int index);
+        virtual int bdocall();
+
+    private:
+        int b_index;
+        int b_state;
+        time_t b_random;
+        time_t b_start_time;
+        kfind  *b_find;
+};
 
 kbucket::kbucket()
     :b_count(0), b_last_seen(0)
@@ -68,8 +86,9 @@ static int __rfirst = 0;
 static int __rsecond = 0;
 static int __rself_count = 0;
 static int __boot_count = 0;
-static kbucket *__static_routing_table[160] = {NULL};
 static kitem_t __boot_contacts[8];
+static kbucket *__static_routing_table[160] = {NULL};
+static refreshthread *__static_refresh[160] = {NULL};
 
 struct ktarget_op{
     ktarget_op(const char *target);
@@ -181,6 +200,7 @@ update_contact(const kitem_t *in, kitem_t *out)
     for (;__rsecond<rsecond; __rsecond++){
         kbucket **table = __static_routing_table;
         table[__rsecond] = new kbucket;
+        __static_refresh[__rsecond] = new refreshthread(__rsecond);
     }
     __rself_count ++;
     for (; __rself_count>8; __rfirst++){
@@ -242,4 +262,67 @@ dump_routing_table()
             printf("\n");
         }
     }
+}
+
+static uint8_t __mask[] = {0xFF, 0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE};
+
+refreshthread::refreshthread(int index)
+{
+    b_find = NULL;
+    b_state = 0;
+    b_index = index;
+    b_swaitident = __mask;
+    b_start_time = now_time();
+    b_ident = "refreshthread";
+}
+
+int
+refreshthread::bdocall()
+{
+    int i, j;
+    char tmpid[20];
+    char bootid[20];
+    int state = b_state;
+    while (b_runable){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                genkadid(bootid);
+                getkadid(tmpid);
+                j = 0;
+                for (i=0; i<b_index;i+=8){
+                    if (i+8 > b_index){
+                        uint8_t mask =  __mask[b_index-i];
+                        bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
+                        break;
+                    }
+                    bootid[j] = tmpid[j];
+                    j++;
+                }
+                b_find = btkad::find_node(bootid);
+                break;
+            case 1:
+                if (b_find->vcall() == -1){
+                    state = 2;
+                }
+                break;
+            case 2:
+                tsleep(&__mask);
+                b_state = 0;
+                break;
+            default:
+                assert(0);
+                break;
+        }
+    }
+}
+
+int refresh_routing_table()
+{
+    int i;
+    for (i=0; i<__rfirst; i++){
+        __static_refresh[i]->bwakeup(__mask);
+    }
+    return 0;
 }

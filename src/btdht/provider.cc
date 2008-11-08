@@ -202,15 +202,25 @@ checkthread::bdocall()
         switch(b_state)
         {
             case 0:
-                b_random = (60*15*0.9)+(rand()%(60*15))/5;
-                b_start_time = now_time();
+                btime_wait(b_start_time+60);
                 break;
             case 1:
-                btime_wait(b_start_time+b_random);
+                refresh_routing_table();
+                btime_wait(b_start_time+120);
                 break;
             case 2:
                 dump_routing_table();
-                state = 0;
+                break;
+            case 3:
+                b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_start_time = now_time();
+                break;
+            case 4:
+                btime_wait(b_start_time+b_random);
+                break;
+            case 5:
+                dump_routing_table();
+                state = 3;
                 break;
             default:
                 assert(0);
@@ -257,7 +267,6 @@ boothread::bdocall()
                 break;
             case 1:
                 b_random = (60*15*0.9)+(rand()%(60*15))/5;
-                b_random = 60;
                 b_start_time = now_time();
                 break;
             case 2:
@@ -266,7 +275,7 @@ boothread::bdocall()
                 }
                 break;
             case 3:
-                dump_routing_table();
+                refresh_routing_table();
                 btime_wait(b_start_time+b_random);
                 break;
             case 4:

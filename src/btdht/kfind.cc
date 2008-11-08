@@ -131,7 +131,6 @@ kfind::vcall()
             case 0:
                 count = get_knode(b_target, nodes, false);
                 if (count == -1){
-                    printf("kfind: timeasfd out\n");
                     return 0;
                 }
                 printf("get knode: %d\n", count);
@@ -177,6 +176,7 @@ kfind::vcall()
                     thr = bthread::now_job();
                     benqueue(thr, b_last_update+5);
                 }else{
+                    printf("kfind timeouted\n");
                     b_concurrency = 0;
                     error = 0;
                     state = 1;
