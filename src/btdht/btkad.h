@@ -3,6 +3,7 @@
 #define  _K 8
 #define CONCURRENT_REQUEST 3
 class kfind;
+
 class btkad{
     public:
         static kfind *find_node(char target[20]);
@@ -32,5 +33,5 @@ int genkadid(char ident[20]);
 int getkadid(char ident[20]);
 int setkadid(const char ident[20]);
 int get_kbucket_index(const char ident[20]);
-int add_knode(char id[20], in_addr_t host, in_port_t port);
+int add_boot_node(in_addr_t host, in_port_t port);
 #endif

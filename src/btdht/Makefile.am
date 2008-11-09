@@ -2,7 +2,6 @@ noinst_LIBRARIES = libsub_btdht.a
 
 libsub_btdht_a_SOURCES = \
 	provider.cc  \
-	ident.cc   \
 	transfer.cc \
 	btkad.cc    \
 	knode.cc    \
@@ -15,7 +14,6 @@ libsub_btdht_a_SOURCES = \
 	knode.h     \
 	btkad.h     \
 	transfer.h  \
-	ident.h    \
 	tracker.h
 	
 

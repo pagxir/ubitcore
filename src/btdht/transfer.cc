@@ -13,7 +13,6 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "butils.h"
-#include "ident.h"
 #include "provider.h"
 #include "transfer.h"
 

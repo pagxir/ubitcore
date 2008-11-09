@@ -68,4 +68,3 @@ knode::cmpport(in_port_t port)
 {
     return port - b_port;
 }
-

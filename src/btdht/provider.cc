@@ -13,7 +13,6 @@
 #include "btcodec.h"
 #include "bsocket.h"
 #include "butils.h"
-#include "ident.h"
 #include "provider.h"
 #include "transfer.h"
 #include "kfind.h"
@@ -205,7 +204,7 @@ checkthread::bdocall()
         switch(b_state)
         {
             case 0:
-                btime_wait(b_start_time+60);
+                btime_wait(b_start_time+180);
                 if (now_time() > b_last_refresh+b_random){
                     b_random = (60*15*0.9)+(rand()%(60*15))/5;
                     b_last_refresh = now_time();
@@ -275,6 +274,7 @@ boothread::bdocall()
                 break;
             case 4:
                 printf("DHT: Refresh Boot!\n");
+                delete b_find;
                 state = 0;
                 break;
             default:

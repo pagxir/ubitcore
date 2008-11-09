@@ -46,14 +46,13 @@ btseed_load(const char *buf, int len)
     }
 
 #if 1
-    char nullid[20];
     bentity &nodes = codec.bget().bget("nodes");
     for (i=0; nodes.bget(i).b_str(&eln); i++){
         int port = nodes.bget(i).bget(1).bget(&err);
         const char* ip = nodes.bget(i).bget(0).c_str(&eln);
         std::string ipstr(ip, eln);
         in_addr_t host = inet_addr(ipstr.c_str());
-        add_knode(nullid, host, port);
+        add_boot_node(host, port);
     }
 #endif
     return 0;

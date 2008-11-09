@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <time.h>
 #include <map>
@@ -239,6 +240,8 @@ void dump_kbucket(kbucket *bucket)
     for (i=0; i<count; i++){
         int j;
         printf("\t%02x: ", i);
+        printf("%s:%d ", inet_ntoa(*(in_addr*)&nodes[i].host),
+                htons(nodes[i].port));
         for (j=0; j<20; j++){
             printf("%02x", 0xff&nodes[i].kadid[j]);
         }
