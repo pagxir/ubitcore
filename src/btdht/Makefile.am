@@ -13,6 +13,8 @@ libsub_btdht_a_SOURCES = \
 	kbucket.h   \
 	knode.h     \
 	btkad.h     \
+	ktable.h    \
+	ktable.cc   \
 	transfer.h  \
 	tracker.h
 	

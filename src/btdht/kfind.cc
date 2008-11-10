@@ -175,6 +175,19 @@ kfind::vcall()
                     thr = bthread::now_job();
                     benqueue(thr, b_last_update+5);
                 }else{
+                    for (iter = b_kfind_out.begin(); 
+                            iter != b_kfind_out.end();
+                            iter++){
+                        kitem_t in;
+                        kfind_arg *ping = *iter;
+                        memcpy(in.kadid, ping->kadid, 20);
+                        in.host = ping->host;
+                        in.port = ping->port;
+                        failed_contact(&in);
+                        delete (*iter)->ship;
+                        delete (*iter);
+                    }
+                    b_kfind_out.resize(0);
                     b_concurrency = 0;
                     error = 0;
                     state = 1;

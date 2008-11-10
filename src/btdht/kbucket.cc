@@ -42,14 +42,28 @@ kbucket::touch()
 }
 
 int
+kbucket::failed_contact(const kitem_t *node)
+{
+    int i;
+    for (i=0; i<b_count; i++){
+        b_knodes[i]->failed_contact(node);
+    }
+    return 0;
+}
+
+int
 kbucket::get_knode(kitem_t nodes[])
 {
     int i;
-    int count = std::min(b_count, _K);
-    for (i=0; i<count; i++){
-        b_knodes[i]->getnode(&nodes[i]);
+    int count = 0;
+    assert(b_count < _K);
+    for (i=0; i<b_count; i++){
+        if (b_knodes[i]->validate()){
+            b_knodes[i]->getnode(&nodes[count]);
+            count++;
+        }
     }
-    return b_count;
+    return count;
 }
 
 int
@@ -58,6 +72,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
     int i;
     int result = 0;
     knode *kn;
+    knode *kkn = NULL;
     kitem_t tout;
     time_t  now = time(NULL);
     time_t  lru = now;
@@ -66,6 +81,9 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
         if (0==kn->replace(in, &tout)){
             //printf("replace it\n");
             return 0;
+        }
+        if (kn->validate() == false){
+            kkn = kn;
         }
         if (tout.atime < lru){
             lru = tout.atime;
@@ -77,6 +95,10 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
         kn->touch();
         b_knodes[b_count++] = kn;
         //printf("adding one knode\n");
+        return 0;
+    }
+    if (kkn!=NULL){
+        kkn->set(in);
         return 0;
     }
     //printf("drop: %d\n", b_count);
@@ -184,40 +206,15 @@ get_knode(char target[20], kitem_t nodes[], bool valid)
 }
 
 int
-update_contact(const kitem_t *in, kitem_t *out)
+failed_contact(const kitem_t *in)
 {
     kbucket *bucket;
     const char *kadid = in->kadid;
-#if 0
-    printf("update_contact: ");
-    for (int l=0; l<20; l++){
-        printf("%02x", kadid[l]&0xFF);
+    int i = get_kbucket_index(kadid);
+    if (i < __rsecond){
+        __static_routing_table[i]->failed_contact(in);
     }
-    printf("\n");
-#endif
-    int rsecond = get_kbucket_index(kadid);
-    int index = rsecond++;
-    if (index == 160){
-        return 0;
-    }
-    for (;__rsecond<rsecond; __rsecond++){
-        kbucket **table = __static_routing_table;
-        table[__rsecond] = new kbucket;
-        __static_refresh[__rsecond] = new refreshthread(__rsecond);
-    }
-    __rself_count ++;
-    for (; __rself_count>8; __rfirst++){
-        kitem_t items[_K];
-        int j = __rfirst;
-        assert(j<__rsecond);
-        bucket = __static_routing_table[j];
-        __rself_count -= bucket->get_knode(items);
-    }
-    if (index < __rfirst){
-        __rself_count--;
-    }
-    bucket = __static_routing_table[index];
-    return bucket->update_contact(in, out);
+    return 0;
 }
 
 int
@@ -245,6 +242,7 @@ void dump_kbucket(kbucket *bucket)
         for (j=0; j<20; j++){
             printf("%02x", 0xff&nodes[i].kadid[j]);
         }
+        printf("#%s", nodes[i].failed?"validate":"invalidate");
         printf("\n");
     }
 }
