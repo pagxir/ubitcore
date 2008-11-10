@@ -96,6 +96,7 @@ ping_thread::ping_thread()
 {
     b_ident = "ping_thread";
     b_last_seen = time(NULL);
+    b_swaitident = this;
 }
 
 static std::vector<kitem_t> __static_ping_cache;
@@ -108,25 +109,30 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     codec.bload(buffer, count);
 
     printf("post ping called\n");
-
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
-    if (kadid!=NULL && lid==20){
-        kitem_t initem, oitem;
-        initem.host = host;
-        initem.port = port;
-        initem.atime = time(NULL);
-        memcpy(initem.kadid, kadid, 20);
-        if (__static_table.insert_node(&initem, &oitem) > 0){
-            __static_ping_cache.push_back(initem);
-            kping_arg arg;
-            arg.host = oitem.host;
-            arg.port = oitem.port;
-            memcpy(arg.kadid, oitem.kadid, 20);
-            __static_ping_args.insert(
-                    std::make_pair(arg.host, arg));
-        }
+    if (kadid==NULL && lid!=20){
+        printf("bad kadid\n");
+        return 0;
     }
-
+    kitem_t initem, oitem;
+    initem.host = host;
+    initem.port = port;
+    initem.atime = time(NULL);
+    memcpy(initem.kadid, kadid, 20);
+    if (__static_table.insert_node(&initem, &oitem) > 0){
+        __static_ping_cache.push_back(initem);
+        kping_arg arg;
+        arg.host = oitem.host;
+        arg.port = oitem.port;
+        memcpy(arg.kadid, oitem.kadid, 20);
+        __static_ping_args.insert(
+                std::make_pair(arg.host, arg));
+    }
+    printf("contact: ");
+    for (int i=0; i<20; i++){
+        printf("%02x", kadid[i]&0xff);
+    }
+    printf("\n");
     return 0;
 }
 
@@ -165,14 +171,14 @@ ping_thread::bdocall()
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    b_runable = false;
+                    tsleep(this);
                     return 0;
                 }
                 b_last_seen = time(NULL);
-                benqueue(NULL, b_last_seen+5);
+                benqueue(this, b_last_seen+5);
                 break;
             case 1:
-                b_runable = false;
+                tsleep(this);
                 for (iter=b_ping_queue.begin();
                         iter!=b_ping_queue.end(); iter++){
                     in_addr_t host;
@@ -185,7 +191,7 @@ ping_thread::bdocall()
                     if (count > 0){
                         post_ping(buffer, count, host, port);
                         b_concurrency--;
-                        b_runable = true;
+                        bwakeup(this);
                         state = 0;
                         delete (*iter);
                         *iter = NULL;
@@ -194,7 +200,7 @@ ping_thread::bdocall()
                 if (b_last_seen+5 <= time(NULL)){
                     b_concurrency = 0;
                     b_ping_queue.clear();
-                    b_runable = true;
+                    bwakeup(this);
                     state = 0;
                 }
                 break;
@@ -229,7 +235,7 @@ add_boot_contact(in_addr_t addr, in_port_t port)
     }
     __static_ping_args.insert(
             std::make_pair(addr, arg));
-    __static_ping_thread.bwakeup(NULL);
+    __static_ping_thread.bwakeup(&__static_ping_thread);
 #endif
     return 0;
 }
@@ -373,7 +379,7 @@ boothread::bdocall()
                 state = 0;
                 break;
             default:
-                b_runable = false;
+                assert(0);
                 break;
         }
     }
