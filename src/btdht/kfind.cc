@@ -129,7 +129,7 @@ kfind::vcall()
         b_state = state++;
         switch(b_state){
             case 0:
-                count = get_knode(b_target, nodes, false);
+                count = find_nodes(b_target, nodes, false);
                 if (count == -1){
                     return 0;
                 }

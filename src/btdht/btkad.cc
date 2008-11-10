@@ -9,6 +9,7 @@
 #include "btkad.h"
 #include "knode.h"
 #include "kbucket.h"
+#include "ktable.h"
 #include "bthread.h"
 #include "kfind.h"
 #include "bsocket.h"
@@ -108,6 +109,8 @@ ping_thread::ping_thread()
     b_ident = "ping_thread";
 }
 
+static knode __static_node0;
+static ktable __static_table(&__static_node0);
 static std::vector<kitem_t> __static_ping_cache;
 
 int
@@ -124,7 +127,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
         initem.port = port;
         initem.atime = time(NULL);
         memcpy(initem.kadid, kadid, 20);
-        if (update_contact(&initem, &oitem) > 0){
+        if (__static_table.insert_node(&initem, &oitem) > 0){
             __static_ping_cache.push_back(initem);
             kping_arg arg;
             arg.host = oitem.host;
@@ -136,6 +139,18 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     }
 
     return 0;
+}
+
+int
+update_contact(const kitem_t *in, kitem_t *out)
+{
+    return __static_table.insert_node(in, out);
+}
+
+int
+failed_contact(const kitem_t *in)
+{
+    return __static_table.invalid_node(in);
 }
 
 int
@@ -216,4 +231,9 @@ add_boot_node(in_addr_t host, in_port_t port)
 {
     update_boot_contact(host, port);
     return 0;
+}
+
+int find_nodes(const char *target, kitem_t items[_K], bool valid)
+{
+    return __static_table.find_nodes(target, items);
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <assert.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -41,6 +42,11 @@ bit1_start_at(const char *target)
         index += delta;
     }
     return index;
+}
+
+int ktable::invalid_node(const kitem_t *in)
+{
+    return 0;
 }
 
 int

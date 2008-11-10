@@ -3,6 +3,7 @@
 #define  _K 8
 #define CONCURRENT_REQUEST 3
 class kfind;
+struct kitem_t;
 
 class btkad{
     public:
@@ -29,6 +30,7 @@ struct kadid_t{
 };
 
 int bdhtnet_start();
+int find_nodes(const char *target, kitem_t items[_K], bool valid);
 int genkadid(char ident[20]);
 int getkadid(char ident[20]);
 int setkadid(const char ident[20]);
