@@ -1,11 +1,13 @@
 noinst_LIBRARIES = libsub_btdht.a
 
 libsub_btdht_a_SOURCES = \
-	provider.cc  \
+	provider.cc \
 	transfer.cc \
 	btkad.cc    \
 	knode.cc    \
 	kbucket.cc  \
+	refresh.cc  \
+	refresh.h   \
 	kfind.cc    \
 	kfind.h     \
 	kutils.cc   \

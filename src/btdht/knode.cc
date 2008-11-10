@@ -11,6 +11,7 @@
 knode::knode()
     :b_destroy(true)
 {
+    genkadid(b_ident);
 }
 
 knode::knode(const char id[20], in_addr_t addr, in_port_t port)

@@ -15,7 +15,9 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "transfer.h"
+#include "refresh.h"
 #include "provider.h"
+#include "btimerd.h"
 
 struct kping_arg{
     char kadid[20];
@@ -39,21 +41,21 @@ class ping_thread: public bthread
 };
 
 static bdhtnet __static_dhtnet;
+static knode __static_node0;
+static ktable __static_table(&__static_node0);
 static std::map<in_addr_t, kping_arg> __static_ping_args;
 static ping_thread __static_ping_thread;
 
 kfind *
-btkad::find_node(char target[20])
+kfind_new(char target[20], kitem_t items[], size_t count)
 {
-    return new kfind(&__static_dhtnet, target);
+    return new kfind(&__static_dhtnet, target, items, count);
 }
-
-static char __kadid[20];
 
 int
 getkadid(char kadid[20])
 {
-    memcpy(kadid, __kadid, 20);
+    __static_table.getkadid(kadid);
     return 0;
 }
 
@@ -71,7 +73,7 @@ genkadid(char kadid[20])
 int
 setkadid(const char kadid[20])
 {
-    memcpy(__kadid, kadid, 20);
+    __static_table.setkadid(kadid);
     return 0;
 }
 
@@ -86,31 +88,12 @@ static uint8_t mask[256] = {
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-int
-get_kbucket_index(const char kadid[20])
-{
-    int i;
-    int index = 0;
-    uint8_t orkid = 0;
-    for (i=0; i<20; i++){
-        orkid = __kadid[i]^kadid[i];
-        if (orkid != 0){
-            index = mask[orkid];
-            break;
-        }
-    }
-    index += (i<<3);
-    return index;
-}
-
 ping_thread::ping_thread()
     :b_state(0), b_concurrency(0)
 {
     b_ident = "ping_thread";
 }
 
-static knode __static_node0;
-static ktable __static_table(&__static_node0);
 static std::vector<kitem_t> __static_ping_cache;
 
 int
@@ -144,6 +127,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
 int
 update_contact(const kitem_t *in, kitem_t *out)
 {
+    printf("kitem: update contact\n");
     return __static_table.insert_node(in, out);
 }
 
@@ -226,14 +210,186 @@ add_knode(char id[20], in_addr_t host, in_port_t port)
     return 0;
 }
 
+static int __boot_count = 0;
+static kitem_t __boot_contacts[8];
+
 int
-add_boot_node(in_addr_t host, in_port_t port)
+add_boot_contact(in_addr_t addr, in_port_t port)
 {
-    update_boot_contact(host, port);
+    int idx = __boot_count++;
+    if (__boot_count > 8){
+        idx = (rand()&0x7);
+    }
+    __boot_contacts[idx].host = addr;
+    __boot_contacts[idx].port = port;
     return 0;
 }
 
-int find_nodes(const char *target, kitem_t items[_K], bool valid)
+int
+find_nodes(const char *target, kitem_t items[_K], bool valid)
 {
     return __static_table.find_nodes(target, items);
+}
+
+static refreshthread *__static_refresh[160];
+int
+refresh_routing_table()
+{
+    int i;
+    for (i=0; i<__static_table.size(); i++){
+        if (__static_refresh[i] == NULL){
+            __static_refresh[i] = new refreshthread(i);
+        }
+        __static_refresh[i]->bwakeup(NULL);
+    }
+    return 0;
+}
+
+void
+dump_routing_table()
+{
+    __static_table.dump();
+}
+
+class checkthread: public bthread
+{
+    public:
+        checkthread();
+        virtual int bdocall();
+
+    private:
+        int b_state;
+        time_t b_random;
+        time_t b_start_time;
+        time_t b_last_refresh;
+};
+
+checkthread::checkthread()
+{
+    b_state = 0;
+    b_random = 60;
+    b_start_time = now_time();
+    b_last_refresh = now_time();
+    b_ident = "checkthread";
+}
+
+int
+checkthread::bdocall()
+{
+    int state = b_state;
+    while (b_runable){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                btime_wait(b_start_time+180);
+                if (now_time() > b_last_refresh+b_random){
+                    b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                    b_last_refresh = now_time();
+                    refresh_routing_table();
+                }
+                break;
+            case 1:
+                dump_routing_table();
+                b_start_time = now_time();
+                state = 0;
+                break;
+            default:
+                assert(0);
+                break;
+        }
+    }
+    return 0;
+}
+
+class boothread: public bthread
+{
+    public:
+        boothread();
+        virtual int bdocall();
+
+    private:
+        int b_state;
+        time_t b_random;
+        time_t b_start_time;
+        kfind  *b_find;
+};
+
+boothread::boothread()
+{
+    b_find = NULL;
+    b_state = 0;
+    b_start_time = now_time();
+    b_ident = "boothread";
+}
+
+int
+boothread::bdocall()
+{
+    int count;
+    int state = b_state;
+    char bootid[20];
+    kitem_t items[8];
+    while (b_runable){
+        b_state = state++;
+        switch(b_state)
+        {
+            case 0:
+                getkadid(bootid);
+                bootid[19]^=0x1;
+                count = find_nodes(bootid, items, true);
+                if (count == 0){
+                    count = std::max(__boot_count, 8);
+                    memcpy(items, __boot_contacts, count);
+                }
+                b_find = kfind_new(bootid, items, count);
+                break;
+            case 1:
+                b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_start_time = now_time();
+                break;
+            case 2:
+                if (b_find->vcall() == -1){
+                    state = 2;
+                }
+                break;
+            case 3:
+                refresh_routing_table();
+                btime_wait(b_start_time+b_random);
+                break;
+            case 4:
+                printf("DHT: Refresh Boot!\n");
+                delete b_find;
+                state = 0;
+                break;
+            default:
+                b_runable = false;
+                break;
+        }
+    }
+}
+
+static checkthread __static_checkthread;
+static boothread __static_boothread;
+
+int
+bdhtnet_start()
+{
+    static int __call_once_only = 0;
+
+    if (__call_once_only++ > 0){
+        return -1;
+    }
+    char bootid[20];
+    genkadid(bootid);
+    setkadid(bootid);
+    extern char __ping_node[];
+    getkadid(&__ping_node[12]);
+    extern char __find_node[];
+    getkadid(&__find_node[12]);
+    extern char __get_peers[];
+    getkadid(&__get_peers[12]);
+    __static_boothread.bwakeup(NULL);
+    __static_checkthread.bwakeup(NULL);
+    return 0;
 }

@@ -15,6 +15,7 @@
 #include "bsocket.h"
 #include "btcodec.h"
 #include "provider.h"
+#include "kutils.h"
 #include "transfer.h"
 
 struct kfind_arg{
@@ -27,14 +28,24 @@ struct kfind_arg{
     kship     *ship;
 };
 
-kfind::kfind(bdhtnet *net, const char target[20])
+kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
 {
+    int i;
     b_state = 0;
     b_net   = net;
     b_trim  = false;
     b_concurrency = 0;
     b_sumumery = 0;
     memcpy(b_target, target, 20);
+    for (i=0; i<count; i++){
+        kfind_arg *arg = new kfind_arg;
+        arg->host = items[i].host;
+        arg->port = items[i].port;
+        memcpy(arg->kadid, items[i].kadid, 20);
+        kaddist_t dist(arg->kadid, b_target);
+        b_kfind_queue.insert(
+                std::make_pair(dist, arg));
+    }
 }
 
 struct compat_t
@@ -123,25 +134,11 @@ kfind::vcall()
     in_port_t port;
     bthread  *thr = NULL;
     std::vector<kfind_arg*>::iterator iter;
-    kitem_t nodes[_K];
 
     while (error != -1){
         b_state = state++;
         switch(b_state){
             case 0:
-                count = find_nodes(b_target, nodes, false);
-                if (count == -1){
-                    return 0;
-                }
-                for (i=0; i<count; i++){
-                    kfind_arg *arg = new kfind_arg;
-                    arg->host = nodes[i].host;
-                    arg->port = nodes[i].port;
-                    memcpy(arg->kadid, nodes[i].kadid, 20);
-                    kaddist_t dist(arg->kadid, b_target);
-                    b_kfind_queue.insert(
-                            std::make_pair(dist, arg));
-                }
                 break;
             case 1:
                 while (b_concurrency<CONCURRENT_REQUEST){

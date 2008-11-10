@@ -52,7 +52,7 @@ btseed_load(const char *buf, int len)
         const char* ip = nodes.bget(i).bget(0).c_str(&eln);
         std::string ipstr(ip, eln);
         in_addr_t host = inet_addr(ipstr.c_str());
-        add_boot_node(host, port);
+        add_boot_contact(host, port);
     }
 #endif
     return 0;

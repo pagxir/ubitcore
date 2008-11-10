@@ -1,12 +1,14 @@
 #ifndef __KFIND_H__
 #define __KFIND_H__
 #include "btkad.h"
+#include "kutils.h"
 #include <vector>
 class bdhtnet;
 class kfind_arg;
+struct kitem_t;
 class kfind{
     public:
-        kfind(bdhtnet *net, const char target[20]);
+        kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count);
         int vcall();
         void decode_packet(const char buffer[], size_t count,
                 in_addr_t host, in_port_t port);
@@ -27,5 +29,4 @@ class kfind{
         std::map<kaddist_t, int> b_kfind_outed;
         std::map<kaddist_t, int> b_kfind_ined;
 };
-int _find_node(char target[20]);
 #endif

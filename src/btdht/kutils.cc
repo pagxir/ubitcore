@@ -5,8 +5,7 @@
 #include <netinet/in.h>
 
 #include "btkad.h"
-
-
+#include "kutils.h"
 
 kaddist_t::kaddist_t()
 {
@@ -55,6 +54,11 @@ kadid_t::kadid_t()
 kadid_t::kadid_t(const char _kadid[20])
 {
     memcpy(kadid, _kadid, 20);
+}
+
+bool kadid_t::operator==(const kadid_t &op)const
+{
+    return memcmp(kadid, op.kadid, 20)==0;
 }
 
 kaddist_t kadid_t::operator^(const kadid_t &op2)const

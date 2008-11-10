@@ -8,6 +8,12 @@ class ktable{
     public:
         ktable(knode *node);
         ~ktable();
+        void dump();
+
+    public:
+        int size(){ return (b_nbucket0+1); }
+        int getkadid(char kadid[20]);
+        int setkadid(const char kadid[20]);
 
     public:
         int bit1_index_of(const char target[20]);

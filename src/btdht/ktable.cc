@@ -46,6 +46,7 @@ bit1_start_at(const char *target)
 
 int ktable::invalid_node(const kitem_t *in)
 {
+    printf("invalidate node\n");
     return 0;
 }
 
@@ -120,6 +121,24 @@ ktable::insert_node(const kitem_t *in, kitem_t *out)
     return b_buckets[index].update_contact(in, out);
 }
 
+int
+ktable::setkadid(const char kadid[20])
+{
+    kitem_t item;
+    memcpy(item.kadid, kadid, 20);
+    b_node0->set(&item);
+    return 0;
+}
+
+int
+ktable::getkadid(char kadid[20])
+{
+    kitem_t item;
+    b_node0->getnode(&item);
+    memcpy(kadid, item.kadid, 20);
+    return 0;
+}
+
 ktable::ktable(knode *node)
     :b_count0(0), b_node0(new knode(*node))
 {
@@ -130,4 +149,13 @@ ktable::~ktable()
 {
     delete b_node0;
     delete[] b_buckets;
+}
+
+void
+ktable::dump()
+{
+    int i;
+    for (i=0; i<b_nbucket1; i++){
+        b_buckets[i].dump();
+    }
 }
