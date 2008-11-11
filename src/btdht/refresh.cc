@@ -48,7 +48,9 @@ refreshthread::bdocall()
                 }
                 mask =  __mask[u];
                 bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
-                bootid[j] ^= (0x80>>u);
+                if (get_table_size() > b_index){
+                    bootid[j] ^= (0x80>>u);
+                }
                 count = find_nodes(bootid, items, true);
                 b_find = kfind_new(bootid, items, count);
                 break;
