@@ -13,7 +13,7 @@ int genkadid(char ident[20]);
 int getkadid(char ident[20]);
 int setkadid(const char ident[20]);
 int add_boot_contact(in_addr_t addr, in_port_t port);
-int update_contact(const kitem_t *in, kitem_t *out);
+int update_contact(const kitem_t *in, kitem_t *out, bool contacted);
 int failed_contact(const kitem_t *in);
 int get_knode(char target[20], kitem_t nodes[_K], bool valid);
 int refresh_routing_table();

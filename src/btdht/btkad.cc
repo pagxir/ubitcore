@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <string.h>
 #include <map>
 
@@ -119,7 +120,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     initem.port = port;
     initem.atime = time(NULL);
     memcpy(initem.kadid, kadid, 20);
-    if (__static_table.insert_node(&initem, &oitem) > 0){
+    if (__static_table.insert_node(&initem, &oitem, true) > 0){
         __static_ping_cache.push_back(initem);
         kping_arg arg;
         arg.host = oitem.host;
@@ -132,15 +133,17 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     for (int i=0; i<20; i++){
         printf("%02x", kadid[i]&0xff);
     }
-    printf("\n");
+    printf("inet: %s:%u\n",
+            inet_ntoa(*(in_addr*)&host), htons(port));
+    __static_table.dump();
     return 0;
 }
 
 int
-update_contact(const kitem_t *in, kitem_t *out)
+update_contact(const kitem_t *in, kitem_t *out, bool contacted)
 {
     printf("kitem: update contact\n");
-    return __static_table.insert_node(in, out);
+    return __static_table.insert_node(in, out, contacted);
 }
 
 int
@@ -219,12 +222,12 @@ static kitem_t __boot_contacts[8];
 int
 add_boot_contact(in_addr_t addr, in_port_t port)
 {
-    int idx = __boot_count++;
-    if (__boot_count > 8){
-        idx = (rand()&0x7);
+    if (__boot_count < 8){
+        int idx = __boot_count++;
+        __boot_contacts[idx].host = addr;
+        __boot_contacts[idx].port = port;
+        return 0;
     }
-    __boot_contacts[idx].host = addr;
-    __boot_contacts[idx].port = port;
 #if 1
     kping_arg arg ;
     arg.host = addr;
@@ -370,6 +373,8 @@ boothread::bdocall()
                 }
                 break;
             case 3:
+                printf("DHT Boot Ended\n");
+                dump_routing_table();
                 refresh_routing_table();
                 btime_wait(b_start_time+b_random);
                 break;

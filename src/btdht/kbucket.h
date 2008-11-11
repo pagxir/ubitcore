@@ -9,8 +9,9 @@ class kbucket{
         void touch();
         int  failed_contact(const kitem_t *in);
         int  get_knode(kitem_t nodes[_K]);
+        int  invalid_node(const kitem_t *node);
         int  find_nodes(kitem_t nodes[_K]);
-        int  update_contact(const kitem_t *in, kitem_t *out);
+        int  update_contact(const kitem_t *in, kitem_t *out, bool contacted);
 
     private:
         int    b_count;

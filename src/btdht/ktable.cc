@@ -17,7 +17,7 @@ bit1_start_at(const char *target)
 {
     int i;
     int index = 0;
-    uint8_t midx = 0xFF;
+    uint8_t midx = 0x0;
     static const uint8_t mtable[] = {
         0x8, 0x7, 0x6, 0x6, 0x5, 0x5, 0x5, 0x5, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 0x4, 
         0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 0x3, 
@@ -38,15 +38,18 @@ bit1_start_at(const char *target)
     };
     for (i=0; i<20&&midx==0; i++){
         midx = (uint8_t)target[i];
-        int delta = mtable[midx];
-        index += delta;
+        index = mtable[midx];
     }
     return index;
 }
 
 int ktable::invalid_node(const kitem_t *in)
 {
-    printf("invalidate node\n");
+    const char *kadid = in->kadid;
+    int index = bit1_index_of(kadid);
+    if (index < b_nbucket1){
+        b_buckets[index].invalid_node(in);
+    }
     return 0;
 }
 
@@ -92,13 +95,13 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
 }
 
 int
-ktable::insert_node(const kitem_t *in, kitem_t *out)
+ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
 {
-    kbucket *bucket;
     const char *kadid = in->kadid;
     int nbucket1 = bit1_index_of(kadid);
     int index = nbucket1++;
 
+    printf("insert node called\n");
     if (nbucket1 > 160){
         printf("internal error!\n");
         return 0;
@@ -118,7 +121,7 @@ ktable::insert_node(const kitem_t *in, kitem_t *out)
     if (index < b_nbucket0){
         b_count0--;
     }
-    return b_buckets[index].update_contact(in, out);
+    return b_buckets[index].update_contact(in, out, contacted);
 }
 
 int
@@ -142,6 +145,8 @@ ktable::getkadid(char kadid[20])
 ktable::ktable(knode *node)
     :b_count0(0), b_node0(new knode(*node))
 {
+    b_nbucket0 = 0;
+    b_nbucket1 = 1;
     b_buckets = new kbucket[160];
 }
 
@@ -155,6 +160,7 @@ void
 ktable::dump()
 {
     int i;
+    printf("dump routing table\n");
     for (i=0; i<b_nbucket1; i++){
         b_buckets[i].dump();
     }

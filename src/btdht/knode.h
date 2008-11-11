@@ -14,7 +14,9 @@ class knode{
     public:
         knode();
         knode(const char id[20], in_addr_t addr, in_port_t port);
-        void touch();
+        int  touch();
+        int  invalidate();
+        int  failed();
         int  XOR(char target[20]);
         bool validate() { return b_valid; }
         int  getnode(kitem_t *out);

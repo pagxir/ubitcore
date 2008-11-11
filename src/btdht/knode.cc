@@ -16,12 +16,18 @@ knode::knode()
 
 knode::knode(const char id[20], in_addr_t addr, in_port_t port)
     :b_address(addr), b_port(port), b_destroy(false),
-    b_valid(false), b_last_seen(0), b_failed(0)
+    b_valid(true), b_last_seen(0), b_failed(0)
 {
     memcpy(b_ident, id, 20);
 }
 
-void
+int
+knode::invalidate()
+{
+    b_valid = false;
+}
+
+int
 knode::touch()
 {
     b_last_seen = time(NULL);

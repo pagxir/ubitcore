@@ -42,7 +42,7 @@ kbucket::find_nodes(kitem_t nodes[])
 {
     int i;
     int count = 0;
-    assert(b_count < _K);
+    assert(b_count <= _K);
     for (i=0; i<b_count; i++){
         if (b_knodes[i]->validate()){
             b_knodes[i]->getnode(&nodes[count]);
@@ -59,16 +59,36 @@ kbucket::get_knode(kitem_t nodes[])
     int count = 0;
     assert(b_count < _K);
     for (i=0; i<b_count; i++){
-        if (b_knodes[i]->validate()){
-            b_knodes[i]->getnode(&nodes[count]);
-            count++;
-        }
+        b_knodes[i]->getnode(&nodes[count]);
+        count++;
     }
     return count;
 }
 
 int
-kbucket::update_contact(const kitem_t *in, kitem_t *out)
+kbucket::invalid_node(const kitem_t *node)
+{
+    int i;
+    knode *kn;
+    for (i=0; i<b_count; i++){
+        kn = b_knodes[i];
+        if (kn->cmpid(node->kadid) != 0){
+            continue;
+        }
+        if (kn->cmphost(node->host) != 0){
+            printf("warn: host change\n");
+            continue;
+        }
+        if (kn->cmpport(node->port) != 0){
+            printf("warn: port change\n");
+        }
+        kn->invalidate();
+    }
+    return 0;
+}
+
+int
+kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
 {
     int i;
     int result = 0;
@@ -79,31 +99,38 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out)
     time_t  lru = now;
     for (i=0; i<b_count; i++){
         kn = b_knodes[i];
-        if (0==kn->replace(in, &tout)){
-            //printf("replace it\n");
+        if (0==kn->cmpid(in->kadid)){
+            kn->set(in);
+            contacted&&kn->touch();
             return 0;
         }
         if (kn->validate() == false){
             kkn = kn;
         }
+#if 0
         if (tout.atime < lru){
             lru = tout.atime;
             *out = tout;
         }
+#endif
     }
     if (b_count < _K){
         kn  = new knode(in->kadid, in->host, in->port);
-        kn->touch();
+        contacted&&kn->touch();
         b_knodes[b_count++] = kn;
-        //printf("adding one knode\n");
+        printf("adding one knode\n");
         return 0;
     }
-    if (kkn!=NULL){
+    if (kkn != NULL){
+        printf("set: %d\n", b_count);
         kkn->set(in);
         return 0;
     }
-    //printf("drop: %d\n", b_count);
+    printf("drop: %d\n", b_count);
+    return 0;
+#if 0
     return (now-lru>15*60);
+#endif
 }
 
 void

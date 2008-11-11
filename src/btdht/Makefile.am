@@ -11,14 +11,14 @@ libsub_btdht_a_SOURCES = \
 	kfind.cc    \
 	kfind.h     \
 	kutils.cc   \
+	kutils.h    \
 	provider.h  \
 	kbucket.h   \
 	knode.h     \
 	btkad.h     \
 	ktable.h    \
 	ktable.cc   \
-	transfer.h  \
-	tracker.h
+	transfer.h
 	
 
 INCLUDES = -I$(srcdir) -I$(srcdir)/.. -I$(top_srcdir) -I$(top_srcdir)$(WS2_INCLUDE)
