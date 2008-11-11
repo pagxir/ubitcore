@@ -72,7 +72,7 @@ kfind::decode_packet(const char buffer[], size_t count,
     update_contact(&in, &out, true);
 #if 1
     if (vip != NULL && len==20){
-        printf("good node: %s\n",
+        printf("good node: %s:%d\n",
                 inet_ntoa(*(in_addr*)&address), htons(port));
     }
 #endif
@@ -96,7 +96,6 @@ kfind::decode_packet(const char buffer[], size_t count,
             printf("find node result: %s\n", idstr(in.kadid));
             memcpy(&in.host, &iter->host, sizeof(in_addr_t));
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
-            in.port = (in.port);
             update_contact(&in, &out, false);
 #if 0
             printf("kfind: %s:%d\n", 

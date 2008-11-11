@@ -358,8 +358,9 @@ boothread::bdocall()
                 count = find_nodes(bootid, items, true);
                 if (count == 0){
                     count = std::min(__boot_count, 8);
-                    memcpy(items, __boot_contacts, count);
+                    memcpy(items, __boot_contacts, count*sizeof(kitem_t));
                 }
+                printf("find close node\n");
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
@@ -375,7 +376,7 @@ boothread::bdocall()
                 printf("DHT Boot Ended\n");
                 dump_routing_table();
                 refresh_routing_table();
-                if (get_table_size() < 4){
+                if (get_table_size() > 4){
                     btime_wait(b_start_time+b_random);
                 }
                 break;

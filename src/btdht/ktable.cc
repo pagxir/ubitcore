@@ -79,7 +79,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
     for (i=offset; i<b_nbucket1; i++){
         int n = b_buckets[i].find_nodes(vitems);
         if (n+count >= 8){
-            memcpy(&items[count], vitems, sizeof(kitem_t)*(count-8));
+            memcpy(&items[count], vitems, sizeof(kitem_t)*(8-count));
             count = 8;
             break;
         }
@@ -89,7 +89,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
     for (i=backoff-1; i>=0; i--){
         int n = b_buckets[i].find_nodes(vitems);
         if (n+count >= 8){
-            memcpy(&items[count], vitems, sizeof(kitem_t)*(count-8));
+            memcpy(&items[count], vitems, sizeof(kitem_t)*(8-count));
             count = 8;
             break;
         }
