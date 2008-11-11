@@ -139,7 +139,6 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
 int
 update_contact(const kitem_t *in, kitem_t *out, bool contacted)
 {
-    printf("kitem: update contact\n");
     return __static_table.insert_node(in, out, contacted);
 }
 

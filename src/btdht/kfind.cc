@@ -93,7 +93,9 @@ kfind::decode_packet(const char buffer[], size_t count,
         compat_t *compated = (compat_t*)(compat+len);
         for (iter; iter<compated; iter++){
             memcpy(in.kadid, iter->ident, 20);
+#if 0
             printf("find node result: %s\n", idstr(in.kadid));
+#endif
             memcpy(&in.host, &iter->host, sizeof(in_addr_t));
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
             update_contact(&in, &out, false);

@@ -40,14 +40,18 @@ bit1_start_at(const char *target)
         midx = (uint8_t)target[i];
         index += mtable[midx];
     }
+#if 0
     printf("start index: %d\n", index);
+#endif
     return index;
 }
 
 int ktable::invalid_node(const kitem_t *in)
 {
     const char *kadid = in->kadid;
+#if 0
     printf("invalid node: ");
+#endif
     int index = bit1_index_of(kadid);
     if (index < b_nbucket1){
         b_buckets[index].invalid_node(in);
@@ -71,7 +75,9 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
 {
     int i;
     int count = 0;
+#if 0
     printf("find node: ");
+#endif
     int offset = bit1_index_of(target);
 
     kitem_t vitems[8];
@@ -112,7 +118,6 @@ ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
         return 0;
     }
 
-    printf("insert called: %d\n", index);
     if (nbucket1 > b_nbucket1){
         b_nbucket1 = nbucket1;
     }
@@ -133,7 +138,6 @@ int
 ktable::setkadid(const char kadid[20])
 {
     memcpy(b_tableid, kadid, 20);
-    return 0;
 }
 
 int

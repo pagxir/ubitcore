@@ -57,7 +57,7 @@ kbucket::get_knode(kitem_t nodes[])
 {
     int i;
     int count = 0;
-    assert(b_count < _K);
+    assert(b_count <= _K);
     for (i=0; i<b_count; i++){
         b_knodes[i]->getnode(&nodes[count]);
         count++;
@@ -118,15 +118,19 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
         kn  = new knode(in->kadid, in->host, in->port);
         contacted&&kn->touch();
         b_knodes[b_count++] = kn;
+#if 0
         printf("adding one knode\n");
+#endif
         return 0;
     }
     if (kkn != NULL){
+#if 0
         printf("set: %d\n", b_count);
+#endif
         kkn->set(in);
         return 0;
     }
-    printf("drop: %d\n", b_count);
+    //printf("drop: %d\n", b_count);
     return 0;
 #if 0
     return (now-lru>15*60);
