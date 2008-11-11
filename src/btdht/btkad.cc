@@ -145,7 +145,7 @@ update_contact(const kitem_t *in, kitem_t *out, bool contacted)
 int
 failed_contact(const kitem_t *in)
 {
-    return __static_table.invalid_node(in);
+    return __static_table.failed_contact(in);
 }
 
 int

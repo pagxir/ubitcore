@@ -32,7 +32,10 @@ kbucket::failed_contact(const kitem_t *node)
 {
     int i;
     for (i=0; i<b_count; i++){
-        b_knodes[i]->failed_contact(node);
+        if (b_knodes[i]->cmpid(node->kadid) ==0){
+            b_knodes[i]->failed();
+            break;
+        }
     }
     return 0;
 }
@@ -44,7 +47,7 @@ kbucket::find_nodes(kitem_t nodes[])
     int count = 0;
     assert(b_count <= _K);
     for (i=0; i<b_count; i++){
-        if (b_knodes[i]->validate()){
+        if (b_knodes[i]->_isvalidate()){
             b_knodes[i]->getnode(&nodes[count]);
             count++;
         }
@@ -81,8 +84,9 @@ kbucket::invalid_node(const kitem_t *node)
         }
         if (kn->cmpport(node->port) != 0){
             printf("warn: port change\n");
+            continue;
         }
-        kn->invalidate();
+        kn->failed();
     }
     return 0;
 }
@@ -104,7 +108,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
             contacted&&kn->touch();
             return 0;
         }
-        if (kn->validate() == false){
+        if (kn->_isvalidate() == false){
             kkn = kn;
         }
 #if 0

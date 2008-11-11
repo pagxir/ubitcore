@@ -16,21 +16,15 @@ knode::knode()
 
 knode::knode(const char id[20], in_addr_t addr, in_port_t port)
     :b_address(addr), b_port(port), b_destroy(false),
-    b_valid(true), b_last_seen(0), b_failed(0)
+    b_last_seen(0), b_failed(0)
 {
     memcpy(b_ident, id, 20);
 }
 
 int
-knode::invalidate()
-{
-    b_valid = false;
-}
-
-int
 knode::touch()
 {
-    b_valid = true;
+    b_failed = 0;
     b_last_seen = time(NULL);
 }
 
@@ -59,15 +53,9 @@ knode::replace(const kitem_t *in, kitem_t *out)
 }
 
 int
-knode::failed_contact(const kitem_t *in)
+knode::failed()
 {
-    if (cmpid(in->kadid)){
-        return 0;
-    }
     b_failed++;
-    if (b_failed > 3){
-        b_valid = false;
-    }
     return 0;
 }
 
@@ -78,7 +66,7 @@ knode::getnode(kitem_t *out)
     out->port = b_port;
     out->host = b_address;
     out->atime = b_last_seen;
-    out->failed = b_valid; 
+    out->failed = b_failed; 
     return 0;
 }
 

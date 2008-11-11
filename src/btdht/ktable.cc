@@ -46,6 +46,17 @@ bit1_start_at(const char *target)
     return index;
 }
 
+int
+ktable::failed_contact(const kitem_t *in)
+{
+    const char *kadid = in->kadid;
+    int index = bit1_index_of(kadid);
+    if (index < b_nbucket1){
+        b_buckets[index].failed_contact(in);
+    }
+    return 0;
+}
+
 int ktable::invalid_node(const kitem_t *in)
 {
     const char *kadid = in->kadid;
