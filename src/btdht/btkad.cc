@@ -45,8 +45,7 @@ class ping_thread: public bthread
 };
 
 static bdhtnet __static_dhtnet;
-static knode __static_node0;
-static ktable __static_table(&__static_node0);
+static ktable __static_table;
 static std::map<in_addr_t, kping_arg> __static_ping_args;
 static ping_thread __static_ping_thread;
 
@@ -77,6 +76,7 @@ genkadid(char kadid[20])
 int
 setkadid(const char kadid[20])
 {
+    printf("setkadid: %s\n", idstr(kadid));
     __static_table.setkadid(kadid);
     return 0;
 }
@@ -129,10 +129,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
         __static_ping_args.insert(
                 std::make_pair(arg.host, arg));
     }
-    printf("contact: ");
-    for (int i=0; i<20; i++){
-        printf("%02x", kadid[i]&0xff);
-    }
+    printf("contact: %s ", idstr(kadid));
     printf("inet: %s:%u\n",
             inet_ntoa(*(in_addr*)&host), htons(port));
     __static_table.dump();
@@ -202,6 +199,8 @@ ping_thread::bdocall()
                 }
                 if (b_last_seen+5 <= time(NULL)){
                     b_concurrency = 0;
+                    printf("ping queue: %d\n",
+                            __static_ping_args.size());
                     b_ping_queue.clear();
                     bwakeup(this);
                     state = 0;
@@ -376,7 +375,9 @@ boothread::bdocall()
                 printf("DHT Boot Ended\n");
                 dump_routing_table();
                 refresh_routing_table();
-                btime_wait(b_start_time+b_random);
+                if (get_table_size() < 4){
+                    btime_wait(b_start_time+b_random);
+                }
                 break;
             case 4:
                 printf("DHT: Refresh Boot!\n");
@@ -413,4 +414,10 @@ bdhtnet_start()
     __static_boothread.bwakeup(NULL);
     __static_checkthread.bwakeup(NULL);
     return 0;
+}
+
+int
+get_table_size()
+{
+    return __static_table.size();
 }

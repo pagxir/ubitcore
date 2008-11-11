@@ -352,7 +352,7 @@ bsocket::bconnect(in_addr_t host, in_port_t port)
     }
     assert(b_fd == -1);
     siaddr.sin_family = AF_INET;
-    siaddr.sin_port = htons(port);
+    siaddr.sin_port = port;
     siaddr.sin_addr.s_addr = host;
     b_fd = socket(AF_INET, SOCK_STREAM, 0);
     fflag = fcntl(b_fd, F_GETFL);
@@ -382,7 +382,7 @@ bsocket::bsendto(const void* buffer, size_t len,
         fcntl(b_fd, F_SETFL, fflag);
     }
     siaddr.sin_family = AF_INET;
-    siaddr.sin_port = htons(port);
+    siaddr.sin_port = port;
     siaddr.sin_addr.s_addr = host;
     return sendto(b_fd, (const char*)buffer, len, 0, (sockaddr*)&siaddr, sizeof(siaddr));
 }
@@ -403,7 +403,7 @@ bsocket::brecvfrom(void* buffer, size_t len,
         *host = siaddr.sin_addr.s_addr;
     }
     if (port != NULL){
-        *port = htons(siaddr.sin_port);
+        *port = siaddr.sin_port;
     }
     return error;
 }

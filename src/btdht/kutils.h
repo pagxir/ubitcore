@@ -21,4 +21,6 @@ struct kadid_t{
     kadid_t &operator=(const kadid_t &op);
 };
 
+const char *idstr(const char id[20]);
+
 #endif

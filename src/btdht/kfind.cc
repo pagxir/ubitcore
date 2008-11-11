@@ -72,11 +72,7 @@ kfind::decode_packet(const char buffer[], size_t count,
     update_contact(&in, &out, true);
 #if 1
     if (vip != NULL && len==20){
-        printf("find_node: ");
-        for (int i=0; i<20; i++){
-            printf("%02x", vip[i]&0xff);
-        }
-        printf("\n");
+        printf("find node: %s\n", idstr(vip));
     }
 #endif
     kaddist_t dist(vip, b_target);
@@ -96,9 +92,10 @@ kfind::decode_packet(const char buffer[], size_t count,
         compat_t *compated = (compat_t*)(compat+len);
         for (iter; iter<compated; iter++){
             memcpy(in.kadid, iter->ident, 20);
+            printf("find node result: %s\n", idstr(in.kadid));
             memcpy(&in.host, &iter->host, sizeof(in_addr_t));
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
-            in.port = htons(in.port);
+            in.port = (in.port);
             update_contact(&in, &out, false);
 #if 0
             printf("kfind: %s:%d\n", 

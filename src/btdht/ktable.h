@@ -6,7 +6,7 @@ class kbucket;
 
 class ktable{
     public:
-        ktable(knode *node);
+        ktable();
         ~ktable();
         void dump();
 
@@ -23,7 +23,7 @@ class ktable{
 
     private:
         int b_count0;
-        knode *b_node0;
+        char b_tableid[20];
 
     private:
         int b_nbucket0;

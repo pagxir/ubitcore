@@ -71,3 +71,14 @@ kadid_t & kadid_t::operator=(const kadid_t &op)
     memcpy(kadid, op.kadid, 20);
     return *this;
 }
+
+const char *
+idstr(const char id[20])
+{
+    int i;
+    static char __idstr[41];
+    for (i=0; i<20; i++){
+        sprintf(__idstr+2*i, "%02x", id[i]&0xff);
+    }
+    return __idstr;
+}

@@ -137,17 +137,13 @@ void
 kbucket::dump()
 {
     int i;
-    kitem_t nodes[_K];
-    int count = find_nodes(nodes);
-    for (i=0; i<count; i++){
-        int j;
-        printf("\t%02x: ", i);
-        printf("%s:%d ", inet_ntoa(*(in_addr*)&nodes[i].host),
-                htons(nodes[i].port));
-        for (j=0; j<20; j++){
-            printf("%02x", 0xff&nodes[i].kadid[j]);
-        }
-        printf("#%s", nodes[i].failed?"validate":"invalidate");
+    kitem_t node;
+    for (i=0; i<b_count; i++){
+        b_knodes[i]->getnode(&node);
+        printf("\t%02x: %s ", i, idstr(node.kadid));
+        printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
+                htons(node.port));
+        printf("#%s", node.failed?"validate":"invalidate");
         printf("\n");
     }
 }

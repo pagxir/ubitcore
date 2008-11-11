@@ -38,14 +38,16 @@ bit1_start_at(const char *target)
     };
     for (i=0; i<20&&midx==0; i++){
         midx = (uint8_t)target[i];
-        index = mtable[midx];
+        index += mtable[midx];
     }
+    printf("start index: %d\n", index);
     return index;
 }
 
 int ktable::invalid_node(const kitem_t *in)
 {
     const char *kadid = in->kadid;
+    printf("invalid node: ");
     int index = bit1_index_of(kadid);
     if (index < b_nbucket1){
         b_buckets[index].invalid_node(in);
@@ -56,9 +58,11 @@ int ktable::invalid_node(const kitem_t *in)
 int
 ktable::bit1_index_of(const char *target)
 {
+    int i;
     char shadow[20];
-    memcpy(shadow, target, 20);
-    b_node0->XOR(shadow);
+    for (i=0; i<20; i++){
+        shadow[i] = target[i]^b_tableid[i];
+    }
     return bit1_start_at(shadow);
 }
 
@@ -67,6 +71,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
 {
     int i;
     int count = 0;
+    printf("find node: ");
     int offset = bit1_index_of(target);
 
     kitem_t vitems[8];
@@ -97,26 +102,26 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
 int
 ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
 {
+    kitem_t items[_K];
     const char *kadid = in->kadid;
     int nbucket1 = bit1_index_of(kadid);
     int index = nbucket1++;
 
-    printf("insert node called\n");
     if (nbucket1 > 160){
         printf("internal error!\n");
         return 0;
     }
 
+    printf("insert called: %d\n", index);
     if (nbucket1 > b_nbucket1){
         b_nbucket1 = nbucket1;
     }
 
     b_count0++;
     for (; b_count0>8; b_nbucket0++){
-        kitem_t items[_K];
         int j = b_nbucket0;
         assert(j<b_nbucket1);
-        b_count0 -= b_buckets[j].find_nodes(items);
+        b_count0 -= b_buckets[j].get_knode(items);
     }
     if (index < b_nbucket0){
         b_count0--;
@@ -127,23 +132,19 @@ ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
 int
 ktable::setkadid(const char kadid[20])
 {
-    kitem_t item;
-    memcpy(item.kadid, kadid, 20);
-    b_node0->set(&item);
+    memcpy(b_tableid, kadid, 20);
     return 0;
 }
 
 int
 ktable::getkadid(char kadid[20])
 {
-    kitem_t item;
-    b_node0->getnode(&item);
-    memcpy(kadid, item.kadid, 20);
+    memcpy(kadid, b_tableid, 20);
     return 0;
 }
 
-ktable::ktable(knode *node)
-    :b_count0(0), b_node0(new knode(*node))
+ktable::ktable()
+    :b_count0(0)
 {
     b_nbucket0 = 0;
     b_nbucket1 = 1;
@@ -152,7 +153,6 @@ ktable::ktable(knode *node)
 
 ktable::~ktable()
 {
-    delete b_node0;
     delete[] b_buckets;
 }
 
@@ -160,8 +160,11 @@ void
 ktable::dump()
 {
     int i;
-    printf("dump routing table\n");
+    printf("dump routing table: %u %u\n",
+            b_nbucket0, b_nbucket1);
     for (i=0; i<b_nbucket1; i++){
+        printf("bucket: %d\n", i);
         b_buckets[i].dump();
     }
+    printf("dump ended\n");
 }

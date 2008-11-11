@@ -30,18 +30,16 @@ knode::invalidate()
 int
 knode::touch()
 {
+    b_valid = true;
     b_last_seen = time(NULL);
 }
 
 int
 knode::set(const kitem_t *in)
 {
-    assert(b_valid == false);
-    b_valid = true;
     memcpy(b_ident, in->kadid, 20);
     b_address = in->host;
     b_port = in->port;
-    touch();
     return 0;
 }
 
@@ -51,7 +49,7 @@ knode::replace(const kitem_t *in, kitem_t *out)
     if (cmpid(in->kadid)==0){
         if (cmphost(in->host)!=0
                 || cmpport(in->port)!=0){
-            //printf("undef\n");
+            printf("undef\n");
         }
         touch();
         return 0;

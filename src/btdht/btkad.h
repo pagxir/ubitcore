@@ -17,5 +17,6 @@ int update_contact(const kitem_t *in, kitem_t *out, bool contacted);
 int failed_contact(const kitem_t *in);
 int get_knode(char target[20], kitem_t nodes[_K], bool valid);
 int refresh_routing_table();
+int get_table_size();
 void dump_routing_table();
 #endif
