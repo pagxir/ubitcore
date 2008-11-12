@@ -59,6 +59,19 @@ void find_dump(const char *buff, size_t len,
         return;
     }
     printf("ident: %s\n", idstr(ident));
+    const char *nodes = codec.bget().bget("r").bget("nodes").c_str(&tlen);
+    if (nodes == NULL){
+        return;
+    }
+    in_addr_t naddr; in_port_t nport;
+    typedef char compat_t[26];
+    compat_t *iter, *end  = (compat_t*)(nodes+tlen);
+    for (iter=(compat_t*)nodes; iter<end; iter++){
+        printf("nodeid: %s\n", idstr(&(*iter)[0]));
+        printf("address: %s:%d\n",
+                inet_ntoa(*(in_addr*)&(*iter)[20]),
+                htons(*(in_port_t*)&(*iter)[24]));
+    }
     return;
 }
 
