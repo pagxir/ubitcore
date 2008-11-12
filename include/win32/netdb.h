@@ -1,5 +1,10 @@
+#ifndef __NETDB_H__
+#define __NETDB_H__
+#include <windows.h>
 #include <winsock.h>
 typedef int socklen_t;
+#undef  errno
+#undef  EAGAIN
 #define EINPROGRESS WSAEWOULDBLOCK
 #define EAGAIN WSAEWOULDBLOCK
 #define errno WSAGetLastError()
@@ -22,3 +27,11 @@ int fcntl(int fd, int cmd, int arg)
 	ioctlsocket(fd, FIONBIO, (u_long*)&fflag);
 	return 0;
 }
+
+inline
+int sleep(int sec)
+{
+	Sleep(sec*1000);
+	return 0;
+}
+#endif

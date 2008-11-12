@@ -300,7 +300,7 @@ checkthread::bdocall()
             case 0:
                 btime_wait(b_start_time+60);
                 if (now_time() > b_last_refresh+b_random){
-                    b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                    b_random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
                     b_last_refresh = now_time();
                     printf("randomize: %u\n", b_random);
                     refresh_routing_table();
@@ -363,7 +363,7 @@ boothread::bdocall()
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
-                b_random = (60*15*0.9)+(rand()%(60*15))/5;
+                b_random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
                 b_start_time = now_time();
                 break;
             case 2:

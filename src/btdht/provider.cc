@@ -37,7 +37,7 @@ int
 bdhtcodec::bload(const char *buffer, size_t length)
 {
     int error = -1;
-    size_t elen = -1;
+    size_t elen = 0;
     b_codec.bload(buffer, length);
     const char *p = b_codec.bget().bget("y").c_str(&elen);
     if (p==NULL || elen!=1){

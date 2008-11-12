@@ -22,6 +22,7 @@
 #include "bclock.h"
 #include "bsocket.h"
 #include "bidle.h"
+#include "netdb.h"
 #include "btdht/btkad.h"
 
 #ifndef NDEBUG
