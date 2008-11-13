@@ -5,6 +5,7 @@ struct kitem_t;
 class kbucket{
     public:
         kbucket();
+        ~kbucket();
         void dump();
         void touch();
 
@@ -16,10 +17,10 @@ class kbucket{
         time_t b_last_seen;
 
         int     b_nknode;
-        knode  *b_knodes[_K];
+        knode  *b_knodes;
 
         int     b_nbackup;
-        knode  *b_backups[_K];
+        knode  *b_backups;
 };
 
 #endif

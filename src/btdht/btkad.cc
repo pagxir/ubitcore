@@ -109,10 +109,8 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     btcodec codec;
     codec.bload(buffer, count);
 
-    printf("post ping called\n");
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
     if (kadid==NULL && lid!=20){
-        printf("bad kadid\n");
         return 0;
     }
     kitem_t initem;
@@ -123,7 +121,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
     if (__static_table.insert_node(&initem, true) > 0){
     }
     printf("contact: %s ", idstr(kadid));
-    printf("inet: %s:%u\n",
+    printf(" %s:%u\n",
             inet_ntoa(*(in_addr*)&host), htons(port));
     return 0;
 }
@@ -264,6 +262,16 @@ void
 dump_routing_table()
 {
     __static_table.dump();
+#if 0
+    std::map<in_addr_t, kitem_t>::iterator iter;
+    for (iter = __static_active.begin();
+            iter != __static_active.end(); iter++){
+        in_addr_t addr = iter->second.host;
+        in_port_t port = iter->second.port;
+        printf("%s: %s:%d\n", idstr(iter->second.kadid),
+                inet_ntoa(*(in_addr*)&addr), htons(port));
+    }
+#endif
 }
 
 class checkthread: public bthread
@@ -297,16 +305,16 @@ checkthread::bdocall()
         switch(b_state)
         {
             case 0:
-                btime_wait(b_start_time+60);
+                btime_wait(b_start_time+120);
                 if (now_time() > b_last_refresh+b_random){
                     b_random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
                     b_last_refresh = now_time();
                     printf("randomize: %u\n", b_random);
                     refresh_routing_table();
-                    dump_routing_table();
                 }
                 break;
             case 1:
+                dump_routing_table();
                 b_start_time = now_time();
                 state = 0;
                 break;

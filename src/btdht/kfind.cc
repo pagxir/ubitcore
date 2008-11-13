@@ -70,12 +70,6 @@ kfind::decode_packet(const char buffer[], size_t count,
     in.host = address;
     in.port = port;
     update_contact(&in, &out, true);
-#if 1
-    if (vip != NULL && len==20){
-        printf("good node: %s:%d\n",
-                inet_ntoa(*(in_addr*)&address), htons(port));
-    }
-#endif
     kaddist_t dist(vip, b_target);
     b_kfind_ined.insert(std::make_pair(dist, 1));
     std::map<kaddist_t, int>::iterator backdist = b_kfind_ined.end();
@@ -158,7 +152,7 @@ kfind::vcall()
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    printf("summery: %d\n", b_sumumery);
+                    //printf("summery: %d\n", b_sumumery);
                     return 0;
                 }
                 b_last_update = time(NULL);
