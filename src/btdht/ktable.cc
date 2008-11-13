@@ -192,5 +192,5 @@ ktable::dump()
         printf("bucket: %d\n", i);
         b_buckets[i].dump();
     }
-    printf("dump ended\n");
+    printf("dump ended: %s\n", idstr(b_tableid));
 }
