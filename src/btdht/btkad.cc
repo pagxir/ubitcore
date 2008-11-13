@@ -122,8 +122,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char ol
     initem.port = port;
     initem.atime = time(NULL);
     memcpy(initem.kadid, kadid, 20);
-    if (__static_table.insert_node(&initem, true) > 0){
-    }
+    update_contact(&initem, true);
 #if 0
     printf("contact: %s ", idstr(kadid));
     printf(" %s:%u\n",
@@ -135,7 +134,7 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char ol
 static std::map<in_addr_t, kitem_t> __static_active;
 
 int
-update_contact(const kitem_t *in, kitem_t *out, bool contacted)
+update_contact(const kitem_t *in, bool contacted)
 {
     if (contacted == true){
         __static_active.insert(

@@ -9,6 +9,8 @@ libsub_btdht_a_SOURCES = \
 	refresh.cc  \
 	refresh.h   \
 	kfind.cc    \
+	kgetpeers.cc \
+	kgetpeers.h  \
 	kfind.h     \
 	kutils.cc   \
 	kutils.h    \

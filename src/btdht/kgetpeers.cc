@@ -10,7 +10,7 @@
 #include "btimerd.h"
 #include "bthread.h"
 #include "kbucket.h"
-#include "kfind.h"
+#include "kgetpeers.h"
 #include "knode.h"
 #include "bsocket.h"
 #include "btcodec.h"
@@ -18,7 +18,7 @@
 #include "kutils.h"
 #include "transfer.h"
 
-struct kfind_arg{
+struct kgetpeers_arg{
     char kadid[20];
     in_addr_t host;
     in_port_t port;
@@ -28,7 +28,7 @@ struct kfind_arg{
     kship     *ship;
 };
 
-kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
+kgetpeers::kgetpeers(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
 {
     int i;
     b_state = 0;
@@ -38,12 +38,12 @@ kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
     b_sumumery = 0;
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
-        kfind_arg *arg = new kfind_arg;
+        kgetpeers_arg *arg = new kgetpeers_arg;
         arg->host = items[i].host;
         arg->port = items[i].port;
         memcpy(arg->kadid, items[i].kadid, 20);
         kaddist_t dist(arg->kadid, b_target);
-        b_kfind_queue.insert(
+        b_kgetpeers_queue.insert(
                 std::make_pair(dist, arg));
     }
 }
@@ -56,7 +56,7 @@ struct compat_t
 };
 
 void
-kfind::decode_packet(const char buffer[], size_t count,
+kgetpeers::decode_packet(const char buffer[], size_t count,
         in_addr_t address, in_port_t port, const char kadid[20])
 {
     size_t len;
@@ -84,13 +84,13 @@ kfind::decode_packet(const char buffer[], size_t count,
     in.port = port;
     update_contact(&in, true);
     kaddist_t dist(vip, b_target);
-    b_kfind_ined.insert(std::make_pair(dist, 1));
-    std::map<kaddist_t, int>::iterator backdist = b_kfind_ined.end();
+    b_kgetpeers_ined.insert(std::make_pair(dist, 1));
+    std::map<kaddist_t, int>::iterator backdist = b_kgetpeers_ined.end();
     backdist --;
-    if (b_kfind_ined.size() > 8){
-        b_kfind_ined.erase(backdist--);
+    if (b_kgetpeers_ined.size() > 8){
+        b_kgetpeers_ined.erase(backdist--);
     }
-    if (b_kfind_ined.size() == 8){
+    if (b_kgetpeers_ined.size() == 8){
         b_trim = true;
         b_ended =  backdist->first;
     }
@@ -107,21 +107,21 @@ kfind::decode_packet(const char buffer[], size_t count,
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
             update_contact(&in, false);
 #if 0
-            printf("kfind: %s:%d\n", 
+            printf("kgetpeers: %s:%d\n", 
                     inet_ntoa(*(in_addr*)&in.host), ntohs(in.port));
 #endif
             kaddist_t dist(in.kadid, b_target);
-            if (b_kfind_outed.find(dist) != b_kfind_outed.end()){
+            if (b_kgetpeers_outed.find(dist) != b_kgetpeers_outed.end()){
                 continue;
             }
             if (b_trim && b_ended < dist){
                 continue;
             }
-            kfind_arg *arg = new kfind_arg;
+            kgetpeers_arg *arg = new kgetpeers_arg;
             arg->host = in.host;
             arg->port = in.port;
             memcpy(arg->kadid, in.kadid, 20);
-            if (b_kfind_queue.insert(
+            if (b_kgetpeers_queue.insert(
                     std::make_pair(dist, arg)).second == false) {
             }
         }
@@ -129,7 +129,7 @@ kfind::decode_packet(const char buffer[], size_t count,
 }
 
 int
-kfind::vcall()
+kgetpeers::vcall()
 {
     int i;
     int count;
@@ -139,7 +139,7 @@ kfind::vcall()
     in_addr_t host;
     in_port_t port;
     bthread  *thr = NULL;
-    std::vector<kfind_arg*>::iterator iter;
+    std::vector<kgetpeers_arg*>::iterator iter;
 
     while (error != -1){
         b_state = state++;
@@ -148,20 +148,20 @@ kfind::vcall()
                 break;
             case 1:
                 while (b_concurrency<CONCURRENT_REQUEST){
-                    if (b_kfind_queue.empty()){
+                    if (b_kgetpeers_queue.empty()){
                         break;
                     }
-                    if (b_trim && b_ended<b_kfind_queue.begin()->first){
+                    if (b_trim && b_ended<b_kgetpeers_queue.begin()->first){
                         break;
                     }
-                    kfind_arg *arg = b_kfind_queue.begin()->second;
-                    b_kfind_outed.insert(
-                            std::make_pair(b_kfind_queue.begin()->first, 1));
-                    b_kfind_queue.erase(b_kfind_queue.begin());
+                    kgetpeers_arg *arg = b_kgetpeers_queue.begin()->second;
+                    b_kgetpeers_outed.insert(
+                            std::make_pair(b_kgetpeers_queue.begin()->first, 1));
+                    b_kgetpeers_queue.erase(b_kgetpeers_queue.begin());
                     arg->ship = b_net->get_kship();
                     arg->ship->find_node(arg->host, arg->port,
                             (uint8_t*)b_target);
-                    b_kfind_out.push_back(arg);
+                    b_kgetpeers_out.push_back(arg);
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
@@ -178,11 +178,11 @@ kfind::vcall()
                     thr = bthread::now_job();
                     benqueue(thr, b_last_update+5);
                 }else{
-                    for (iter = b_kfind_out.begin(); 
-                            iter != b_kfind_out.end();
+                    for (iter = b_kgetpeers_out.begin(); 
+                            iter != b_kgetpeers_out.end();
                             iter++){
                         kitem_t in;
-                        kfind_arg *ping = *iter;
+                        kgetpeers_arg *ping = *iter;
                         memcpy(in.kadid, ping->kadid, 20);
                         in.host = ping->host;
                         in.port = ping->port;
@@ -190,14 +190,14 @@ kfind::vcall()
                         delete (*iter)->ship;
                         delete (*iter);
                     }
-                    b_kfind_out.resize(0);
+                    b_kgetpeers_out.resize(0);
                     b_concurrency = 0;
                     error = 0;
                     state = 1;
                     break;
                 }
-                for (iter = b_kfind_out.begin(); 
-                        iter != b_kfind_out.end();
+                for (iter = b_kgetpeers_out.begin(); 
+                        iter != b_kgetpeers_out.end();
                         iter++){
                     if ((*iter)->ship == NULL){
                         continue;
@@ -216,7 +216,7 @@ kfind::vcall()
                         state = 1;
                     }else{
 #if 0
-                    if (b_trim && b_ended<b_kfind_queue.begin()->first){
+                    if (b_trim && b_ended<b_kgetpeers_queue.begin()->first){
                         printf("empty0\n");
                         break;
                     }
