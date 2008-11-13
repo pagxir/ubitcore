@@ -374,12 +374,14 @@ class boothread: public bthread
         time_t b_random;
         time_t b_start_time;
         kfind  *b_find;
+        bool   b_must_validate;
 };
 
 boothread::boothread()
 {
     b_find = NULL;
     b_state = 0;
+    b_must_validate = false;
     b_start_time = now_time();
     b_ident = "boothread";
 }
@@ -388,6 +390,7 @@ int
 boothread::bdocall()
 {
     int count;
+    int error = -1;
     int state = b_state;
     char bootid[20];
     kitem_t items[8];
@@ -398,12 +401,11 @@ boothread::bdocall()
             case 0:
                 getkadid(bootid);
                 bootid[19]^=0x1;
-                count = find_nodes(bootid, items, true);
+                count = find_nodes(bootid, items, b_must_validate);
                 if (count == 0){
                     count = std::min(__boot_count, 8);
                     memcpy(items, __boot_contacts, count*sizeof(kitem_t));
                 }
-                printf("find close node\n");
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
@@ -411,18 +413,22 @@ boothread::bdocall()
                 b_start_time = now_time();
                 break;
             case 2:
-                if (b_find->vcall() == -1){
+                error = b_find->vcall();
+                if (error == -1){
                     state = 2;
                 }
                 break;
             case 3:
+                b_must_validate = (error>4);
+                break;
+            case 4:
                 printf("DHT Boot Ended\n");
                 refresh_routing_table();
                 if (get_table_size() > 4){
                     btime_wait(b_start_time+b_random);
                 }
                 break;
-            case 4:
+            case 5:
                 printf("DHT: Refresh Boot!\n");
                 delete b_find;
                 state = 0;
