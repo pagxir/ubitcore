@@ -17,7 +17,7 @@
 #include "bthread.h"
 
 kbucket::kbucket()
-    :b_count(0), b_last_seen(0)
+    :b_nknode(0), b_last_seen(0)
 {
 }
 
@@ -31,24 +31,36 @@ int
 kbucket::failed_contact(const kitem_t *node)
 {
     int i;
-    for (i=0; i<b_count; i++){
+    for (i=0; i<b_nknode; i++){
         if (b_knodes[i]->cmpid(node->kadid) ==0){
             b_knodes[i]->failed();
-            break;
+            return 0;
+        }
+    }
+    int count = b_nbackup;
+    b_nbackup = 0;
+    for (i=0; i<count; i++){
+        if (b_backups[i]->cmpid(node->kadid) ==0){
+            delete b_backups[i];
+            continue;
+        }
+        int idx = b_nbackup++;
+        if (idx < i){
+            b_backups[idx] = b_backups[i];
         }
     }
     return 0;
 }
 
 int
-kbucket::find_nodes(kitem_t nodes[])
+kbucket::find_nodes(kitem_t nodes[], bool validate)
 {
     int i;
     int count = 0;
-    assert(b_count <= _K);
-    for (i=0; i<b_count; i++){
-        if (b_knodes[i]->_isvalidate()){
-            b_knodes[i]->getnode(&nodes[count]);
+    assert(b_nknode <= _K);
+    for (i=0; i<b_nknode; i++){
+        if (!validate || b_knodes[i]->_isvalidate()){
+            b_knodes[i]->get(&nodes[count]);
             count++;
         }
     }
@@ -56,43 +68,7 @@ kbucket::find_nodes(kitem_t nodes[])
 }
 
 int
-kbucket::get_knode(kitem_t nodes[])
-{
-    int i;
-    int count = 0;
-    assert(b_count <= _K);
-    for (i=0; i<b_count; i++){
-        b_knodes[i]->getnode(&nodes[count]);
-        count++;
-    }
-    return count;
-}
-
-int
-kbucket::invalid_node(const kitem_t *node)
-{
-    int i;
-    knode *kn;
-    for (i=0; i<b_count; i++){
-        kn = b_knodes[i];
-        if (kn->cmpid(node->kadid) != 0){
-            continue;
-        }
-        if (kn->cmphost(node->host) != 0){
-            printf("warn: host change\n");
-            continue;
-        }
-        if (kn->cmpport(node->port) != 0){
-            printf("warn: port change\n");
-            continue;
-        }
-        kn->failed();
-    }
-    return 0;
-}
-
-int
-kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
+kbucket::update_contact(const kitem_t *in, bool contacted)
 {
     int i;
     int result = 0;
@@ -101,7 +77,7 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
     kitem_t tout;
     time_t  now = time(NULL);
     time_t  lru = now;
-    for (i=0; i<b_count; i++){
+    for (i=0; i<b_nknode; i++){
         kn = b_knodes[i];
         if (0==kn->cmpid(in->kadid)){
             kn->set(in);
@@ -111,34 +87,18 @@ kbucket::update_contact(const kitem_t *in, kitem_t *out, bool contacted)
         if (kn->_isvalidate() == false){
             kkn = kn;
         }
-#if 0
-        if (tout.atime < lru){
-            lru = tout.atime;
-            *out = tout;
-        }
-#endif
     }
-    if (b_count < _K){
+    if (b_nknode < _K){
         kn  = new knode(in->kadid, in->host, in->port);
         contacted&&kn->touch();
-        b_knodes[b_count++] = kn;
-#if 0
-        printf("adding one knode\n");
-#endif
+        b_knodes[b_nknode++] = kn;
         return 0;
     }
     if (kkn != NULL){
-#if 0
-        printf("set: %d\n", b_count);
-#endif
         kkn->set(in);
         return 0;
     }
-    //printf("drop: %d\n", b_count);
     return 0;
-#if 0
-    return (now-lru>15*60);
-#endif
 }
 
 void
@@ -146,8 +106,8 @@ kbucket::dump()
 {
     int i;
     kitem_t node;
-    for (i=0; i<b_count; i++){
-        b_knodes[i]->getnode(&node);
+    for (i=0; i<b_nknode; i++){
+        b_knodes[i]->get(&node);
         printf("\t%02x: %s %d ", i, idstr(node.kadid), node.failed);
         printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
                 htons(node.port));

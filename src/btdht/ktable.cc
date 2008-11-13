@@ -11,6 +11,7 @@
 #include "knode.h"
 #include "kbucket.h"
 #include "ktable.h"
+#include "kutils.h"
 
 static int
 bit1_start_at(const char *target)
@@ -57,19 +58,6 @@ ktable::failed_contact(const kitem_t *in)
     return 0;
 }
 
-int ktable::invalid_node(const kitem_t *in)
-{
-    const char *kadid = in->kadid;
-#if 0
-    printf("invalid node: ");
-#endif
-    int index = bit1_index_of(kadid);
-    if (index < b_nbucket1){
-        b_buckets[index].invalid_node(in);
-    }
-    return 0;
-}
-
 int
 ktable::bit1_index_of(const char *target)
 {
@@ -82,7 +70,7 @@ ktable::bit1_index_of(const char *target)
 }
 
 int
-ktable::find_nodes(const char target[20], kitem_t items[8])
+ktable::find_nodes(const char target[20], kitem_t items[8], bool validate)
 {
     int i;
     int count = 0;
@@ -94,7 +82,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
     kitem_t vitems[8];
     int backoff = offset>b_nbucket1?b_nbucket1:offset;
     for (i=offset; i<b_nbucket1; i++){
-        int n = b_buckets[i].find_nodes(vitems);
+        int n = b_buckets[i].find_nodes(vitems, validate);
         if (n+count >= 8){
             memcpy(&items[count], vitems, sizeof(kitem_t)*(8-count));
             count = 8;
@@ -104,7 +92,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
         count += n;
     }
     for (i=backoff-1; i>=0; i--){
-        int n = b_buckets[i].find_nodes(vitems);
+        int n = b_buckets[i].find_nodes(vitems, validate);
         if (n+count >= 8){
             memcpy(&items[count], vitems, sizeof(kitem_t)*(8-count));
             count = 8;
@@ -117,7 +105,7 @@ ktable::find_nodes(const char target[20], kitem_t items[8])
 }
 
 int
-ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
+ktable::insert_node(const kitem_t *in, bool contacted)
 {
     kitem_t items[_K];
     const char *kadid = in->kadid;
@@ -125,7 +113,8 @@ ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
     int index = nbucket1++;
 
     if (nbucket1 > 160){
-        printf("internal error!\n");
+        printf("internal error: %s %s %s:%d!\n", idstr(kadid), idstr(b_tableid),
+                inet_ntoa(*(in_addr*)&in->host), htons(in->port));
         return 0;
     }
 
@@ -137,12 +126,12 @@ ktable::insert_node(const kitem_t *in, kitem_t *out, bool contacted)
     for (; b_count0>8; b_nbucket0++){
         int j = b_nbucket0;
         assert(j<b_nbucket1);
-        b_count0 -= b_buckets[j].get_knode(items);
+        b_count0 -= b_buckets[j].find_nodes(items, false);
     }
     if (index < b_nbucket0){
         b_count0--;
     }
-    return b_buckets[index].update_contact(in, out, contacted);
+    return b_buckets[index].update_contact(in, contacted);
 }
 
 int

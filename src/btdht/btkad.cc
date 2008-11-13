@@ -115,36 +115,35 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
         printf("bad kadid\n");
         return 0;
     }
-    kitem_t initem, oitem;
+    kitem_t initem;
     initem.host = host;
     initem.port = port;
     initem.atime = time(NULL);
     memcpy(initem.kadid, kadid, 20);
-    if (__static_table.insert_node(&initem, &oitem, true) > 0){
-        __static_ping_cache.push_back(initem);
-        kping_arg arg;
-        arg.host = oitem.host;
-        arg.port = oitem.port;
-        memcpy(arg.kadid, oitem.kadid, 20);
-        __static_ping_args.insert(
-                std::make_pair(arg.host, arg));
+    if (__static_table.insert_node(&initem, true) > 0){
     }
     printf("contact: %s ", idstr(kadid));
     printf("inet: %s:%u\n",
             inet_ntoa(*(in_addr*)&host), htons(port));
-    __static_table.dump();
     return 0;
 }
+
+static std::map<in_addr_t, kitem_t> __static_active;
 
 int
 update_contact(const kitem_t *in, kitem_t *out, bool contacted)
 {
-    return __static_table.insert_node(in, out, contacted);
+    if (contacted == true){
+        __static_active.insert(
+                std::make_pair(in->host, *in));
+    }
+    return __static_table.insert_node(in, contacted);
 }
 
 int
 failed_contact(const kitem_t *in)
 {
+    __static_active.erase(in->host);
     return __static_table.failed_contact(in);
 }
 
@@ -304,10 +303,10 @@ checkthread::bdocall()
                     b_last_refresh = now_time();
                     printf("randomize: %u\n", b_random);
                     refresh_routing_table();
+                    dump_routing_table();
                 }
                 break;
             case 1:
-                dump_routing_table();
                 b_start_time = now_time();
                 state = 0;
                 break;
@@ -373,7 +372,6 @@ boothread::bdocall()
                 break;
             case 3:
                 printf("DHT Boot Ended\n");
-                dump_routing_table();
                 refresh_routing_table();
                 if (get_table_size() > 4){
                     btime_wait(b_start_time+b_random);

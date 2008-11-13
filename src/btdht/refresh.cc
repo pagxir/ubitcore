@@ -53,6 +53,7 @@ refreshthread::bdocall()
                 }
                 count = find_nodes(bootid, items, true);
                 b_find = kfind_new(bootid, items, count);
+                b_start_time = time(NULL);
                 break;
             case 1:
                 if (b_find->vcall() == -1){
@@ -60,8 +61,10 @@ refreshthread::bdocall()
                 }
                 break;
             case 2:
-                tsleep(NULL);
-                b_state = 0;
+                if (b_start_time+800 > time(NULL)){
+                    tsleep(NULL);
+                }
+                state = 0;
                 break;
             default:
                 assert(0);

@@ -9,15 +9,16 @@
 #include "knode.h"
 
 knode::knode()
-    :b_destroy(true)
 {
+    b_birthday = time(NULL);
     genkadid(b_ident);
 }
 
 knode::knode(const char id[20], in_addr_t addr, in_port_t port)
-    :b_address(addr), b_port(port), b_destroy(false),
+    :b_address(addr), b_port(port), 
     b_last_seen(0), b_failed(0)
 {
+    b_birthday = time(NULL);
     memcpy(b_ident, id, 20);
 }
 
@@ -28,28 +29,26 @@ knode::touch()
     b_last_seen = time(NULL);
 }
 
+bool
+knode::_isgood()
+{
+    if (!_isvalidate()){
+        return false;
+    }
+    return (b_last_seen+900<time(NULL));
+}
+
+
 int
 knode::set(const kitem_t *in)
 {
-    memcpy(b_ident, in->kadid, 20);
+    if (cmpid(in->kadid) != 0){
+        b_birthday = time(NULL);
+        memcpy(b_ident, in->kadid, 20);
+    }
     b_address = in->host;
     b_port = in->port;
     return 0;
-}
-
-int
-knode::replace(const kitem_t *in, kitem_t *out)
-{
-    if (cmpid(in->kadid)==0){
-        if (cmphost(in->host)!=0
-                || cmpport(in->port)!=0){
-            printf("undef\n");
-        }
-        touch();
-        return 0;
-    }
-    getnode(out);
-    return b_last_seen;
 }
 
 int
@@ -60,7 +59,7 @@ knode::failed()
 }
 
 int
-knode::getnode(kitem_t *out)
+knode::get(kitem_t *out)
 {
     memcpy(out->kadid, b_ident, 20);
     out->port = b_port;
@@ -86,14 +85,4 @@ int
 knode::cmpport(in_port_t port)
 {
     return port - b_port;
-}
-
-int
-knode::XOR(char target[20])
-{
-    int i;
-    for (i=0; i<20; i++){
-        target[i] ^= b_ident[i];
-    }
-    return 0;
 }
