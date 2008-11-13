@@ -24,7 +24,6 @@ class ktable{
         int find_nodes(const char target[20], kitem_t items[8], bool validate=true);
 
     private:
-        int b_count0;
         char b_tableid[20];
         time_t b_last_seen;
 

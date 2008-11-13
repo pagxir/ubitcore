@@ -104,7 +104,6 @@ ktable::find_nodes(const char target[20], kitem_t items[8], bool validate)
 int
 ktable::insert_node(const kitem_t *in, bool contacted)
 {
-    kitem_t items[_K];
     const char *kadid = in->kadid;
     int nbucket1 = bit1_index_of(kadid);
     int index = nbucket1++;
@@ -121,19 +120,17 @@ ktable::insert_node(const kitem_t *in, bool contacted)
         b_nbucket1 = nbucket1;
     }
 
-    b_count0++;
-    while (b_count0>8){
-        int j = b_nbucket0++;
-        assert(j<b_nbucket1);
-        b_count0 -= b_buckets[j].find_nodes(items, false);
-    }
-    if (index < b_nbucket0){
-        b_count0--;
-    }
     b_last_seen = time(NULL);
     int val = b_buckets[index].update_contact(in, contacted);
     if (b_buckets[index].need_ping()){
         b_need_ping = true;
+    }
+    int count = 0;
+    for (int i=b_nbucket0; i<b_nbucket1; i++){
+        count += b_buckets[i].size();
+    }
+    while (count > 8){
+        count -= b_buckets[b_nbucket0++].size();
     }
     return val;
 }
@@ -152,7 +149,7 @@ ktable::getkadid(char kadid[20])
 }
 
 ktable::ktable()
-    :b_count0(0), b_need_ping(false)
+    : b_need_ping(false)
 {
     b_nbucket0 = 0;
     b_nbucket1 = 1;
@@ -189,7 +186,7 @@ void
 ktable::dump()
 {
     int i;
-    printf("dump routing table: %u %u\n",
+    printf("dump routing table: %u %u \n",
             b_nbucket0, b_nbucket1);
     for (i=0; i<b_nbucket1; i++){
         printf("bucket: %d\n", i);

@@ -11,9 +11,9 @@
 
 #include "btcodec.h"
 
-static const char __find_struct[] = {
-    "d1:ad2:id20:abcdefghij01234567896:target"
-        "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
+char __get_peers_struct[] =  {
+    "d1:ad2:id20:000000000000000000009:info_hash"
+        "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t1:X1:y1:qe"
 };
 
 const char *strid(const char *id)
@@ -51,7 +51,9 @@ const char *idstr(const char *id)
 void find_dump(const char *buff, size_t len,
         struct sockaddr_in *addr, socklen_t addrlen)
 {
+    int i;
     size_t tlen = 0;
+    in_addr_t naddr; in_port_t nport;
     btcodec codec;
     printf("recv packet: %d\n", len);
     codec.bload(buff, len);
@@ -60,11 +62,30 @@ void find_dump(const char *buff, size_t len,
         return;
     }
     printf("ident: %s\n", idstr(ident));
-    const char *nodes = codec.bget().bget("r").bget("nodes").c_str(&tlen);
-    if (nodes == NULL){
+    const char *token = codec.bget().bget("r").bget("token").c_str(&tlen);
+    if (token == NULL){
         return;
     }
-    in_addr_t naddr; in_port_t nport;
+    printf("token: ");
+    for (i=0; i<tlen; i++){
+        printf("%02x", token[i]&0xff);
+    }
+    printf("\n");
+    const char *peers = codec.bget().bget("r").bget("values").c_str(&tlen);
+    if (peers == NULL){
+        tlen = 0;
+    }
+    typedef char peer_t[6];
+    peer_t *peer_iter, *peer_end  = (peer_t*)(peers+tlen);
+    for (peer_iter=(peer_t*)peers; peer_iter<peer_end; peer_iter++){
+        printf("peer: %s:%d\n",
+                inet_ntoa(*(in_addr*)&(*peer_iter)[0]),
+                htons(*(in_port_t*)&(*peer_iter)[4]));
+    }
+    const char *nodes = codec.bget().bget("r").bget("nodes").c_str(&tlen);
+    if (nodes == NULL){
+        tlen = 0;
+    }
     typedef char compat_t[26];
     compat_t *iter, *end  = (compat_t*)(nodes+tlen);
     for (iter=(compat_t*)nodes; iter<end; iter++){
@@ -100,9 +121,9 @@ int main(int argc, char *argv[])
     remote.sin_addr.s_addr = inet_addr(argv[1]);
     for (i=0; i<3; i++){
         printf("send: %d\n", i);
-        memcpy(buffer, __find_struct, strlen(__find_struct));
-        memcpy(&buffer[43], strid(argv[3]), 20);
-        error = sendto(udp, buffer, strlen(__find_struct), 0,
+        memcpy(buffer, __get_peers_struct, strlen(__get_peers_struct));
+        memcpy(&buffer[46], strid(argv[3]), 20);
+        error = sendto(udp, buffer, strlen(__get_peers_struct), 0,
                 (struct sockaddr*)&remote, sizeof(remote));
         if (error == -1){
             perror("sendto");
