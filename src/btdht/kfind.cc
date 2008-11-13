@@ -153,7 +153,7 @@ kfind::vcall()
                 }
                 if (b_concurrency == 0){
                     //printf("summery: %d\n", b_sumumery);
-                    return 0;
+                    return b_sumumery;
                 }
                 b_last_update = time(NULL);
                 thr = bthread::now_job();

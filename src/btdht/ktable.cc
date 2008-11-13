@@ -160,6 +160,12 @@ ktable::ktable()
 }
 
 int
+ktable::size_of_bucket(int index)
+{
+    return b_buckets[index].size();
+}
+
+int
 ktable::get_ping(kitem_t *item)
 {
     int i;

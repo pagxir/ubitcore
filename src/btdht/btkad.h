@@ -18,5 +18,7 @@ int failed_contact(const kitem_t *in);
 int get_knode(char target[20], kitem_t nodes[_K], bool valid);
 int refresh_routing_table();
 int get_table_size();
+int size_of_bucket(int index);
+int bit1_index_of(const char kadid[20]);
 void dump_routing_table();
 #endif

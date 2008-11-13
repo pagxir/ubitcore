@@ -11,8 +11,14 @@ class refreshthread: public bthread
     private:
         int b_index;
         int b_state;
+
+    private:
         time_t b_random;
         time_t b_start_time;
         kfind  *b_find;
+
+    private:
+        int b_retry;
+        bool b_need_validate;
 };
 #endif

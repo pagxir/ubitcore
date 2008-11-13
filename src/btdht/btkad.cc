@@ -464,3 +464,15 @@ get_table_size()
 {
     return __static_table.size();
 }
+
+int
+size_of_bucket(int index)
+{
+    return __static_table.size_of_bucket(index);
+}
+
+int
+bit1_index_of(const char kadid[20])
+{
+    return __static_table.bit1_index_of(kadid);
+}

@@ -12,6 +12,7 @@ class ktable{
 
     public:
         time_t last_seen(){ return b_last_seen; }
+        int size_of_bucket(int index);
         int size(){ return b_nbucket0; }
         int getkadid(char kadid[20]);
         int setkadid(const char kadid[20]);

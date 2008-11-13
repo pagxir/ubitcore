@@ -14,6 +14,7 @@ class kbucket{
         int  update_contact(const kitem_t *in, bool contacted);
 
     public:
+        size_t size(){ return b_nknode; }
         int get_ping(kitem_t *in);
         bool need_ping(){ return b_nbackup; }
 

@@ -17,51 +17,68 @@ refreshthread::refreshthread(int index)
 {
     b_find = NULL;
     b_state = 0;
+    b_retry = 0;
     b_index = index;
+    b_need_validate = false;
     b_start_time = now_time();
     b_ident = "refreshthread";
+}
+
+int genbootid(char bootid[20], int index)
+{
+    uint8_t mask;
+    char tmpid[20];
+    int u, i, j;
+    genkadid(bootid);
+    getkadid(tmpid);
+    j = 0;
+    u = index;
+    while (u >= 8){
+        bootid[j] = tmpid[j];
+        u -= 8;
+        j++;
+    }
+    mask =  __mask[u];
+    bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
+    if (get_table_size() > index){
+        bootid[j] ^= (0x80>>u);
+        assert(bit1_index_of(bootid) == index);
+    }
+    return 0;
 }
 
 int
 refreshthread::bdocall()
 {
-    int u, i, j;
-    uint8_t mask;
-    char tmpid[20];
     char bootid[20];
     size_t count;
     kitem_t items[8];
+    int error = 0;
     int state = b_state;
     while (b_runable){
         b_state = state++;
         switch(b_state)
         {
             case 0:
-                genkadid(bootid);
-                getkadid(tmpid);
-                j = 0;
-                u = b_index;
-                while (u >= 8){
-                    bootid[j] = tmpid[j];
-                    u -= 8;
-                    j++;
-                }
-                mask =  __mask[u];
-                bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
-                if (get_table_size() > b_index){
-                    bootid[j] ^= (0x80>>u);
-                }
-                count = find_nodes(bootid, items, true);
+                genbootid(bootid, b_index);
+                count = find_nodes(bootid, items, b_need_validate);
+                printf("refresh: %02d:%s:%d\n", b_index, idstr(bootid), count);
                 b_find = kfind_new(bootid, items, count);
                 b_start_time = time(NULL);
                 break;
             case 1:
-                if (b_find->vcall() == -1){
+                error = b_find->vcall();
+                if (error == -1){
                     state = 2;
                 }
                 break;
             case 2:
-                if (b_start_time+800 > time(NULL)){
+                b_need_validate = (error>4)?false:true;
+                break;
+            case 3:
+                if (size_of_bucket(b_index)<5 && b_retry<3){
+                    b_retry++;
+                }else if (b_start_time+800 > time(NULL)){
                     tsleep(NULL);
                 }
                 state = 0;
@@ -71,4 +88,5 @@ refreshthread::bdocall()
                 break;
         }
     }
+    return error;
 }
