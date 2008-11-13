@@ -57,7 +57,7 @@ struct compat_t
 
 void
 kfind::decode_packet(const char buffer[], size_t count,
-        in_addr_t address, in_port_t port)
+        in_addr_t address, in_port_t port, const char kadid[20])
 {
     size_t len;
     kitem_t in, out;
@@ -66,6 +66,19 @@ kfind::decode_packet(const char buffer[], size_t count,
 
     b_sumumery++;
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
+    if (vip == NULL || len != 20){
+        memcpy(in.kadid, kadid, 20);
+        in.host = address;
+        in.port = port;
+        failed_contact(&in);
+        return;
+    }
+    if (memcmp(vip, kadid, 20) != 0){
+        memcpy(in.kadid, kadid, 20);
+        in.host = address;
+        in.port = port;
+        failed_contact(&in);
+    }
     memcpy(in.kadid, vip, 20);
     in.host = address;
     in.port = port;
@@ -196,7 +209,7 @@ kfind::vcall()
                         if (b_concurrency > 0){
                             b_concurrency--;
                         }
-                        decode_packet(buffer, count, host, port);
+                        decode_packet(buffer, count, host, port, (*iter)->kadid);
                         delete ship;
                         (*iter)->ship = NULL;
                         error = 0;

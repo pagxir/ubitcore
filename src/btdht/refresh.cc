@@ -63,6 +63,13 @@ refreshthread::bdocall()
                 genbootid(bootid, b_index);
                 count = find_nodes(bootid, items, b_need_validate);
                 printf("refresh: %02d:%s:%d\n", b_index, idstr(bootid), count);
+                if (count == 0){
+                    count = find_nodes(bootid, items, false);
+                }
+                if (count == 0){
+                    tsleep(NULL);
+                    return 0;
+                }
                 b_find = kfind_new(bootid, items, count);
                 b_start_time = time(NULL);
                 break;

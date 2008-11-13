@@ -403,8 +403,17 @@ boothread::bdocall()
                 bootid[19]^=0x1;
                 count = find_nodes(bootid, items, b_must_validate);
                 if (count == 0){
-                    count = std::min(__boot_count, 8);
-                    memcpy(items, __boot_contacts, count*sizeof(kitem_t));
+                    if (b_must_validate == true){
+                        count = find_nodes(bootid, items, false);
+                    }
+                    if (count == 0){
+                        count = std::min(__boot_count, 8);
+                        memcpy(items, __boot_contacts, count*sizeof(kitem_t));
+                    }
+                }
+                if (count == 0){
+                    tsleep(NULL);
+                    return 0;
                 }
                 b_find = kfind_new(bootid, items, count);
                 break;
