@@ -74,15 +74,3 @@ knode::cmpid(const char id[20])
 {
     return memcmp(id, b_ident, 20);
 }
-
-int
-knode::cmphost(in_addr_t host)
-{
-    return host - b_address;
-}
-
-int
-knode::cmpport(in_port_t port)
-{
-    return port - b_port;
-}

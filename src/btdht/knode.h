@@ -21,8 +21,9 @@ class knode{
         int  get(kitem_t *out);
         int  set(const kitem_t *in);
         int  cmpid(const char id[20]);
-        int  cmphost(in_addr_t host);
-        int  cmpport(in_port_t port);
+        time_t last_seen() { return b_last_seen; }
+        in_addr_t addr() { return b_address; }
+        in_port_t port() { return b_port; }
 
     private:
         in_addr_t b_address;

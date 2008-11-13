@@ -41,9 +41,6 @@ bit1_start_at(const char *target)
         midx = (uint8_t)target[i];
         index += mtable[midx];
     }
-#if 0
-    printf("start index: %d\n", index);
-#endif
     return index;
 }
 
@@ -123,8 +120,8 @@ ktable::insert_node(const kitem_t *in, bool contacted)
     }
 
     b_count0++;
-    for (; b_count0>8; b_nbucket0++){
-        int j = b_nbucket0;
+    while (b_count0>8){
+        int j = b_nbucket0++;
         assert(j<b_nbucket1);
         b_count0 -= b_buckets[j].find_nodes(items, false);
     }

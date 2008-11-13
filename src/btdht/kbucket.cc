@@ -30,16 +30,23 @@ kbucket::touch()
 int
 kbucket::failed_contact(const kitem_t *node)
 {
-    int i;
+    int i, r=-1, b=-1;
     for (i=0; i<b_nknode; i++){
         if (b_knodes[i]->cmpid(node->kadid) ==0){
             b_knodes[i]->failed();
-            return 0;
+            if (!b_knodes[i]->_isvalidate()){
+                r = i;
+            }
+            break;
         }
     }
     int count = b_nbackup;
     b_nbackup = 0;
+    time_t last = 0;
     for (i=0; i<count; i++){
+        if (b_backups[i] == NULL){
+            continue;
+        }
         if (b_backups[i]->cmpid(node->kadid) ==0){
             delete b_backups[i];
             continue;
@@ -48,6 +55,15 @@ kbucket::failed_contact(const kitem_t *node)
         if (idx < i){
             b_backups[idx] = b_backups[i];
         }
+        if (b_backups[idx]->last_seen() > last){
+            last = b_backups[idx]->last_seen();
+            b = idx;
+        }
+    }
+    if (r!=-1 && b!=-1){
+        delete b_knodes[r];
+        b_knodes[r] = b_backups[b];
+        b_backups[b] = NULL;
     }
     return 0;
 }
@@ -70,13 +86,10 @@ kbucket::find_nodes(kitem_t nodes[], bool validate)
 int
 kbucket::update_contact(const kitem_t *in, bool contacted)
 {
-    int i;
+    int i, n=-1;
     int result = 0;
     knode *kn;
-    knode *kkn = NULL;
-    kitem_t tout;
     time_t  now = time(NULL);
-    time_t  lru = now;
     for (i=0; i<b_nknode; i++){
         kn = b_knodes[i];
         if (0==kn->cmpid(in->kadid)){
@@ -85,7 +98,7 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
             return 0;
         }
         if (kn->_isvalidate() == false){
-            kkn = kn;
+            n = i;
         }
     }
     if (b_nknode < _K){
@@ -94,9 +107,35 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
         b_knodes[b_nknode++] = kn;
         return 0;
     }
-    if (kkn != NULL){
-        kkn->set(in);
+    if (n != -1){
+        delete b_knodes[i];
+        b_knodes[i] = new knode(in->kadid, in->host, in->port);
+        contacted&&kn->touch();
         return 0;
+    }
+    if (contacted == true){
+        int r = 0;
+        time_t last = time(NULL);
+        for (i=0; i<b_nbackup; i++){
+            if (b_backups[i] == NULL){
+                continue;
+            }
+            if (b_backups[i]->cmpid(in->kadid) == 0){
+                b_backups[i]->touch();
+                return 0;
+            }
+            if (b_backups[i]->last_seen() < last){
+                last = b_backups[i]->last_seen();
+                r = i;
+            }
+        }
+        if (b_nbackup < 8){
+            r = b_nbackup++;
+        }else{
+            delete b_backups[r];
+        }
+        b_backups[r] = new knode(in->kadid, in->host, in->port);
+        b_backups[r]->touch();
     }
     return 0;
 }
