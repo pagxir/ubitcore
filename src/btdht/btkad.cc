@@ -124,9 +124,11 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char ol
     memcpy(initem.kadid, kadid, 20);
     if (__static_table.insert_node(&initem, true) > 0){
     }
+#if 0
     printf("contact: %s ", idstr(kadid));
     printf(" %s:%u\n",
             inet_ntoa(*(in_addr*)&host), htons(port));
+#endif
     return 0;
 }
 
@@ -220,8 +222,6 @@ ping_thread::bdocall()
                 }
                 if (b_last_seen+5 <= time(NULL)){
                     b_concurrency = 0;
-                    printf("ping queue: %d\n",
-                            __static_ping_args.size());
                     for (int i=0; i<b_ping_queue.size(); i++){
                         if (b_ping_queue[i].ship != NULL){
                             kitem_t item;
@@ -299,6 +299,7 @@ dump_routing_table()
 {
     __static_table.dump();
 #if 1
+    printf("dump active node:\n");
     std::map<in_addr_t, kitem_t>::iterator iter;
     for (iter = __static_active.begin();
             iter != __static_active.end(); iter++){
