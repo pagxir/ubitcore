@@ -11,6 +11,7 @@ class ktable{
         void dump();
 
     public:
+        time_t last_seen(){ return b_last_seen; }
         int size(){ return b_nbucket0; }
         int getkadid(char kadid[20]);
         int setkadid(const char kadid[20]);
@@ -24,11 +25,19 @@ class ktable{
     private:
         int b_count0;
         char b_tableid[20];
+        time_t b_last_seen;
 
     private:
         int b_nbucket0;
         int b_nbucket1;
         kbucket *b_buckets;
+
+    public:
+        int get_ping(kitem_t *item);
+        bool need_ping(){ return b_need_ping; }
+
+    private:
+        bool b_need_ping;
 };
 
 #endif

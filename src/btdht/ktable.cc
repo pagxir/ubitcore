@@ -110,8 +110,10 @@ ktable::insert_node(const kitem_t *in, bool contacted)
     int index = nbucket1++;
 
     if (nbucket1 > 160){
+#if 0
         printf("internal error: %s %s %s:%d!\n", idstr(kadid), idstr(b_tableid),
                 inet_ntoa(*(in_addr*)&in->host), htons(in->port));
+#endif
         return 0;
     }
 
@@ -128,7 +130,12 @@ ktable::insert_node(const kitem_t *in, bool contacted)
     if (index < b_nbucket0){
         b_count0--;
     }
-    return b_buckets[index].update_contact(in, contacted);
+    b_last_seen = time(NULL);
+    int val = b_buckets[index].update_contact(in, contacted);
+    if (b_buckets[index].need_ping()){
+        b_need_ping = true;
+    }
+    return val;
 }
 
 int
@@ -145,11 +152,26 @@ ktable::getkadid(char kadid[20])
 }
 
 ktable::ktable()
-    :b_count0(0)
+    :b_count0(0), b_need_ping(false)
 {
     b_nbucket0 = 0;
     b_nbucket1 = 1;
     b_buckets = new kbucket[160];
+}
+
+int
+ktable::get_ping(kitem_t *item)
+{
+    int i;
+    for (i=0; i<b_nbucket0; i++){
+        if (b_buckets[i].need_ping()){
+            if (b_buckets[i].get_ping(item) != -1){
+                return 0;
+            }
+        }
+    }
+    b_need_ping = false;
+    return -1;
 }
 
 ktable::~ktable()

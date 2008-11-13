@@ -13,9 +13,18 @@ class kbucket{
         int  find_nodes(kitem_t nodes[_K], bool validate);
         int  update_contact(const kitem_t *in, bool contacted);
 
+    public:
+        int get_ping(kitem_t *in);
+        bool need_ping(){ return b_nbackup; }
+
+    private:
+        int update_backup(const kitem_t *in);
+
     private:
         time_t b_last_seen;
+        bool b_need_ping;
 
+    private:
         int     b_nknode;
         knode  *b_knodes;
 

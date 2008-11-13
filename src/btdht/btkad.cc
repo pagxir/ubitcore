@@ -24,9 +24,7 @@ struct kping_arg{
     char kadid[20];
     in_addr_t host;
     in_port_t port;
-    time_t    age;
-    time_t    atime;
-    int       failed;
+    kship     *ship;
 };
 
 class ping_thread: public bthread
@@ -41,7 +39,7 @@ class ping_thread: public bthread
     private:
         int b_state;
         int b_concurrency;
-        std::vector<kship*> b_ping_queue;
+        std::vector<kping_arg> b_ping_queue;
 };
 
 static bdhtnet __static_dhtnet;
@@ -135,7 +133,11 @@ update_contact(const kitem_t *in, kitem_t *out, bool contacted)
         __static_active.insert(
                 std::make_pair(in->host, *in));
     }
-    return __static_table.insert_node(in, contacted);
+    int retval =__static_table.insert_node(in, contacted);
+    if (__static_table.need_ping()){
+        __static_ping_thread.bwakeup(&__static_ping_thread);
+    }
+    return retval;
 }
 
 int
@@ -151,7 +153,7 @@ ping_thread::bdocall()
     int retry = 0;
     int state = b_state;
     char buffer[8192];
-    std::vector<kship*>::iterator iter;
+    std::vector<kping_arg>::iterator iter;
     std::map<in_addr_t, kping_arg> *args;
     while (b_runable){
         b_state = state++;
@@ -162,16 +164,33 @@ ping_thread::bdocall()
                     kping_arg arg = args->begin()->second;
                     args->erase(args->begin());
                     kship *transfer = __static_dhtnet.get_kship();
-                    b_ping_queue.push_back(transfer);
+                    arg.ship = transfer;
+                    b_ping_queue.push_back(arg);
                     transfer->ping_node(arg.host, arg.port);
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    tsleep(this);
-                    return 0;
+                    if (!__static_table.need_ping()){
+                        tsleep(this);
+                        return 0;
+                    }
+                    kitem_t item;
+                    if (-1 != __static_table.get_ping(&item)){
+                        kping_arg arg ;
+                        memcpy(arg.kadid, item.kadid, 20);
+                        arg.host = item.host;
+                        arg.port = item.port;
+                        if (__static_ping_args.find(item.host)
+                                == __static_ping_args.end()){
+                            __static_ping_args.insert(
+                                    std::make_pair(item.host, arg));
+                        }
+                    }
+                    state = 0;
+                }else{
+                    b_last_seen = time(NULL);
+                    benqueue(this, b_last_seen+5);
                 }
-                b_last_seen = time(NULL);
-                benqueue(this, b_last_seen+5);
                 break;
             case 1:
                 tsleep(this);
@@ -179,24 +198,34 @@ ping_thread::bdocall()
                         iter!=b_ping_queue.end(); iter++){
                     in_addr_t host;
                     in_port_t port;
-                    if (*iter == NULL){
+                    if ((*iter).ship == NULL){
                         continue;
                     }
-                    int count = (*iter)->get_response(buffer,
+                    int count = (*iter).ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
                     if (count > 0){
                         post_ping(buffer, count, host, port);
                         b_concurrency--;
                         bwakeup(this);
                         state = 0;
-                        delete (*iter);
-                        *iter = NULL;
+                        delete (*iter).ship;
+                        (*iter).ship = NULL;
                     }
                 }
                 if (b_last_seen+5 <= time(NULL)){
                     b_concurrency = 0;
                     printf("ping queue: %d\n",
                             __static_ping_args.size());
+                    for (int i=0; i<b_ping_queue.size(); i++){
+                        if (b_ping_queue[i].ship != NULL){
+                            kitem_t item;
+                            memcpy(item.kadid, b_ping_queue[i].kadid, 20);
+                            item.host = b_ping_queue[i].host;
+                            item.port = b_ping_queue[i].port;
+                            failed_contact(&item);
+                            delete b_ping_queue[i].ship;
+                        }
+                    }
                     b_ping_queue.clear();
                     bwakeup(this);
                     state = 0;
@@ -225,6 +254,7 @@ add_boot_contact(in_addr_t addr, in_port_t port)
     }
 #if 1
     kping_arg arg ;
+    memset(arg.kadid, 0, 20);
     arg.host = addr;
     arg.port = port;
     if (__static_ping_args.find(addr)
@@ -262,7 +292,7 @@ void
 dump_routing_table()
 {
     __static_table.dump();
-#if 0
+#if 1
     std::map<in_addr_t, kitem_t>::iterator iter;
     for (iter = __static_active.begin();
             iter != __static_active.end(); iter++){

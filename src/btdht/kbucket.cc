@@ -16,8 +16,10 @@
 #include "kfind.h"
 #include "bthread.h"
 
+static const char nullid[20] = {0x0};
+
 kbucket::kbucket()
-    :b_nknode(0), b_last_seen(0), b_nbackup(0)
+    :b_nknode(0), b_last_seen(0), b_nbackup(0), b_need_ping(false)
 {
     b_knodes = new knode[_K];
     b_backups = new knode[_K];
@@ -38,34 +40,50 @@ kbucket::touch()
 int
 kbucket::failed_contact(const kitem_t *node)
 {
-    int i, r=-1, b=-1;
+    int i;
+    knode *kn = NULL;
     for (i=0; i<b_nknode; i++){
         if (b_knodes[i].cmpid(node->kadid) ==0){
             b_knodes[i].failed();
-            if (!b_knodes[i]._isvalidate()){
-                r = i;
-            }
+            kn = &b_knodes[i];
             break;
         }
     }
     int count = b_nbackup;
     b_nbackup = 0;
-    time_t last = 0;
     for (i=0; i<count; i++){
         if (b_backups[i].cmpid(node->kadid) ==0){
+            continue;
+        }
+        if (b_backups[i].cmpid(nullid) ==0){
             continue;
         }
         int idx = b_nbackup++;
         if (idx < i){
             b_backups[idx] = b_backups[i];
         }
-        if (b_backups[idx].last_seen() > last){
-            last = b_backups[idx].last_seen();
-            b = idx;
-        }
     }
-    if (r!=-1 && b!=-1){
-        b_knodes[r] = b_backups[b];
+    if (kn!=NULL && b_nbackup>0 && kn->last_seen()+900<time(NULL)){
+        /* replace with good node */
+        int j, found=0;
+        time_t now = 0;
+        for (j=0; j<b_nbackup; j++){
+            if (b_backups[j].last_seen() > now){
+                now = b_backups[j].last_seen();
+                found = j;
+            }
+        }
+#if 1
+        kitem_t test;
+        b_backups[found].get(&test);
+        for (j=0; j<b_nknode; j++){
+            if (kn->cmpid(test.kadid) ==0){
+                assert(0);
+            }
+        }
+#endif
+        *kn = b_backups[found];
+        b_backups[found] = knode(nullid, 0, 0);
     }
     return 0;
 }
@@ -86,54 +104,100 @@ kbucket::find_nodes(kitem_t nodes[], bool validate)
 }
 
 int
-kbucket::update_contact(const kitem_t *in, bool contacted)
+kbucket::update_backup(const kitem_t *in)
 {
-    int i, n=-1;
-    int result = 0;
-    knode *kn;
-    time_t  now = time(NULL);
-    for (i=0; i<b_nknode; i++){
-        kn = &b_knodes[i];
-        if (0==kn->cmpid(in->kadid)){
-            kn->set(in);
-            contacted&&kn->touch();
+    int i;
+
+    for (i=0; i<b_nbackup; i++){
+        if (b_backups[i].cmpid(in->kadid) == 0){
+            b_backups[i].touch();
             return 0;
         }
-        if (kn->_isvalidate() == false){
-            n = i;
+    }
+    if (b_nbackup < 8){
+        int r = b_nbackup++;
+        b_backups[r] = knode(in->kadid, in->host, in->port);
+        b_backups[r].touch();
+        return 0;
+    }
+    int idx = 0;
+    time_t last = time(NULL);
+    for (i=0; i<b_nbackup; i++){
+        if (b_backups[i].last_seen() < last){
+            last = b_backups[i].last_seen();
+            idx = i;
         }
     }
+    b_backups[idx] = knode(in->kadid, in->host, in->port);
+    b_backups[idx].touch();
+    return 0;
+}
+
+int
+kbucket::update_contact(const kitem_t *in, bool contacted)
+{
+    int i;
+    touch();
+    /* aready in this bucket */
+    for (i=0; i<b_nknode; i++){
+        if (0==b_knodes[i].cmpid(in->kadid)){
+            b_knodes[i].set(in);
+            contacted&&b_knodes[i].touch();
+            return 0;
+        }
+    }
+    /* bucket not full */
     if (b_nknode < _K){
         int idx = b_nknode++;
         b_knodes[idx] = knode(in->kadid, in->host, in->port);
         contacted&&b_knodes[idx].touch();
         return 0;
     }
-    if (n != -1){
-        b_knodes[i] = knode(in->kadid, in->host, in->port);
-        contacted&&kn->touch();
-        return 0;
+    /* replace bad node */
+    for (i=0; i<b_nknode; i++){
+        if (b_knodes[i]._isvalidate() == false){
+            b_knodes[i] = knode(in->kadid, in->host, in->port);
+            contacted&&b_knodes[i].touch();
+            return 0;
+        }
     }
-    if (contacted == true){
-        int r = 0;
-        time_t last = time(NULL);
-        for (i=0; i<b_nbackup; i++){
-            if (b_backups[i].cmpid(in->kadid) == 0){
-                b_backups[i].touch();
-                return 0;
-            }
-            if (b_backups[i].last_seen() < last){
-                last = b_backups[i].last_seen();
-                r = i;
-            }
+    int ping_count = 0;
+    for (i=0; i<b_nknode; i++){
+        if (b_knodes[i]._isgood() == false){
+            ping_count ++;
+            break;
         }
-        if (b_nbackup < 8){
-            r = b_nbackup++;
-        }
-        b_backups[r] = knode(in->kadid, in->host, in->port);
-        b_backups[r].touch();
+    }
+    if (ping_count == 0){
+        /* all node is good, clear backup node */
+        b_nbackup = 0;
+    }else if (contacted==true){
+        /* add to backup node */
+        update_backup(in);
     }
     return 0;
+}
+
+int
+kbucket::get_ping(kitem_t *item)
+{
+    int i;
+    int found = -1;
+    time_t last = time(NULL);
+    for (i=0; i<b_nknode; i++){
+        if (b_knodes[i]._isgood() == false){
+            if (last > b_knodes[i].last_seen()){
+                last = b_knodes[i].last_seen();
+                found = i;
+            }
+        }
+    }
+    if (found == -1){
+        b_need_ping = false;
+    }else{
+        b_knodes[found].get(item);
+    }
+    return found;
 }
 
 void
@@ -144,6 +208,13 @@ kbucket::dump()
     for (i=0; i<b_nknode; i++){
         b_knodes[i].get(&node);
         printf("\t%02x: %s %d ", i, idstr(node.kadid), node.failed);
+        printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
+                htons(node.port));
+        printf("\n");
+    }
+    for (i=0; i<b_nbackup; i++){
+        b_backups[i].get(&node);
+        printf("\tbk: %s %d ", idstr(node.kadid), node.failed);
         printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
                 htons(node.port));
         printf("\n");

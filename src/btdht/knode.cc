@@ -32,7 +32,7 @@ knode::touch()
 bool
 knode::_isgood()
 {
-    if (!_isvalidate()){
+    if (!_isvalidate() || b_failed>0){
         return false;
     }
     return (b_last_seen+900<time(NULL));
