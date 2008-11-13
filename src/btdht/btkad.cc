@@ -101,17 +101,23 @@ ping_thread::ping_thread()
 static std::vector<kitem_t> __static_ping_cache;
 
 int
-post_ping(char *buffer, int count, in_addr_t host, in_port_t port)
+post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char oldkadid[])
 {
     size_t lid;
     btcodec codec;
     codec.bload(buffer, count);
 
+    kitem_t initem;
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
     if (kadid==NULL && lid!=20){
+        memcpy(initem.kadid, oldkadid, 20);
+        failed_contact(&initem);
         return 0;
     }
-    kitem_t initem;
+    if (memcmp(oldkadid, kadid, 20) != 0){
+        memcpy(initem.kadid, oldkadid, 20);
+        failed_contact(&initem);
+    }
     initem.host = host;
     initem.port = port;
     initem.atime = time(NULL);
@@ -204,7 +210,7 @@ ping_thread::bdocall()
                     int count = (*iter).ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
                     if (count > 0){
-                        post_ping(buffer, count, host, port);
+                        post_ping(buffer, count, host, port, (*iter).kadid);
                         b_concurrency--;
                         bwakeup(this);
                         state = 0;
