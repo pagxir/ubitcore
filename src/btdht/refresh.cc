@@ -77,12 +77,15 @@ refreshd::bdocall()
                 error = b_find->vcall();
                 break;
             case 2:
-                b_usevalid = (error<4);
+                if (error < 4 && b_retry<3){
+                    b_usevalid = true;
+                    b_retry++;
+                    state = 0;
+                }
                 break;
             case 3:
-                if (size_of_bucket(b_index)<5 && b_retry<3){
-                    b_retry++;
-                }else if (b_last_update + 800 > time(NULL)){
+                if (b_last_update + 800 > time(NULL)){
+                    b_retry = 0;
                     tsleep(NULL, "select");
                 }
                 state = 0;

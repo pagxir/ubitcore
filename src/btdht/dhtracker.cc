@@ -6,6 +6,7 @@
 #include <map>
 
 #include "btkad.h"
+#include "btimerd.h"
 #include "dhtracker.h"
 #include "kfind.h"
 #include "knode.h"
@@ -61,8 +62,8 @@ dhtrackerd::bdocall()
             case 3:
                 if (error<5 && b_retry<3){
                     b_retry++;
-                }else if (b_last_update + 800 > time(NULL)){
-                    tsleep(NULL, "select");
+                }else if (b_last_update + 300 > time(NULL)){
+                    btime_wait(300); 
                 }
                 state = 0;
                 break;

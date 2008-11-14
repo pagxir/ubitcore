@@ -286,7 +286,7 @@ void
 dump_routing_table()
 {
     __static_table.dump();
-#if 1
+#if 0
     printf("dump active node:\n");
     std::map<in_addr_t, kitem_t>::iterator iter;
     for (iter = __static_active.begin();
