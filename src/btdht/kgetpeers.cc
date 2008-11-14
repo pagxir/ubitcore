@@ -22,19 +22,19 @@ kgetpeers::kgetpeers(bdhtnet *net, const char target[20],
         kitem_t items[], size_t count)
 {
     int i;
-    b_state = 0;
     b_net   = net;
+    b_state = 0;
     b_trim  = false;
+    kgetpeers_t kfs;
     b_concurrency = 0;
     b_sumumery = 0;
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
-        kgetpeers_t kfs;
         kfs.item = items[i];
+        kfs.ship = NULL;
         kaddist_t dist(items[i].kadid, b_target);
         b_qfind.insert(std::make_pair(dist, kfs));
     }
-    printf("info_hash: %s\n", idstr(b_target));
 }
 
 struct compat_t
@@ -55,24 +55,25 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         in_addr_t address, in_port_t port, const kitem_t *old)
 {
     size_t len;
-    kitem_t in, out;
     btcodec codec;
+    kgetpeers_t kfs;
     codec.bload(buffer, count);
 
     b_sumumery++;
+    kfs.ship = NULL;
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
-    if (vip == NULL || len != 20){
+    if (vip==NULL || len != 20){
         failed_contact(old);
         return;
     }
     if (memcmp(vip, old->kadid, 20) != 0){
         failed_contact(old);
     }
-    memcpy(in.kadid, vip, 20);
-    in.host = address;
-    in.port = port;
-    update_contact(&in, true);
     kaddist_t dist(vip, b_target);
+    kfs.item.port = port;
+    kfs.item.host = address;
+    memcpy(kfs.item.kadid, vip, 20);
+    update_contact(&kfs.item, true);
     b_mapined.insert(std::make_pair(dist, 1));
     std::map<kaddist_t, int>::iterator backdist = b_mapined.end();
     backdist --;
@@ -80,43 +81,33 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         b_mapined.erase(backdist--);
     }
     if (b_mapined.size() == 8){
-        b_trim = true;
         b_ended =  backdist->first;
+        b_trim = true;
     }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
     if (compat != NULL && (len%26)==0){
-        compat_t *iter = (compat_t*)compat;
-        compat_t *compated = (compat_t*)(compat+len);
-        for (iter; iter<compated; iter++){
-            memcpy(in.kadid, iter->ident, 20);
-            memcpy(&in.host, &iter->host, sizeof(in_addr_t));
-            memcpy(&in.port, &iter->port, sizeof(in_port_t));
-            update_contact(&in, false);
-            kaddist_t dist(in.kadid, b_target);
-            if (b_mapoutedkadid.find(dist) != b_mapoutedkadid.end()){
+        compat_t *iter, *compated = (compat_t*)(compat+len);
+        for (iter=(compat_t*)compat; iter<compated; iter++){
+            kfs.item.host = *(in_addr_t*)iter->host;
+            kfs.item.port = *(in_port_t*)iter->port;
+            memcpy(kfs.item.kadid, iter->ident, 20);
+            update_contact(&kfs.item, false);
+            dist = kaddist_t(iter->ident, b_target);
+            if (b_trim && b_ended<dist){
                 continue;
             }
-            if (b_mapoutedaddr.find(in.host) != b_mapoutedaddr.end()){
-                continue;
-            }
-            if (b_trim && b_ended < dist){
-                continue;
-            }
-            kgetpeers_t kfs;
-            kfs.item = in;
-            if (b_qfind.insert(std::make_pair(dist, kfs)).second == false) {
+            if (b_mapoutedkadid.find(dist)==b_mapoutedkadid.end()
+                   && b_mapoutedaddr.find(kfs.item.host)==b_mapoutedaddr.end()){
+                if (b_qfind.insert(std::make_pair(dist, kfs)).second == false) {
+                    /*nothing to do */
+                }
             }
         }
     }
-#if 0
-    if ( codec.bget().bget("r").bget("token").b_str(&len) == NULL){
-        printf("text: %s\n", buffer);
-        assert(0);
-    }
-#endif
     const char *peers = codec.bget().bget("r").bget("values").bget(0).c_str(&len);
-    if (peers != NULL && (len%6)==0){
+    if (peers!=NULL && (len%6)==0){
         peer_t *iter, *peered = (peer_t*)(peers+len);
+        printf("-----------------------------------------\n");
         for (iter=(peer_t*)peers; iter<peered; iter++){
             printf("peer: %s:%d\n", 
                     inet_ntoa(*(in_addr*)iter->addr),
@@ -144,7 +135,7 @@ kgetpeers::vcall()
             case 0:
                 break;
             case 1:
-                while (b_concurrency<CONCURRENT_REQUEST){
+                while (b_concurrency<8){
                     if (b_qfind.empty()){
                         break;
                     }
@@ -153,8 +144,8 @@ kgetpeers::vcall()
                     }
                     kgetpeers_t kfs = b_qfind.begin()->second;
                     kaddist_t ord = b_qfind.begin()->first;
-                    b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1));
                     b_mapoutedkadid.insert(std::make_pair(ord, 1));
+                    b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1));
                     b_qfind.erase(b_qfind.begin());
                     kfs.ship = b_net->get_kship();
                     kfs.ship->get_peers(kfs.item.host, kfs.item.port,
@@ -177,9 +168,11 @@ kgetpeers::vcall()
                     delay_resume(thr, b_last_update+5);
                 }else{
                     for (int i=0; i<b_outqueue.size(); i++){
-                        failed_contact(&b_outqueue[i].item);
-                        delete b_outqueue[i].ship;
-                        b_outqueue[i].ship = NULL;
+                        if (b_outqueue[i].ship != NULL){
+                            failed_contact(&b_outqueue[i].item);
+                            delete b_outqueue[i].ship;
+                            b_outqueue[i].ship = NULL;
+                        }
                     }
                     b_outqueue.resize(0);
                     b_concurrency = 0;

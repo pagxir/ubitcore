@@ -155,7 +155,10 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
         memcpy(&buff[36], t, tlen);
         memcpy(&buff[36+tlen], "1:y1:re", 7);
         b_socket.bsendto(buff, 36+7+tlen, host, port);
-        printf("ping sended\n");
+        /* printf("ping sended\n"); */
+    }else {
+        std::string text(query, tlen);
+        printf("unkown query: %s\n", text.c_str());
     }
     return;
 }

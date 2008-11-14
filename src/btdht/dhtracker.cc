@@ -40,8 +40,6 @@ dhtrackerd::bdocall()
         {
             case 0:
                 count = find_nodes(b_info_hash, items, b_usevalid);
-                printf("get peers: %s:%d\n",
-                         idstr(b_info_hash), count);
                 if (count == 0){
                     count = find_nodes(b_info_hash, items, false);
                 }
@@ -59,6 +57,7 @@ dhtrackerd::bdocall()
                 error = b_getpeers->vcall();
                 break;
             case 2:
+                printf("get peers count: %d\n", error);
                 if (error<4  && b_retry<3){
                     b_usevalid = true;
                     b_retry++;
