@@ -18,7 +18,8 @@
 #include "kutils.h"
 #include "transfer.h"
 
-kgetpeers::kgetpeers(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
+kgetpeers::kgetpeers(bdhtnet *net, const char target[20],
+        kitem_t items[], size_t count)
 {
     int i;
     b_state = 0;
@@ -59,7 +60,6 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
     codec.bload(buffer, count);
 
     b_sumumery++;
-    printf("recv get peers packet!\n");
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
     if (vip == NULL || len != 20){
         failed_contact(old);
@@ -108,11 +108,13 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
             }
         }
     }
+#if 0
     if ( codec.bget().bget("r").bget("token").b_str(&len) == NULL){
         printf("text: %s\n", buffer);
         assert(0);
     }
-    const char *peers = codec.bget().bget("r").bget("values").c_str(&len);
+#endif
+    const char *peers = codec.bget().bget("r").bget("values").bget(0).c_str(&len);
     if (peers != NULL && (len%6)==0){
         peer_t *iter, *peered = (peer_t*)(peers+len);
         for (iter=(peer_t*)peers; iter<peered; iter++){
