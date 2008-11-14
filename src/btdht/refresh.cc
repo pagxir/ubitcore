@@ -62,7 +62,7 @@ refreshd::bdocall()
             case 0:
                 genrefreshid(bootid, b_index);
                 count = find_nodes(bootid, items, b_usevalid);
-                printf("refresh: %02d:%s:%d\n", b_index, idstr(bootid), count);
+                //printf("refresh: %02d:%s:%d\n", b_index, idstr(bootid), count);
                 if (count == 0){
                     count = find_nodes(bootid, items, false);
                 }

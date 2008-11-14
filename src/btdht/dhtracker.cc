@@ -47,7 +47,9 @@ dhtrackerd::bdocall()
                     count = find_nodes(b_info_hash, items, false);
                 }
                 if (count == 0){
-                    tsleep(NULL, "exit");
+                    /*try after 2min*/
+                    printf("finde nodes from table return: %d\n", count);
+                    btime_wait(b_last_update+120); 
                     return 0;
                 }
                 b_getpeers = kgetpeers_new(bootid, items, count);
@@ -63,7 +65,7 @@ dhtrackerd::bdocall()
                 if (error<5 && b_retry<3){
                     b_retry++;
                 }else if (b_last_update + 300 > time(NULL)){
-                    btime_wait(300); 
+                    btime_wait(b_last_update+300); 
                 }
                 state = 0;
                 break;

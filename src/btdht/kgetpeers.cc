@@ -107,7 +107,7 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         }
     }
     const char *peers = codec.bget().bget("r").bget("values").c_str(&len);
-    if (peers != NULL && (len%26)==0){
+    if (peers != NULL && (len%6)==0){
         peer_t *iter, *peered = (peer_t*)(peers+len);
         for (iter=(peer_t*)peers; iter<peered; iter++){
             printf("peer: %s:%d\n", 
