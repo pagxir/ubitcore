@@ -67,7 +67,7 @@ refreshthread::bdocall()
                     count = find_nodes(bootid, items, false);
                 }
                 if (count == 0){
-                    tsleep(NULL);
+                    tsleep(NULL, "exit");
                     return 0;
                 }
                 b_find = kfind_new(bootid, items, count);
@@ -86,7 +86,7 @@ refreshthread::bdocall()
                 if (size_of_bucket(b_index)<5 && b_retry<3){
                     b_retry++;
                 }else if (b_start_time+800 > time(NULL)){
-                    tsleep(NULL);
+                    tsleep(NULL, "select");
                 }
                 state = 0;
                 break;

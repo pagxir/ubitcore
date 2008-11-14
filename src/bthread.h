@@ -17,7 +17,7 @@ public:
 
 public:
     time_t b_tick;
-    void tsleep(void *ident);
+    void tsleep(void *ident, const char wmesg[]);
 
 protected:
     void  *b_swaitident;
@@ -25,6 +25,7 @@ protected:
     static int _b_count;
 
 protected:
+    char b_wmsg[20];
     bool b_runable;
     std::string b_ident;
 };

@@ -1,5 +1,6 @@
 /* $Id$ */
 #include <unistd.h>
+#include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
@@ -12,6 +13,7 @@
 
 bthread::bthread()
 {
+    memset(b_wmsg, 0x0, sizeof(b_wmsg));
     b_ident = "bthread";
     b_runable = false;
     b_swaitident = NULL;
@@ -32,11 +34,12 @@ bthread::bfailed()
 }
 
 void
-bthread::tsleep(void *ident)
+bthread::tsleep(void *ident, const char wmsg[])
 {
     if (b_runable == true){
         b_runable = false;
         b_swaitident = ident;
+        strncpy(b_wmsg, wmsg, sizeof(b_wmsg));
     }
 }
 
@@ -49,14 +52,15 @@ bthread::bwakeup(void *wait)
         return 0;
     }
     if (b_swaitident!=wait){
-        printf("not wakeupable: %p %p %s\n",
-                b_swaitident, wait, b_ident.c_str());
+        printf("not wakeupable: %p %p %s %s\n",
+                b_swaitident, wait, b_ident.c_str(), b_wmsg);
         return 0;
     }
     _b_count++;
     __q_running.push(this);
     b_swaitident = NULL;
     b_runable = true;
+    b_wmsg[0] = 0;
     return 0;
 }
 

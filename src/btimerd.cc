@@ -129,7 +129,7 @@ btime_wait(time_t t)
         return 0;
     }
     bthread *thr = bthread::now_job();
-    thr->tsleep(&_twait);
+    thr->tsleep(&_twait, "time wait");
     __timer_daemon.benqueue(&_twait, t);
     return -1;
 }

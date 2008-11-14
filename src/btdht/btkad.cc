@@ -178,7 +178,7 @@ ping_thread::bdocall()
                 }
                 if (b_concurrency == 0){
                     if (!__static_table.need_ping()){
-                        tsleep(this);
+                        tsleep(this, "wait ping");
                         return 0;
                     }
                     kitem_t item;
@@ -200,7 +200,7 @@ ping_thread::bdocall()
                 }
                 break;
             case 1:
-                tsleep(this);
+                tsleep(this, "select");
                 for (iter=b_ping_queue.begin();
                         iter!=b_ping_queue.end(); iter++){
                     in_addr_t host;
@@ -411,7 +411,7 @@ boothread::bdocall()
                     }
                 }
                 if (count == 0){
-                    tsleep(NULL);
+                    tsleep(NULL, "exit");
                     return 0;
                 }
                 b_find = kfind_new(bootid, items, count);

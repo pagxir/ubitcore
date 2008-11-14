@@ -170,7 +170,7 @@ kgetpeers::vcall()
                 }
                 b_last_update = time(NULL);
                 thr = bthread::now_job();
-                thr->tsleep(thr);
+                thr->tsleep(thr, "kgetpeers");
                 break;
             case 2:
                 if (b_last_update+5 > now_time()){
