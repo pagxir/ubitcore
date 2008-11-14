@@ -17,6 +17,8 @@
 #include "btcodec.h"
 #include "transfer.h"
 #include "refresh.h"
+#include "kgetpeers.h"
+#include "dhtracker.h"
 #include "provider.h"
 #include "btimerd.h"
 
@@ -49,6 +51,12 @@ kfind *
 kfind_new(char target[20], kitem_t items[], size_t count)
 {
     return new kfind(&__static_dhtnet, target, items, count);
+}
+
+kgetpeers *
+kgetpeers_new(char target[20], kitem_t items[], size_t count)
+{
+    return new kgetpeers(&__static_dhtnet, target, items, count);
 }
 
 int
@@ -470,4 +478,12 @@ int
 bit1_index_of(const char kadid[20])
 {
     return __static_table.bit1_index_of(kadid);
+}
+
+int
+tracker_start(const char info_hash[20])
+{
+    dhtrackerd *d = new dhtrackerd(info_hash);
+    d->bwakeup(NULL);
+    return 0;
 }

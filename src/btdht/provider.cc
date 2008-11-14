@@ -131,6 +131,36 @@ bdhtnet::get_kship()
 }
 
 void
+bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
+        uint32_t host, uint16_t port)
+{
+    size_t tlen = 0;
+    const char *kadid = codec->codec().bget().bget("a").bget("id").c_str(&tlen);
+    if (kadid==NULL || tlen!=20){
+        printf("bad query packet\n");
+        return;
+    }
+    const char *query = codec->codec().bget().bget("q").c_str(&tlen);
+    if (query == NULL || tlen < 4){
+        return;
+    }
+    if (memcmp(query, "get_peers", tlen) == 0){
+        printf("get peers\n");
+    }else if (memcmp(query, "find_node", tlen) == 0){
+        printf("find node\n");
+    }else if (memcmp(query, "ping", tlen) == 0){
+        char buff[] = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t1:01:y1:re";
+        getkadid(&buff[12]);
+        const char *t = codec->codec().bget().bget("t").b_str(&tlen);
+        memcpy(&buff[36], t, tlen);
+        memcpy(&buff[36+tlen], "1:y1:re", 7);
+        b_socket.bsendto(buff, 36+7+tlen, host, port);
+        printf("ping sended\n");
+    }
+    return;
+}
+
+void
 bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
@@ -143,10 +173,13 @@ bdhtnet::binput(bdhtcodec *codec, const void *ibuf, size_t len,
         }
     }else if (codec->type() == 'q'){
         /* process query */
+        query_expand(codec, ibuf, len, host, port);
     }else if (codec->type() == 'e'){
         /* process error */
+        printf("error handler call:\n");
     }else {
         /* default type handler */
+        printf("unkown bencode packet:\n");
     }
     return;
 }

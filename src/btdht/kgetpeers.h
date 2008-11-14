@@ -1,5 +1,5 @@
-#ifndef __KFIND_H__
-#define __KFIND_H__
+#ifndef __KGETPEERS_H__
+#define __KGETPEERS_H__
 #include "btkad.h"
 #include "kutils.h"
 #include <vector>

@@ -30,6 +30,29 @@
 #endif
 
 
+const char *
+strid(const char *id)
+{
+    int i;
+    uint8_t hex[256];
+    static char __strid[20];
+    for (i=0; i<10; i++){
+        hex['0'+i] = i;
+    }
+    hex['A'] = 0xa; hex['a'] = 0xa;
+    hex['B'] = 0xb; hex['b'] = 0xb;
+    hex['C'] = 0xc; hex['c'] = 0xc;
+    hex['D'] = 0xd; hex['d'] = 0xd;
+    hex['E'] = 0xe; hex['e'] = 0xe;
+    hex['F'] = 0xf; hex['f'] = 0xf;
+    for (i=0; i<20; i++){
+        uint8_t h = (hex[(uint8_t)id[2*i]]<<4);
+        h += hex[(uint8_t)id[2*i+1]];
+        __strid[i] = h;
+    }
+    return __strid;
+}
+
 int
 btseed_load(const char *buf, int len)
 {
@@ -79,6 +102,10 @@ main(int argc, char *argv[])
     setclientid(ident);
     signal(SIGPIPE, SIG_IGN);
     for (i=1; i<argc; i++){
+        if (i > 1){
+            tracker_start(strid(argv[i]));
+            continue;
+        }
         std::string btseed;
         std::ifstream ifs(argv[i], std::ios::in|std::ios::binary);
         std::copy(std::istreambuf_iterator<char>(ifs),

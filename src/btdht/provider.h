@@ -12,6 +12,7 @@ class bdhtcodec
         int bload(const char *buffer, size_t length);
         int type() { return b_type; }
         int transid() { return b_transid; }
+        btcodec &codec() { return b_codec; }
 
     private:
         int b_type;
@@ -36,6 +37,8 @@ class bdhtnet: public bthread
                 uint16_t port, uint8_t ident[20]);
 
     private:
+        void query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
+                uint32_t host, uint16_t port);
         void binput(bdhtcodec *codec, const void *ibuf, size_t len,
                 uint32_t host, uint16_t port);
         std::map<int, kship*> b_requests;
