@@ -85,7 +85,10 @@ kfind::kfind_expand(const char buffer[], size_t count,
             memcpy(&in.port, &iter->port, sizeof(in_port_t));
             update_contact(&in, false);
             kaddist_t dist(in.kadid, b_target);
-            if (b_mapouted.find(dist) != b_mapouted.end()){
+            if (b_mapoutedkadid.find(dist) != b_mapoutedkadid.end()){
+                continue;
+            }
+            if (b_mapoutedaddr.find(in.host) != b_mapoutedaddr.end()){
                 continue;
             }
             if (b_trim && b_ended < dist){
@@ -127,7 +130,8 @@ kfind::vcall()
                     }
                     kfind_t kfs = b_qfind.begin()->second;
                     kaddist_t ord = b_qfind.begin()->first;
-                    b_mapouted.insert(std::make_pair(ord, 1));
+                    b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1));
+                    b_mapoutedkadid.insert(std::make_pair(ord, 1));
                     b_qfind.erase(b_qfind.begin());
                     kfs.ship = b_net->get_kship();
                     kfs.ship->find_node(kfs.item.host, kfs.item.port,
