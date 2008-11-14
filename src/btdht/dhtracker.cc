@@ -30,7 +30,6 @@ dhtrackerd::dhtrackerd(const char target[])
 int
 dhtrackerd::bdocall()
 {
-    char bootid[20];
     size_t count;
     kitem_t items[8];
     int error = 0;
@@ -52,19 +51,23 @@ dhtrackerd::bdocall()
                     btime_wait(b_last_update+120); 
                     return 0;
                 }
-                b_getpeers = kgetpeers_new(bootid, items, count);
+                b_getpeers = kgetpeers_new(b_info_hash, items, count);
                 b_last_update = time(NULL);
+                b_usevalid = false;
                 break;
             case 1:
                 error = b_getpeers->vcall();
                 break;
             case 2:
-                b_usevalid = (error<4);
+                if (error<4  && b_retry<3){
+                    b_usevalid = true;
+                    b_retry++;
+                    state = 0;
+                }
                 break;
             case 3:
-                if (error<5 && b_retry<3){
-                    b_retry++;
-                }else if (b_last_update + 300 > time(NULL)){
+                if (b_last_update+300 > time(NULL)){
+                    b_retry = 0;
                     btime_wait(b_last_update+300); 
                 }
                 state = 0;

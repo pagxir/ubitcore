@@ -33,6 +33,7 @@ kgetpeers::kgetpeers(bdhtnet *net, const char target[20], kitem_t items[], size_
         kaddist_t dist(items[i].kadid, b_target);
         b_qfind.insert(std::make_pair(dist, kfs));
     }
+    printf("info_hash: %s\n", idstr(b_target));
 }
 
 struct compat_t
@@ -58,6 +59,7 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
     codec.bload(buffer, count);
 
     b_sumumery++;
+    printf("recv get peers packet!\n");
     const char *vip = codec.bget().bget("r").bget("id").c_str(&len);
     if (vip == NULL || len != 20){
         failed_contact(old);
@@ -78,7 +80,7 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         b_mapined.erase(backdist--);
     }
     if (b_mapined.size() == 8){
-        b_trim = true;
+        //b_trim = true;
         b_ended =  backdist->first;
     }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
@@ -105,6 +107,10 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
             if (b_qfind.insert(std::make_pair(dist, kfs)).second == false) {
             }
         }
+    }
+    if ( codec.bget().bget("r").bget("token").b_str(&len) == NULL){
+        printf("text: %s\n", buffer);
+        assert(0);
     }
     const char *peers = codec.bget().bget("r").bget("values").c_str(&len);
     if (peers != NULL && (len%6)==0){

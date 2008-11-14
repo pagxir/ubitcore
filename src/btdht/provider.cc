@@ -74,6 +74,7 @@ int
 bdhtnet::get_peers(uint32_t tid, uint32_t host,
         uint16_t port, uint8_t ident[20])
 {
+    printf("info_hash: %s\n", idstr((const char*)ident));
     memcpy(&__get_peers[46], ident, 20);
     memcpy(&__get_peers[86], &tid, 4);
     if (b_inited == false){

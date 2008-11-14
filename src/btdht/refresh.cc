@@ -72,6 +72,7 @@ refreshd::bdocall()
                 }
                 b_find = kfind_new(bootid, items, count);
                 b_last_update = time(NULL);
+                b_usevalid = false;
                 break;
             case 1:
                 error = b_find->vcall();
@@ -85,8 +86,8 @@ refreshd::bdocall()
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){
-                    b_retry = 0;
                     tsleep(NULL, "select");
+                    b_retry = 0;
                 }
                 state = 0;
                 break;
