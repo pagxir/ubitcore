@@ -80,7 +80,7 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         b_mapined.erase(backdist--);
     }
     if (b_mapined.size() == 8){
-        //b_trim = true;
+        b_trim = true;
         b_ended =  backdist->first;
     }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
