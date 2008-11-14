@@ -25,8 +25,8 @@ kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
     b_state = 0;
     b_net   = net;
     b_trim  = false;
-    b_concurrency = 0;
     b_sumumery = 0;
+    b_concurrency = 0;
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
         kfs.ship = NULL;
