@@ -37,13 +37,6 @@ kgetpeers::kgetpeers(bdhtnet *net, const char target[20],
     }
 }
 
-struct compat_t
-{
-    char ident[20];
-    char host[4];
-    char port[2];
-};
-
 void
 kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         in_addr_t address, in_port_t port, const kitem_t *old)
@@ -78,15 +71,18 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         b_ended =  backdist->first;
         b_trim = true;
     }
+
+    typedef char compat_t[26];
+
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
     if (compat != NULL && (len%26)==0){
         compat_t *iter, *compated = (compat_t*)(compat+len);
         for (iter=(compat_t*)compat; iter<compated; iter++){
-            kfs.item.host = *(in_addr_t*)iter->host;
-            kfs.item.port = *(in_port_t*)iter->port;
-            memcpy(kfs.item.kadid, iter->ident, 20);
+            kfs.item.host = *(in_addr_t*)&(*iter)[20];
+            kfs.item.port = *(in_port_t*)&(*iter)[24];
+            memcpy(kfs.item.kadid, &(*iter)[0], 20);
             update_contact(&kfs.item, false);
-            dist = kaddist_t(iter->ident, b_target);
+            dist = kaddist_t(kfs.item.kadid, b_target);
             if (b_trim && b_ended<dist){
                 continue;
             }
@@ -99,15 +95,19 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         }
         return;
     }
-    int i = 0;
-    const char *peer = codec.bget().bget("r").bget("values").bget(i++).c_str(&len);
-    printf("-----------------------------------------\n");
-    while (peer!=NULL && len==6){
-        printf("peer(%2d): %s:%d\n", i, inet_ntoa(*(in_addr*)peer),
-                htons(*(in_port_t*)&peer[4]));
-        peer = codec.bget().bget("r").bget("values").bget(i++).c_str(&len);
+    int index = 0;
+    typedef char peer_t[6];
+    const char *peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
+    while (peers!=NULL && (len%6)==0){
+        peer_t *iter, *peered = (peer_t*)(peers+len);
+        for (iter=(peer_t*)peers; iter<peered; iter++){
+            printf("peer(%2d): %s:%d\n", index,
+                    inet_ntoa(*(in_addr*)&(*iter)[0]),
+                    htons(*(in_port_t*)&(*iter)[4]));
+        }
+        peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }
-    assert(peer==NULL || len==6);
+    printf("-----------------%p:%d------------------------\n", peers, len);
 }
 
 int
