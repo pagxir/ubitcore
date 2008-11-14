@@ -44,12 +44,6 @@ struct compat_t
     char port[2];
 };
 
-struct peer_t
-{
-    char addr[4];
-    char port[2];
-};
-
 void
 kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         in_addr_t address, in_port_t port, const kitem_t *old)
@@ -103,16 +97,15 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
                 }
             }
         }
+        return;
     }
-    const char *peers = codec.bget().bget("r").bget("values").bget(0).c_str(&len);
-    if (peers!=NULL && (len%6)==0){
-        peer_t *iter, *peered = (peer_t*)(peers+len);
-        printf("-----------------------------------------\n");
-        for (iter=(peer_t*)peers; iter<peered; iter++){
-            printf("peer: %s:%d\n", 
-                    inet_ntoa(*(in_addr*)iter->addr),
-                    htons(*(in_port_t*)iter->port));
-        }
+    int i = 0;
+    const char *peer = codec.bget().bget("r").bget("values").bget(i++).c_str(&len);
+    printf("-----------------------------------------\n");
+    while (peer!=NULL && len==6){
+        printf("peer: %s:%d\n", inet_ntoa(*(in_addr*)peer),
+                htons(*(in_port_t*)&peer[4]));
+        peer = codec.bget().bget("r").bget("values").bget(i++).c_str(&len);
     }
 }
 
