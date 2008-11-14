@@ -64,9 +64,9 @@ kfind::kfind_expand(const char buffer[], size_t count,
     }
     kaddist_t dist(vip, b_target);
     kfs.item.port = port;
-    kfs.item.port = address;
+    kfs.item.host = address;
     memcpy(kfs.item.kadid, vip, 20);
-    update_contact(&in, true);
+    update_contact(&kfs.item, true);
     b_mapined.insert(std::make_pair(dist, 1));
     std::map<kaddist_t, int>::iterator backdist = b_mapined.end();
     backdist --;
@@ -74,8 +74,8 @@ kfind::kfind_expand(const char buffer[], size_t count,
         b_mapined.erase(backdist--);
     }
     if (b_mapined.size() == 8){
-        b_trim = true;
         b_ended =  backdist->first;
+        b_trim = true;
     }
     const char *compat = codec.bget().bget("r").bget("nodes").c_str(&len);
     if (compat != NULL && (len%26)==0){
@@ -84,13 +84,13 @@ kfind::kfind_expand(const char buffer[], size_t count,
             kfs.item.host = *(in_addr_t*)iter->host;
             kfs.item.port = *(in_addr_t*)iter->port;
             memcpy(kfs.item.kadid, iter->ident, 20);
-            update_contact(&in, false);
+            update_contact(&kfs.item, false);
             dist = kaddist_t(iter->ident, b_target);
             if (b_trim && b_ended < dist){
                 continue;
             }
             if (b_mapoutedkadid.find(dist)==b_mapoutedkadid.end() 
-                    && b_mapoutedaddr.find(in.host)==b_mapoutedaddr.end()){
+                    && b_mapoutedaddr.find(kfs.item.host)==b_mapoutedaddr.end()){
                 if (b_qfind.insert(std::make_pair(dist, kfs)).second == false) {
                     /* nothing to do */
                 }

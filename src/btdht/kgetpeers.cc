@@ -25,9 +25,9 @@ kgetpeers::kgetpeers(bdhtnet *net, const char target[20],
     b_net   = net;
     b_state = 0;
     b_trim  = false;
+    b_sumumery = 0;
     kgetpeers_t kfs;
     b_concurrency = 0;
-    b_sumumery = 0;
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
         kfs.item = items[i];
