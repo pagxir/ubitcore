@@ -1,6 +1,15 @@
 #ifndef __KUTILS_H__
 #define __KUTILS_H__
 
+struct kitem_t{
+    char kadid[20];
+    in_addr_t host;
+    in_port_t port;
+    time_t    age;
+    time_t    atime;
+    int       failed;
+};
+
 struct kaddist_t{
     uint8_t kaddist[20];
     kaddist_t();

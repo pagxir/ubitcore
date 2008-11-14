@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "btkad.h"
+#include "kutils.h"
 #include "knode.h"
 
 knode::knode()

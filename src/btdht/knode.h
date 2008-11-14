@@ -1,15 +1,6 @@
 #ifndef __KNODE_H__
 #define __KNODE_H__
 
-struct kitem_t{
-    char kadid[20];
-    in_addr_t host;
-    in_port_t port;
-    time_t    age;
-    time_t    atime;
-    int       failed;
-};
-
 class knode{
     public:
         knode();

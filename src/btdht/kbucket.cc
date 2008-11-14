@@ -19,7 +19,8 @@
 static const char nullid[20] = {0x0};
 
 kbucket::kbucket()
-    :b_nknode(0), b_last_seen(0), b_nbackup(0), b_need_ping(false)
+    :b_nknode(0), b_last_seen(0),
+    b_nbackup(0), b_need_ping(false)
 {
     b_knodes = new knode[_K];
     b_backups = new knode[_K];
@@ -73,15 +74,6 @@ kbucket::failed_contact(const kitem_t *node)
                 found = j;
             }
         }
-#if 1
-        kitem_t test;
-        b_backups[found].get(&test);
-        for (j=0; j<b_nknode; j++){
-            if (kn->cmpid(test.kadid) ==0){
-                assert(0);
-            }
-        }
-#endif
         *kn = b_backups[found];
         b_backups[found] = knode(nullid, 0, 0);
     }
@@ -184,18 +176,16 @@ kbucket::get_ping(kitem_t *item)
     int i;
     int found = -1;
     time_t last = time(NULL);
+    b_need_ping = false;
     for (i=0; i<b_nknode; i++){
-        if (b_knodes[i]._isgood() == false){
+        if (!b_knodes[i]._isgood() && b_knodes[i]._isvalidate()){
             if (last > b_knodes[i].last_seen()){
                 last = b_knodes[i].last_seen();
+                b_need_ping = true;
+                b_knodes[i].get(item);
                 found = i;
             }
         }
-    }
-    if (found == -1){
-        b_need_ping = false;
-    }else{
-        b_knodes[found].get(item);
     }
     return found;
 }
