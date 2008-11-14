@@ -8,7 +8,8 @@ class kfind_arg;
 struct kitem_t;
 class kfind{
     public:
-        kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count);
+        kfind(bdhtnet *net, const char target[20],
+                kitem_t items[], size_t count);
         int vcall();
         void decode_packet(const char buffer[], size_t count,
                 in_addr_t host, in_port_t port, const char kadid[20]);

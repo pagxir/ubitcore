@@ -21,7 +21,7 @@ class ktable{
         int bit1_index_of(const char target[20]);
         int failed_contact(const kitem_t *in);
         int insert_node(const kitem_t *in, bool contacted);
-        int find_nodes(const char target[20], kitem_t items[8], bool validate=true);
+        int find_nodes(const char target[20], kitem_t items[8], bool validate);
 
     private:
         char b_tableid[20];
@@ -34,7 +34,7 @@ class ktable{
 
     public:
         int get_ping(kitem_t *item);
-        bool need_ping(){ return b_need_ping; }
+        bool pingable(){ return b_need_ping; }
 
     private:
         bool b_need_ping;

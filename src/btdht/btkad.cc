@@ -20,17 +20,15 @@
 #include "provider.h"
 #include "btimerd.h"
 
-struct kping_arg{
-    char kadid[20];
-    in_addr_t host;
-    in_port_t port;
+struct kping_t{
+    kitem_t    item;
     kship     *ship;
 };
 
-class ping_thread: public bthread
+class pingd: public bthread
 {
     public:
-        ping_thread();
+        pingd();
         virtual int bdocall();
 
     private:
@@ -39,13 +37,13 @@ class ping_thread: public bthread
     private:
         int b_state;
         int b_concurrency;
-        std::vector<kping_arg> b_ping_queue;
+        std::vector<kping_t> b_queue;
 };
 
-static bdhtnet __static_dhtnet;
+static pingd __static_pingd;
 static ktable __static_table;
-static std::map<in_addr_t, kping_arg> __static_ping_args;
-static ping_thread __static_ping_thread;
+static bdhtnet __static_dhtnet;
+static std::map<in_addr_t, kping_t> __static_ping_queue;
 
 kfind *
 kfind_new(char target[20], kitem_t items[], size_t count)
@@ -64,8 +62,9 @@ int
 genkadid(char kadid[20])
 {
     int i;
-    uint32_t *vp = (uint32_t*)kadid;
-    for (i=0; i<5; i++){
+    /* on windows, this rand() is limited to 65535 */
+    uint16_t *vp = (uint16_t*)kadid;
+    for (i=0; i<10; i++){
         vp[i] = rand();
     }
     return 0;
@@ -79,21 +78,10 @@ setkadid(const char kadid[20])
     return 0;
 }
 
-static uint8_t mask[256] = {
-    8,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
-    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-};
-
-ping_thread::ping_thread()
+pingd::pingd()
     :b_state(0), b_concurrency(0)
 {
-    b_ident = "ping_thread";
+    b_ident = "pingd";
     b_last_seen = time(NULL);
     b_swaitident = this;
 }
@@ -101,7 +89,8 @@ ping_thread::ping_thread()
 static std::vector<kitem_t> __static_ping_cache;
 
 int
-post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char oldkadid[])
+kping_expand(char *buffer, int count, in_addr_t addr,
+        in_port_t port, kping_t *ping_struct)
 {
     size_t lid;
     btcodec codec;
@@ -109,18 +98,15 @@ post_ping(char *buffer, int count, in_addr_t host, in_port_t port, const char ol
 
     kitem_t initem;
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
-    if (kadid==NULL && lid!=20){
-        memcpy(initem.kadid, oldkadid, 20);
-        failed_contact(&initem);
+    if (kadid==NULL || lid!=20){
+        failed_contact(&ping_struct->item);
         return 0;
     }
-    if (memcmp(oldkadid, kadid, 20) != 0){
-        memcpy(initem.kadid, oldkadid, 20);
-        failed_contact(&initem);
+    if (memcmp(ping_struct->item.kadid, kadid, 20) != 0){
+        failed_contact(&ping_struct->item);
     }
-    initem.host = host;
+    initem.host = addr;
     initem.port = port;
-    initem.atime = time(NULL);
     memcpy(initem.kadid, kadid, 20);
     update_contact(&initem, true);
 #if 0
@@ -141,8 +127,8 @@ update_contact(const kitem_t *in, bool contacted)
                 std::make_pair(in->host, *in));
     }
     int retval =__static_table.insert_node(in, contacted);
-    if (__static_table.need_ping()){
-        __static_ping_thread.bwakeup(&__static_ping_thread);
+    if (__static_table.pingable()){
+        __static_pingd.bwakeup(&__static_pingd);
     }
     return retval;
 }
@@ -155,54 +141,51 @@ failed_contact(const kitem_t *in)
 }
 
 int
-ping_thread::bdocall()
+pingd::bdocall()
 {
     int retry = 0;
     int state = b_state;
     char buffer[8192];
-    std::vector<kping_arg>::iterator iter;
-    std::map<in_addr_t, kping_arg> *args;
+    std::vector<kping_t>::iterator iter;
+    std::map<in_addr_t, kping_t> *ping_q;
     while (b_runable){
         b_state = state++;
         switch(b_state){
             case 0:
-                args = &__static_ping_args;
-                while (!args->empty() && b_concurrency<_K){
-                    kping_arg arg = args->begin()->second;
-                    args->erase(args->begin());
+                ping_q = &__static_ping_queue;
+                while (!ping_q->empty() && b_concurrency<_K){
+                    kping_t ping_struct = ping_q->begin()->second;
+                    ping_q->erase(ping_q->begin());
                     kship *transfer = __static_dhtnet.get_kship();
-                    arg.ship = transfer;
-                    b_ping_queue.push_back(arg);
-                    transfer->ping_node(arg.host, arg.port);
+                    ping_struct.ship = transfer;
+                    b_queue.push_back(ping_struct);
+                    transfer->ping_node(ping_struct.item.host,
+                            ping_struct.item.port);
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    if (!__static_table.need_ping()){
+                    if (!__static_table.pingable()){
                         tsleep(this, "wait ping");
                         return 0;
                     }
-                    kitem_t item;
-                    if (-1 != __static_table.get_ping(&item)){
-                        kping_arg arg ;
-                        memcpy(arg.kadid, item.kadid, 20);
-                        arg.host = item.host;
-                        arg.port = item.port;
-                        if (__static_ping_args.find(item.host)
-                                == __static_ping_args.end()){
-                            __static_ping_args.insert(
-                                    std::make_pair(item.host, arg));
+                    kping_t arg ;
+                    if (-1 != __static_table.get_ping(&arg.item)){
+                        if (__static_ping_queue.find(arg.item.host)
+                                == __static_ping_queue.end()){
+                            __static_ping_queue.insert(
+                                    std::make_pair(arg.item.host, arg));
                         }
                     }
                     state = 0;
                 }else{
                     b_last_seen = time(NULL);
-                    benqueue(this, b_last_seen+5);
+                    delay_resume(this, b_last_seen+5);
                 }
                 break;
             case 1:
                 tsleep(this, "select");
-                for (iter=b_ping_queue.begin();
-                        iter!=b_ping_queue.end(); iter++){
+                for (iter=b_queue.begin();
+                        iter!=b_queue.end(); iter++){
                     in_addr_t host;
                     in_port_t port;
                     if ((*iter).ship == NULL){
@@ -211,7 +194,8 @@ ping_thread::bdocall()
                     int count = (*iter).ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
                     if (count > 0){
-                        post_ping(buffer, count, host, port, (*iter).kadid);
+                        kping_expand(buffer, count, host, port,
+                                &(*iter));
                         b_concurrency--;
                         bwakeup(this);
                         state = 0;
@@ -221,17 +205,14 @@ ping_thread::bdocall()
                 }
                 if (b_last_seen+5 <= time(NULL)){
                     b_concurrency = 0;
-                    for (int i=0; i<b_ping_queue.size(); i++){
-                        if (b_ping_queue[i].ship != NULL){
-                            kitem_t item;
-                            memcpy(item.kadid, b_ping_queue[i].kadid, 20);
-                            item.host = b_ping_queue[i].host;
-                            item.port = b_ping_queue[i].port;
-                            failed_contact(&item);
-                            delete b_ping_queue[i].ship;
+                    for (int i=0; i<b_queue.size(); i++){
+                        if (b_queue[i].ship != NULL){
+                            failed_contact(&b_queue[i].item);
+                            delete b_queue[i].ship;
+                            b_queue[i].ship = NULL;
                         }
                     }
-                    b_ping_queue.clear();
+                    b_queue.clear();
                     bwakeup(this);
                     state = 0;
                 }
@@ -258,17 +239,17 @@ add_boot_contact(in_addr_t addr, in_port_t port)
         return 0;
     }
 #if 1
-    kping_arg arg ;
-    memset(arg.kadid, 0, 20);
-    arg.host = addr;
-    arg.port = port;
-    if (__static_ping_args.find(addr)
-            != __static_ping_args.end()){
+    kping_t ping_struct ;
+    memset(ping_struct.item.kadid, 0, 20);
+    ping_struct.item.host = addr;
+    ping_struct.item.port = port;
+    if (__static_ping_queue.find(addr)
+            != __static_ping_queue.end()){
         return 0;
     }
-    __static_ping_args.insert(
-            std::make_pair(addr, arg));
-    __static_ping_thread.bwakeup(&__static_ping_thread);
+    __static_ping_queue.insert(
+            std::make_pair(addr, ping_struct));
+    __static_pingd.bwakeup(&__static_pingd);
 #endif
     return 0;
 }
@@ -276,17 +257,17 @@ add_boot_contact(in_addr_t addr, in_port_t port)
 int
 find_nodes(const char *target, kitem_t items[_K], bool valid)
 {
-    return __static_table.find_nodes(target, items);
+    return __static_table.find_nodes(target, items, valid);
 }
 
-static refreshthread *__static_refresh[160];
+static refreshd *__static_refresh[160];
 int
 refresh_routing_table()
 {
     int i;
     for (i=0; i<__static_table.size(); i++){
         if (__static_refresh[i] == NULL){
-            __static_refresh[i] = new refreshthread(i);
+            __static_refresh[i] = new refreshd(i);
         }
         __static_refresh[i]->bwakeup(NULL);
     }
@@ -310,30 +291,28 @@ dump_routing_table()
 #endif
 }
 
-class checkthread: public bthread
+class checkerd: public bthread
 {
     public:
-        checkthread();
+        checkerd();
         virtual int bdocall();
 
     private:
         int b_state;
-        time_t b_random;
-        time_t b_start_time;
-        time_t b_last_refresh;
+        time_t b_last_show;
+        time_t b_next_refresh;
 };
 
-checkthread::checkthread()
+checkerd::checkerd()
 {
     b_state = 0;
-    b_random = 60;
-    b_start_time = now_time();
-    b_last_refresh = now_time();
-    b_ident = "checkthread";
+    b_ident = "checkerd";
+    b_last_show = now_time();
+    b_next_refresh = now_time();
 }
 
 int
-checkthread::bdocall()
+checkerd::bdocall()
 {
     int state = b_state;
     while (b_runable){
@@ -341,17 +320,17 @@ checkthread::bdocall()
         switch(b_state)
         {
             case 0:
-                btime_wait(b_start_time+120);
-                if (now_time() > b_last_refresh+b_random){
-                    b_random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
-                    b_last_refresh = now_time();
-                    printf("randomize: %u\n", b_random);
+                btime_wait(b_last_show+90);
+                if (now_time() > b_next_refresh){
+                    time_t random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
+                    b_next_refresh = now_time()+random;
+                    printf("randomize: %u\n", random);
                     refresh_routing_table();
                 }
                 break;
             case 1:
                 dump_routing_table();
-                b_start_time = now_time();
+                b_last_show = now_time();
                 state = 0;
                 break;
             default:
@@ -362,31 +341,35 @@ checkthread::bdocall()
     return 0;
 }
 
-class boothread: public bthread
+class bootupd: public bthread
 {
     public:
-        boothread();
+        bootupd();
         virtual int bdocall();
 
     private:
         int b_state;
+        kfind  *b_find;
+        bool   b_refresh;
+        bool   b_usevalid;
+
+    private:
         time_t b_random;
         time_t b_start_time;
-        kfind  *b_find;
-        bool   b_must_validate;
 };
 
-boothread::boothread()
+bootupd::bootupd()
 {
-    b_find = NULL;
+    b_find = 0;
     b_state = 0;
-    b_must_validate = false;
+    b_ident = "bootupd";
+    b_refresh = true;
+    b_usevalid = false;
     b_start_time = now_time();
-    b_ident = "boothread";
 }
 
 int
-boothread::bdocall()
+bootupd::bdocall()
 {
     int count;
     int error = -1;
@@ -400,9 +383,9 @@ boothread::bdocall()
             case 0:
                 getkadid(bootid);
                 bootid[19]^=0x1;
-                count = find_nodes(bootid, items, b_must_validate);
+                count = find_nodes(bootid, items, b_usevalid);
                 if (count == 0){
-                    if (b_must_validate == true){
+                    if (b_usevalid == true){
                         count = find_nodes(bootid, items, false);
                     }
                     if (count == 0){
@@ -422,22 +405,20 @@ boothread::bdocall()
                 break;
             case 2:
                 error = b_find->vcall();
-                if (error == -1){
-                    state = 2;
-                }
                 break;
             case 3:
-                b_must_validate = (error>4);
+                b_usevalid = (error<4);
                 break;
             case 4:
-                printf("DHT Boot Ended\n");
-                refresh_routing_table();
-                if (get_table_size() > 4){
+                if (size_of_table() > 4){
+                    if (b_refresh == true){
+                        refresh_routing_table();
+                        b_refresh = false;
+                    }
                     btime_wait(b_start_time+b_random);
                 }
                 break;
             case 5:
-                printf("DHT: Refresh Boot!\n");
                 delete b_find;
                 state = 0;
                 break;
@@ -448,8 +429,8 @@ boothread::bdocall()
     }
 }
 
-static checkthread __static_checkthread;
-static boothread __static_boothread;
+static bootupd __static_bootupd;
+static checkerd __static_checkerd;
 
 int
 bdhtnet_start()
@@ -468,13 +449,13 @@ bdhtnet_start()
     getkadid(&__find_node[12]);
     extern char __get_peers[];
     getkadid(&__get_peers[12]);
-    __static_boothread.bwakeup(NULL);
-    __static_checkthread.bwakeup(NULL);
+    __static_bootupd.bwakeup(NULL);
+    __static_checkerd.bwakeup(NULL);
     return 0;
 }
 
 int
-get_table_size()
+size_of_table()
 {
     return __static_table.size();
 }

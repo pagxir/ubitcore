@@ -2,10 +2,10 @@
 #define __REFRESH_H__
 #include "bthread.h"
 class kfind;
-class refreshthread: public bthread
+class refreshd: public bthread
 {
     public:
-        refreshthread(int index);
+        refreshd(int index);
         virtual int bdocall();
 
     private:
@@ -14,11 +14,11 @@ class refreshthread: public bthread
 
     private:
         time_t b_random;
-        time_t b_start_time;
+        time_t b_last_update;
         kfind  *b_find;
 
     private:
         int b_retry;
-        bool b_need_validate;
+        bool b_usevalid;
 };
 #endif

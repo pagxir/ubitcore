@@ -176,7 +176,7 @@ kgetpeers::vcall()
                 if (b_last_update+5 > now_time()){
                     error = -1;
                     thr = bthread::now_job();
-                    benqueue(thr, b_last_update+5);
+                    delay_resume(thr, b_last_update+5);
                 }else{
                     for (iter = b_kgetpeers_out.begin(); 
                             iter != b_kgetpeers_out.end();

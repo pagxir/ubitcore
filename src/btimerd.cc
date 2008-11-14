@@ -115,7 +115,7 @@ now_time()
 }
 
 int
-benqueue(void *ident, time_t timeout)
+delay_resume(void *ident, time_t timeout)
 {
     __timer_daemon.benqueue(ident, timeout);
     return 0;
