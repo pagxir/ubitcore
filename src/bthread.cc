@@ -66,6 +66,21 @@ bthread::bwakeup(void *wait)
     return 0;
 }
 
+bool
+bthread::reset_timeout()
+{
+    bool oldval = b_timeout;
+    b_timeout  = false;
+    return oldval;
+}
+
+int
+bthread::timeout()
+{
+    b_timeout = true;
+    bwakeup(b_swaitident);
+}
+
 int
 bthread::bpoll(bthread ** pu)
 {

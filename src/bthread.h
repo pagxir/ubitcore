@@ -16,10 +16,15 @@ public:
     virtual int bdocall();
 
 public:
+    int timeout();
+    bool reset_timeout();
+
+public:
     time_t b_tick;
     void tsleep(void *ident, const char wmesg[]);
 
 protected:
+    bool  b_timeout;
     void  *b_swaitident;
     static bthread *_jnow;
     static int _b_count;

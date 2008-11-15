@@ -34,6 +34,7 @@ class pingd: public bthread
         virtual int bdocall();
 
     private:
+        bool b_sendmore;
         time_t b_last_seen;
         std::string b_text_satus;
 
@@ -91,6 +92,7 @@ pingd::pingd()
     :b_state(0), b_concurrency(0)
 {
     b_ident = "pingd";
+    b_sendmore = false;
     b_last_seen = time(NULL);
     b_swaitident = this;
 }
@@ -99,7 +101,7 @@ static std::vector<kitem_t> __static_ping_cache;
 
 int
 kping_expand(char *buffer, int count, in_addr_t addr,
-        in_port_t port, kping_t *ping_struct)
+        in_port_t port, kitem_t *old)
 {
     size_t lid;
     btcodec codec;
@@ -108,11 +110,11 @@ kping_expand(char *buffer, int count, in_addr_t addr,
     kitem_t initem;
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
     if (kadid==NULL || lid!=20){
-        failed_contact(&ping_struct->item);
+        failed_contact(old);
         return 0;
     }
-    if (memcmp(ping_struct->item.kadid, kadid, 20) != 0){
-        failed_contact(&ping_struct->item);
+    if (memcmp(old->kadid, kadid, 20) != 0){
+        failed_contact(old);
     }
     initem.host = addr;
     initem.port = port;
@@ -150,10 +152,12 @@ pingd::bdocall()
     char buffer[8192];
     kping_t ping_struct;
     std::map<in_addr_t, kping_t> *ping_q;
+
     while (b_runable){
         b_state = state++;
         switch(b_state){
             case 0:
+                b_sendmore = false;
                 ping_q = &__static_ping_queue;
                 while (!ping_q->empty() && b_concurrency<_K){
                     ping_struct = ping_q->begin()->second;
@@ -163,11 +167,12 @@ pingd::bdocall()
                     b_queue.push_back(ping_struct);
                     transfer->ping_node(ping_struct.item.host,
                             ping_struct.item.port);
+                    b_sendmore = true;
                     b_concurrency++;
                 }
                 if (b_concurrency > 0){
                     b_last_seen = time(NULL);
-                    delay_resume(this, b_last_seen+2);
+                    delay_resume(b_last_seen+2);
                 }else if (!__static_table.pingable()){
                     b_text_satus = "wait ping";
                     tsleep(NULL, "wait ping");
@@ -196,28 +201,28 @@ pingd::bdocall()
                     if (count == -1){
                         continue;
                     }
-                    kping_expand(buffer, count, host, port, &b_queue[i]);
+                    kping_expand(buffer, count, host, port, &b_queue[i].item);
                     delete b_queue[i].ship;
                     b_queue[i].ship = NULL;
                     b_concurrency--;
                 }
-                if (b_last_seen+3>time(NULL) || b_concurrency<_K){
-                    if (b_concurrency < 8){
+                if (!reset_timeout() || b_concurrency<_K){
+                    if (b_concurrency<_K && b_sendmore){
                         state = 0;
                     }else{
                         tsleep(this, "select");
                     }
-                    break;
-                }
-                for (int i=0; i<b_queue.size(); i++){
-                    if (b_queue[i].ship != NULL){
-                        failed_contact(&b_queue[i].item);
-                        delete b_queue[i].ship;
-                        b_queue[i].ship = NULL;
-                        b_concurrency--;
+                }else{
+                    for (int i=0; i<b_queue.size(); i++){
+                        if (b_queue[i].ship != NULL){
+                            failed_contact(&b_queue[i].item);
+                            delete b_queue[i].ship;
+                            b_queue[i].ship = NULL;
+                        }
                     }
+                    b_concurrency = state = 0;
+                    b_queue.clear();
                 }
-                b_queue.clear();
                 break;
             default:
                 printf("what\n");

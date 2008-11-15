@@ -163,7 +163,7 @@ kgetpeers::vcall()
                 if (b_last_update+5 > now_time()){
                     error = -1;
                     thr = bthread::now_job();
-                    delay_resume(thr, b_last_update+5);
+                    delay_resume(b_last_update+5);
                 }else{
                     for (int i=0; i<b_outqueue.size(); i++){
                         if (b_outqueue[i].ship != NULL){

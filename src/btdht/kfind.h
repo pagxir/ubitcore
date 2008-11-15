@@ -21,15 +21,18 @@ class kfind{
 
     private:
         int b_sumumery;
+        int b_last_finding;
 
     private:
         char b_target[20];
         int b_concurrency;
         int b_state;
-        bdhtnet *b_net;
-        time_t   b_last_update;
-        bool      b_trim;
+
+    private:
         kaddist_t b_ended;
+        bdhtnet  *b_net;
+        bool      b_trim;
+        time_t    b_last_update;
 
     private:
         std::vector<kfind_t> b_outqueue;

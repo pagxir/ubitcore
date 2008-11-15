@@ -118,6 +118,7 @@ kfind::vcall()
             case 0:
                 break;
             case 1:
+                b_last_finding = 0;
                 while (b_concurrency<CONCURRENT_REQUEST){
                     if (b_qfind.empty()){
                         break;
@@ -134,6 +135,7 @@ kfind::vcall()
                     kfs.ship->find_node(kfs.item.host, kfs.item.port,
                             (uint8_t*)b_target);
                     b_outqueue.push_back(kfs);
+                    b_last_finding++;
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
@@ -141,14 +143,33 @@ kfind::vcall()
                     return b_sumumery;
                 }
                 b_last_update = time(NULL);
-                thr = bthread::now_job();
-                thr->tsleep(thr, "kfind");
+                delay_resume(b_last_update+5);
                 break;
             case 2:
-                if (b_last_update+5 > now_time()){
-                    error = -1;
-                    thr = bthread::now_job();
-                    delay_resume(thr, b_last_update+5);
+                error = -1;
+                for (int i=0; i<b_outqueue.size(); i++){
+                    if (b_outqueue[i].ship == NULL){
+                        continue;
+                    }
+                    kship *ship = b_outqueue[i].ship;
+                    count = ship->get_response(buffer,
+                            sizeof(buffer), &host, &port);
+                    if (count <= 0){
+                        continue;
+                    }
+                    kfind_expand(buffer, count, host, port,
+                            &b_outqueue[i].item);
+                    b_outqueue[i].ship = NULL;
+                    b_concurrency--;
+                    delete ship;
+                }
+                thr = bthread::now_job();
+                if (!thr->reset_timeout() || b_concurrency<CONCURRENT_REQUEST){
+                    if (b_concurrency<CONCURRENT_REQUEST  && 0<b_last_finding){
+                        error = state = 0;
+                    }else{
+                        thr->tsleep(this, "selecting");
+                    }
                 }else{
                     for (int i=0; i<b_outqueue.size(); i++){
                         if (b_outqueue[i].ship != NULL){
@@ -160,33 +181,7 @@ kfind::vcall()
                     b_outqueue.resize(0);
                     b_concurrency = 0;
                     error = state = 0;
-                    break;
                 }
-                for (int i=0; i<b_outqueue.size(); i++){
-                    if (b_outqueue[i].ship == NULL){
-                        continue;
-                    }
-                    kship *ship = b_outqueue[i].ship;
-                    count = ship->get_response(buffer,
-                            sizeof(buffer), &host, &port);
-                    if (count > 0){
-                        if (b_concurrency > 0){
-                            b_concurrency--;
-                        }
-                        kfind_expand(buffer, count, host, port, &b_outqueue[i].item);
-                        b_outqueue[i].ship = NULL;
-                        error = state = 0;
-                        delete ship;
-                    }else{
-#if 0
-                    if (b_trim && b_ended<b_qfind.begin()->first){
-                        printf("empty0\n");
-                        break;
-                    }
-#endif
-                    }
-                }
-                break;
             default:
                 break;
         }
