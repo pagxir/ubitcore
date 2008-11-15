@@ -16,10 +16,10 @@ class kbucket{
     public:
         size_t size(){ return b_nknode; }
         int get_ping(kitem_t *in);
-        bool need_ping(){ return b_nbackup; }
+        bool need_ping(){ return b_need_ping; }
 
     private:
-        int update_backup(const kitem_t *in);
+        int update_backup(const kitem_t *in, bool contacted);
 
     private:
         time_t b_last_seen;

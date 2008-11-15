@@ -90,13 +90,6 @@ bdhtnet::find_node(uint32_t tid, uint32_t host,
         uint16_t port, uint8_t ident[20])
 {
 
-#if 0
-    in_addr addr;
-    memcpy(&addr, &host, 4);
-    printf("find node: %s:%d\n",
-            inet_ntoa(addr), htons(port));
-#endif
-
     memcpy(&__find_node[43], ident, 20);
     memcpy(&__find_node[83], &tid, 4);
     if (b_inited == false){
@@ -135,23 +128,28 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
         uint32_t host, uint16_t port)
 {
     size_t tlen = 0;
-    const char *kadid = codec->codec().bget().bget("a").bget("id").c_str(&tlen);
+    btcodec& btc = codec->codec();
+    const char *kadid = btc.bget().bget("a").bget("id").c_str(&tlen);
     if (kadid==NULL || tlen!=20){
         printf("bad query packet\n");
         return;
     }
-    const char *query = codec->codec().bget().bget("q").c_str(&tlen);
+    const char *query = btc.bget().bget("q").c_str(&tlen);
     if (query == NULL || tlen < 4){
         return;
     }
     if (memcmp(query, "get_peers", tlen) == 0){
         printf("get peers\n");
     }else if (memcmp(query, "find_node", tlen) == 0){
-        printf("find node\n");
+        size_t target_len = 0;
+        const char *target = btc.bget().bget("a").bget("target").c_str(&target_len);
+        if (target_len==20 && target!=NULL){
+            printf("find node: %s\n", idstr(target));
+        }
     }else if (memcmp(query, "ping", tlen) == 0){
         char buff[] = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t1:01:y1:re";
         getkadid(&buff[12]);
-        const char *t = codec->codec().bget().bget("t").b_str(&tlen);
+        const char *t = btc.bget().bget("t").b_str(&tlen);
         memcpy(&buff[36], t, tlen);
         memcpy(&buff[36+tlen], "1:y1:re", 7);
         b_socket.bsendto(buff, 36+7+tlen, host, port);

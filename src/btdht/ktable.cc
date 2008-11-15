@@ -189,7 +189,8 @@ ktable::dump()
     printf("dump routing table: %u %u \n",
             b_nbucket0, b_nbucket1);
     for (i=0; i<b_nbucket1; i++){
-        printf("bucket: %d\n", i);
+        printf("%02xbucket@%s:\n", i,
+                b_buckets[i].need_ping()?"WAIT":"PING");
         b_buckets[i].dump();
     }
     printf("dump ended: %s\n", idstr(b_tableid));

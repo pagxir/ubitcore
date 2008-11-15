@@ -96,20 +96,20 @@ kbucket::find_nodes(kitem_t nodes[], bool validate)
 }
 
 int
-kbucket::update_backup(const kitem_t *in)
+kbucket::update_backup(const kitem_t *in, bool contacted)
 {
     int i;
 
     for (i=0; i<b_nbackup; i++){
         if (b_backups[i].cmpid(in->kadid) == 0){
-            b_backups[i].touch();
+            contacted&&b_backups[i].touch();
             return 0;
         }
     }
     if (b_nbackup < 8){
         int r = b_nbackup++;
         b_backups[r] = knode(in->kadid, in->host, in->port);
-        b_backups[r].touch();
+        contacted&&b_backups[r].touch();
         return 0;
     }
     int idx = 0;
@@ -121,7 +121,7 @@ kbucket::update_backup(const kitem_t *in)
         }
     }
     b_backups[idx] = knode(in->kadid, in->host, in->port);
-    b_backups[idx].touch();
+    contacted&&b_backups[idx].touch();
     return 0;
 }
 
@@ -163,9 +163,10 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
     if (ping_count == 0){
         /* all node is good, clear backup node */
         b_nbackup = 0;
-    }else if (contacted==true){
+    }else{
         /* add to backup node */
-        update_backup(in);
+        update_backup(in, contacted);
+        b_need_ping = true;
     }
     return 0;
 }
@@ -181,8 +182,8 @@ kbucket::get_ping(kitem_t *item)
         if (!b_knodes[i]._isgood() && b_knodes[i]._isvalidate()){
             if (last > b_knodes[i].last_seen()){
                 last = b_knodes[i].last_seen();
-                b_need_ping = true;
                 b_knodes[i].get(item);
+                b_need_ping = true;
                 found = i;
             }
         }
@@ -204,8 +205,13 @@ kbucket::dump()
     }
     for (i=0; i<b_nknode; i++){
         b_knodes[i].get(&node);
-        printf("  %s %2d %4d ", idstr(node.kadid), node.failed,
-                now-b_knodes[i].last_seen());
+        if (b_knodes[i].last_seen() > 0){
+            printf("  %s %2d %4d %4d ", idstr(node.kadid), node.failed,
+                    now-b_knodes[i].last_seen(), now-b_knodes[i].birthday());
+        }else{
+            printf("  %s %2d ival %4d ", idstr(node.kadid), node.failed, 
+                    now-b_knodes[i].birthday());
+        }
         printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
                 htons(node.port));
         printf("\n");
