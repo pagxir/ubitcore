@@ -86,7 +86,7 @@ refreshd::bdocall()
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){
-                    tsleep(NULL, "select");
+                    tsleep(NULL, "exit");
                     b_retry = 0;
                 }
                 state = 0;

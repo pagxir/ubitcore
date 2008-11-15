@@ -158,7 +158,7 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
     }
     int ping_count = 0;
     for (i=0; i<b_nknode; i++){
-        if (b_knodes[i]._isgood() == false){
+        if (b_knodes[i]._isdoubt()){
             ping_count ++;
             break;
         }
@@ -182,7 +182,7 @@ kbucket::get_ping(kitem_t *item)
     time_t last = time(NULL);
     b_need_ping = false;
     for (i=0; i<b_nknode; i++){
-        if (!b_knodes[i]._isgood() && b_knodes[i]._isvalidate()){
+        if (b_knodes[i]._isdoubt()){
             if (last > b_knodes[i].last_seen()){
                 last = b_knodes[i].last_seen();
                 b_knodes[i].get(item);

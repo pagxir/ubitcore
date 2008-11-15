@@ -35,6 +35,7 @@ class pingd: public bthread
 
     private:
         time_t b_last_seen;
+        std::string b_text_satus;
 
     private:
         int b_state;
@@ -144,10 +145,10 @@ failed_contact(const kitem_t *in)
 int
 pingd::bdocall()
 {
-    int retry = 0;
+    int i;
     int state = b_state;
     char buffer[8192];
-    std::vector<kping_t>::iterator iter;
+    kping_t ping_struct;
     std::map<in_addr_t, kping_t> *ping_q;
     while (b_runable){
         b_state = state++;
@@ -155,7 +156,7 @@ pingd::bdocall()
             case 0:
                 ping_q = &__static_ping_queue;
                 while (!ping_q->empty() && b_concurrency<_K){
-                    kping_t ping_struct = ping_q->begin()->second;
+                    ping_struct = ping_q->begin()->second;
                     ping_q->erase(ping_q->begin());
                     kship *transfer = __static_dhtnet.get_kship();
                     ping_struct.ship = transfer;
@@ -164,59 +165,54 @@ pingd::bdocall()
                             ping_struct.item.port);
                     b_concurrency++;
                 }
-                if (b_concurrency == 0){
-                    if (!__static_table.pingable()){
-                        tsleep(NULL, "wait ping");
-                        return 0;
-                    }
-                    kping_t arg ;
-                    if (-1 != __static_table.get_ping(&arg.item)){
-                        if (__static_ping_queue.find(arg.item.host)
-                                == __static_ping_queue.end()){
-                            __static_ping_queue.insert(
-                                    std::make_pair(arg.item.host, arg));
-                        }
-                    }
-                    state = 0;
-                }else{
+                if (b_concurrency > 0){
                     b_last_seen = time(NULL);
-                    delay_resume(this, b_last_seen+5);
+                    delay_resume(this, b_last_seen+2);
+                }else if (!__static_table.pingable()){
+                    b_text_satus = "wait ping";
+                    tsleep(NULL, "wait ping");
+                    return 0;
+                }else if (-1 != __static_table.get_ping(&ping_struct.item)){
+                    __static_ping_queue.insert(
+                            std::make_pair(ping_struct.item.host, ping_struct));
+                    state = 0;
                 }
                 break;
             case 1:
-                tsleep(this, "select");
-                for (iter=b_queue.begin();
-                        iter!=b_queue.end(); iter++){
+                for (i=0; i<b_queue.size(); i++){
+                    int count = -1;
                     in_addr_t host;
                     in_port_t port;
-                    if ((*iter).ship == NULL){
+                    if (b_queue[i].ship == NULL){
                         continue;
                     }
-                    int count = (*iter).ship->get_response(buffer,
+                    count = b_queue[i].ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
-                    if (count > 0){
-                        kping_expand(buffer, count, host, port,
-                                &(*iter));
-                        b_concurrency--;
-                        bwakeup(this);
+                    if (count == -1){
+                        continue;
+                    }
+                    kping_expand(buffer, count, host, port, &b_queue[i]);
+                    delete b_queue[i].ship;
+                    b_queue[i].ship = NULL;
+                    b_concurrency--;
+                }
+                if (b_last_seen+3>time(NULL) || b_concurrency<_K){
+                    if (b_concurrency < 8){
                         state = 0;
-                        delete (*iter).ship;
-                        (*iter).ship = NULL;
+                    }else{
+                        tsleep(this, "select");
+                    }
+                    break;
+                }
+                for (int i=0; i<b_queue.size(); i++){
+                    if (b_queue[i].ship != NULL){
+                        failed_contact(&b_queue[i].item);
+                        delete b_queue[i].ship;
+                        b_queue[i].ship = NULL;
+                        b_concurrency--;
                     }
                 }
-                if (b_last_seen+5 <= time(NULL)){
-                    b_concurrency = 0;
-                    for (int i=0; i<b_queue.size(); i++){
-                        if (b_queue[i].ship != NULL){
-                            failed_contact(&b_queue[i].item);
-                            delete b_queue[i].ship;
-                            b_queue[i].ship = NULL;
-                        }
-                    }
-                    b_queue.clear();
-                    bwakeup(this);
-                    state = 0;
-                }
+                b_queue.clear();
                 break;
             default:
                 printf("what\n");
@@ -279,6 +275,12 @@ void
 dump_routing_table()
 {
 #if 1
+    printf("refresh: ");
+    time_t now = time(NULL);
+    for (int i=0; i<__static_table.size(); i++){
+        printf("%4d ", now-__static_refresh[i]->last_update());
+    }
+    printf("\n");
     __static_table.dump();
 #endif
 }
@@ -316,7 +318,6 @@ checkerd::bdocall()
                 if (now_time() > b_next_refresh){
                     time_t random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
                     b_next_refresh = now_time()+random;
-                    printf("randomize: %u\n", random);
                     refresh_routing_table();
                 }
                 break;

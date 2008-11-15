@@ -6,6 +6,7 @@ class refreshd: public bthread
 {
     public:
         refreshd(int index);
+        time_t last_update(){ return b_last_update; }
         virtual int bdocall();
 
     private:

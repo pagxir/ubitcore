@@ -7,8 +7,8 @@ class knode{
         knode(const char id[20], in_addr_t addr, in_port_t port);
         int  touch();
         int  failed();
-        bool _isgood();
-        bool _isvalidate() { return b_failed<3; }
+        bool _isdoubt();
+        bool _isvalidate() { return b_last_seen>0&&b_failed<3; }
         int  get(kitem_t *out);
         int  set(const kitem_t *in);
         int  cmpid(const char id[20]);

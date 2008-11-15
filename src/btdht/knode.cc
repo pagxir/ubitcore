@@ -31,12 +31,12 @@ knode::touch()
 }
 
 bool
-knode::_isgood()
+knode::_isdoubt()
 {
-    if (!_isvalidate() || b_failed>0){
-        return false;
+    if (b_failed < 2){
+        return (b_last_seen+900<time(NULL));
     }
-    return (b_last_seen+900<time(NULL));
+    return false;
 }
 
 
