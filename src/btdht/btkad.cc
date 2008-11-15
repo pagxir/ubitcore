@@ -175,7 +175,6 @@ pingd::bdocall()
                                 == __static_ping_queue.end()){
                             __static_ping_queue.insert(
                                     std::make_pair(arg.item.host, arg));
-                            printf("handle pending ping\n");
                         }
                     }
                     state = 0;
