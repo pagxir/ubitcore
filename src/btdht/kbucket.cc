@@ -122,8 +122,10 @@ kbucket::update_backup(const kitem_t *in, bool contacted)
             idx = i;
         }
     }
-    b_backups[idx] = knode(in->kadid, in->host, in->port);
-    contacted&&b_backups[idx].touch();
+    if (contacted || b_backups[idx].last_seen()==0){
+        b_backups[idx] = knode(in->kadid, in->host, in->port);
+        contacted&&b_backups[idx].touch();
+    }
     return 0;
 }
 
