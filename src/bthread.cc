@@ -52,8 +52,10 @@ bthread::bwakeup(void *wait)
         return 0;
     }
     if (b_swaitident!=wait){
+#if 0
         printf("not wakeupable: %p %p %s %s\n",
                 b_swaitident, wait, b_ident.c_str(), b_wmsg);
+#endif
         return 0;
     }
     _b_count++;

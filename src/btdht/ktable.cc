@@ -190,7 +190,7 @@ ktable::dump()
             b_nbucket0, b_nbucket1);
     for (i=0; i<b_nbucket1; i++){
         printf("%02xbucket@%s:\n", i,
-                b_buckets[i].need_ping()?"WAIT":"PING");
+                b_buckets[i].need_ping()?"PING":"WAIT");
         b_buckets[i].dump();
     }
     printf("dump ended: %s\n", idstr(b_tableid));

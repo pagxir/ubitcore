@@ -7,7 +7,7 @@ class kbucket{
         kbucket();
         ~kbucket();
         void dump();
-        void touch();
+        bool touch();
 
         int  failed_contact(const kitem_t *in);
         int  find_nodes(kitem_t nodes[_K], bool validate);

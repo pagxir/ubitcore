@@ -130,7 +130,7 @@ update_contact(const kitem_t *in, bool contacted)
 {
     int retval =__static_table.insert_node(in, contacted);
     if (__static_table.pingable()){
-        __static_pingd.bwakeup(&__static_pingd);
+        __static_pingd.bwakeup(NULL);
     }
     return retval;
 }
@@ -166,7 +166,7 @@ pingd::bdocall()
                 }
                 if (b_concurrency == 0){
                     if (!__static_table.pingable()){
-                        tsleep(this, "wait ping");
+                        tsleep(NULL, "wait ping");
                         return 0;
                     }
                     kping_t arg ;
@@ -175,6 +175,7 @@ pingd::bdocall()
                                 == __static_ping_queue.end()){
                             __static_ping_queue.insert(
                                     std::make_pair(arg.item.host, arg));
+                            printf("handle pending ping\n");
                         }
                     }
                     state = 0;
@@ -278,7 +279,9 @@ refresh_routing_table()
 void
 dump_routing_table()
 {
+#if 1
     __static_table.dump();
+#endif
 }
 
 class checkerd: public bthread

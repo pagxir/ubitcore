@@ -145,6 +145,8 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
         const char *target = btc.bget().bget("a").bget("target").c_str(&target_len);
         if (target_len==20 && target!=NULL){
             printf("find node: %s\n", idstr(target));
+        }else{
+            printf("find node unkown now");
         }
     }else if (memcmp(query, "ping", tlen) == 0){
         char buff[] = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t1:01:y1:re";
