@@ -195,16 +195,17 @@ kbucket::dump()
 {
     int i;
     kitem_t node;
-    for (i=0; i<b_nknode; i++){
-        b_knodes[i].get(&node);
-        printf("\t%02x: %s %d ", i, idstr(node.kadid), node.failed);
-        printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
-                htons(node.port));
+    time_t now = time(NULL);
+    if (b_nbackup > 0){
+        for (i=0; i<b_nbackup; i++){
+            printf("%4d ", now-b_backups[i].last_seen());
+        }
         printf("\n");
     }
-    for (i=0; i<b_nbackup; i++){
-        b_backups[i].get(&node);
-        printf("\tbk: %s %d ", idstr(node.kadid), node.failed);
+    for (i=0; i<b_nknode; i++){
+        b_knodes[i].get(&node);
+        printf("  %s %2d %4d ", idstr(node.kadid), node.failed,
+                now-b_knodes[i].last_seen());
         printf("%s:%d ", inet_ntoa(*(in_addr*)&node.host),
                 htons(node.port));
         printf("\n");

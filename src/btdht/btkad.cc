@@ -125,15 +125,9 @@ kping_expand(char *buffer, int count, in_addr_t addr,
     return 0;
 }
 
-static std::map<in_addr_t, kitem_t> __static_active;
-
 int
 update_contact(const kitem_t *in, bool contacted)
 {
-    if (contacted == true){
-        __static_active.insert(
-                std::make_pair(in->host, *in));
-    }
     int retval =__static_table.insert_node(in, contacted);
     if (__static_table.pingable()){
         __static_pingd.bwakeup(&__static_pingd);
@@ -144,7 +138,6 @@ update_contact(const kitem_t *in, bool contacted)
 int
 failed_contact(const kitem_t *in)
 {
-    __static_active.erase(in->host);
     return __static_table.failed_contact(in);
 }
 
@@ -285,18 +278,7 @@ refresh_routing_table()
 void
 dump_routing_table()
 {
-#if 0
     __static_table.dump();
-    printf("dump active node:\n");
-    std::map<in_addr_t, kitem_t>::iterator iter;
-    for (iter = __static_active.begin();
-            iter != __static_active.end(); iter++){
-        in_addr_t addr = iter->second.host;
-        in_port_t port = iter->second.port;
-        printf("%s: %s:%d\n", idstr(iter->second.kadid),
-                inet_ntoa(*(in_addr*)&addr), htons(port));
-    }
-#endif
 }
 
 class checkerd: public bthread
@@ -328,7 +310,7 @@ checkerd::bdocall()
         switch(b_state)
         {
             case 0:
-                btime_wait(b_last_show+90);
+                btime_wait(b_last_show+120);
                 if (now_time() > b_next_refresh){
                     time_t random = (time_t)((60*15*0.9)+(rand()%(60*15))/5);
                     b_next_refresh = now_time()+random;

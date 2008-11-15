@@ -13,6 +13,7 @@ class knode{
         int  set(const kitem_t *in);
         int  cmpid(const char id[20]);
         time_t last_seen() { return b_last_seen; }
+        time_t birthday() { return b_birthday; }
         in_addr_t addr() { return b_address; }
         in_port_t port() { return b_port; }
 

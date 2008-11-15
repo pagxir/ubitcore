@@ -65,9 +65,9 @@ dhtrackerd::bdocall()
                 }
                 break;
             case 3:
-                if (b_last_update+300 > time(NULL)){
+                if (b_last_update+1800> time(NULL)){
+                    btime_wait(b_last_update+1800); 
                     b_retry = 0;
-                    btime_wait(b_last_update+300); 
                 }
                 state = 0;
                 break;

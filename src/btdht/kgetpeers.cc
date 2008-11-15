@@ -107,7 +107,11 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         }
         peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }
-    printf("-----------------%p:%d------------------------\n", peers, len);
+    if (len > 6){
+        printf("------%p:%d @%s------\n", peers, len, idstr(b_target));
+    }else{
+        printf("-------------%s------\n", idstr(b_target));
+    }
 }
 
 int
@@ -129,7 +133,7 @@ kgetpeers::vcall()
             case 0:
                 break;
             case 1:
-                while (b_concurrency<8){
+                while (b_concurrency<3){
                     if (b_qfind.empty()){
                         break;
                     }
