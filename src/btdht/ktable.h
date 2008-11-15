@@ -33,7 +33,7 @@ class ktable{
         kbucket *b_buckets;
 
     public:
-        int get_ping(kitem_t *item);
+        int get_ping(kitem_t items[], size_t size);
         bool pingable(){ return b_need_ping; }
 
     private:

@@ -15,7 +15,7 @@ class kbucket{
 
     public:
         size_t size(){ return b_nknode; }
-        int get_ping(kitem_t *in);
+        int get_ping(kitem_t items[], size_t size);
         bool need_ping(){ return b_need_ping; }
 
     private:

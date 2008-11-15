@@ -175,23 +175,24 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
 }
 
 int
-kbucket::get_ping(kitem_t *item)
+kbucket::get_ping(kitem_t items[], size_t size)
 {
     int i;
-    int found = -1;
-    time_t last = time(NULL);
+    int count = 0;
+    size_t real_size = size>b_nbackup?b_nbackup:size;
+
+    if (size == 0){
+        return 0;
+    }
+
     b_need_ping = false;
-    for (i=0; i<b_nknode; i++){
+    for (i=0; i<b_nknode&&count<real_size; i++){
         if (b_knodes[i]._isdoubt()){
-            if (last > b_knodes[i].last_seen()){
-                last = b_knodes[i].last_seen();
-                b_knodes[i].get(item);
-                b_need_ping = true;
-                found = i;
-            }
+            b_knodes[i].get(&items[count]);
+            count++;
         }
     }
-    return found;
+    return count;
 }
 
 void

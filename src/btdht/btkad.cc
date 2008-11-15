@@ -172,9 +172,14 @@ pingd::bdocall()
                     b_text_satus = "wait ping";
                     tsleep(NULL, "wait ping");
                     return 0;
-                }else if (-1 != __static_table.get_ping(&ping_struct.item)){
-                    __static_ping_queue.insert(
-                            std::make_pair(ping_struct.item.host, ping_struct));
+                }else {
+                    kitem_t items[_K];
+                    int count = __static_table.get_ping(items, _K);
+                    for (int i=0; i<count; i++){
+                        ping_struct.item = items[i];
+                        __static_ping_queue.insert(
+                                std::make_pair(items[i].host, ping_struct));
+                    }
                     state = 0;
                 }
                 break;

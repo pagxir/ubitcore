@@ -163,18 +163,23 @@ ktable::size_of_bucket(int index)
 }
 
 int
-ktable::get_ping(kitem_t *item)
+ktable::get_ping(kitem_t items[], size_t size)
 {
     int i;
-    for (i=0; i<b_nbucket0; i++){
+    int count = 0;
+
+    if (size == 0){
+        return 0;
+    }
+
+    b_need_ping = false;
+    for (i=0; i<b_nbucket1&&count<size; i++){
         if (b_buckets[i].need_ping()){
-            if (b_buckets[i].get_ping(item) != -1){
-                return 0;
-            }
+            count += b_buckets[i].get_ping(&items[count], size-count);
+            b_need_ping = true;
         }
     }
-    b_need_ping = false;
-    return -1;
+    return count;
 }
 
 ktable::~ktable()
