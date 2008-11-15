@@ -131,6 +131,10 @@ kping_expand(char *buffer, int count, in_addr_t addr,
 int
 update_contact(const kitem_t *in, bool contacted)
 {
+    static int __callonce = 0;
+    if (__callonce++ == 0){
+        printf("update contact\n");
+    }
     int retval =__static_table.insert_node(in, contacted);
     if (__static_table.pingable()){
         __static_pingd.bwakeup(NULL);
@@ -157,7 +161,6 @@ pingd::bdocall()
         b_state = state++;
         switch(b_state){
             case 0:
-                b_sendmore = false;
                 ping_q = &__static_ping_queue;
                 while (!ping_q->empty() && b_concurrency<_K){
                     ping_struct = ping_q->begin()->second;
@@ -167,12 +170,12 @@ pingd::bdocall()
                     b_queue.push_back(ping_struct);
                     transfer->ping_node(ping_struct.item.host,
                             ping_struct.item.port);
+                    b_last_seen = time(NULL);
                     b_sendmore = true;
                     b_concurrency++;
                 }
                 if (b_concurrency > 0){
-                    b_last_seen = time(NULL);
-                    delay_resume(b_last_seen+2);
+                    delay_resume(b_last_seen+3);
                 }else if (!__static_table.pingable()){
                     b_text_satus = "wait ping";
                     tsleep(NULL, "wait ping");
@@ -185,6 +188,7 @@ pingd::bdocall()
                         __static_ping_queue.insert(
                                 std::make_pair(items[i].host, ping_struct));
                     }
+                    printf("ping kbucket\n");
                     state = 0;
                 }
                 break;
@@ -208,9 +212,12 @@ pingd::bdocall()
                 }
                 if (!reset_timeout() || b_concurrency<_K){
                     if (b_concurrency<_K && b_sendmore){
+                        b_sendmore = false;
                         state = 0;
-                    }else{
+                    }else if (b_concurrency > 0){
                         tsleep(this, "select");
+                    }else{
+                        state = 0;
                     }
                 }else{
                     for (int i=0; i<b_queue.size(); i++){
@@ -272,6 +279,7 @@ int
 refresh_routing_table()
 {
     int i;
+    printf("refresh routing\n");
     for (i=0; i<__static_table.size(); i++){
         if (__static_refresh[i] == NULL){
             __static_refresh[i] = new refreshd(i);
@@ -288,7 +296,9 @@ dump_routing_table()
     printf("refresh: ");
     time_t now = time(NULL);
     for (int i=0; i<__static_table.size(); i++){
-        printf("%4d ", now-__static_refresh[i]->last_update());
+        if (__static_refresh[i] != NULL){
+            printf("%4d ", now-__static_refresh[i]->last_update());
+        }
     }
     printf("\n");
     __static_table.dump();
@@ -400,6 +410,7 @@ bootupd::bdocall()
                     tsleep(NULL, "exit");
                     return 0;
                 }
+                printf("booting .....: %d\n", count);
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
@@ -410,6 +421,7 @@ bootupd::bdocall()
                 error = b_find->vcall();
                 break;
             case 3:
+                printf("booting finish: %d\n", error);
                 b_usevalid = (error<4);
                 break;
             case 4:

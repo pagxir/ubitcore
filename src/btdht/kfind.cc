@@ -27,6 +27,8 @@ kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
     b_trim  = false;
     b_sumumery = 0;
     b_concurrency = 0;
+    b_last_finding = 0;
+    b_last_update = time(NULL);
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
         kfs.ship = NULL;
@@ -110,7 +112,6 @@ kfind::vcall()
     in_addr_t host;
     in_port_t port;
     bthread  *thr = NULL;
-    std::vector<kfind_t>::iterator iter;
 
     while (error != -1){
         b_state = state++;
@@ -118,7 +119,6 @@ kfind::vcall()
             case 0:
                 break;
             case 1:
-                b_last_finding = 0;
                 while (b_concurrency<CONCURRENT_REQUEST){
                     if (b_qfind.empty()){
                         break;
@@ -132,17 +132,16 @@ kfind::vcall()
                     b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1));
                     b_qfind.erase(b_qfind.begin());
                     kfs.ship = b_net->get_kship();
-                    kfs.ship->find_node(kfs.item.host, kfs.item.port,
-                            (uint8_t*)b_target);
+                    kfs.ship->find_node(kfs.item.host,
+                            kfs.item.port, (uint8_t*)b_target);
                     b_outqueue.push_back(kfs);
+                    b_last_update = time(NULL);
                     b_last_finding++;
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
-                    //printf("summery: %d\n", b_sumumery);
                     return b_sumumery;
                 }
-                b_last_update = time(NULL);
                 delay_resume(b_last_update+5);
                 break;
             case 2:
@@ -164,13 +163,7 @@ kfind::vcall()
                     delete ship;
                 }
                 thr = bthread::now_job();
-                if (!thr->reset_timeout() || b_concurrency<CONCURRENT_REQUEST){
-                    if (b_concurrency<CONCURRENT_REQUEST  && 0<b_last_finding){
-                        error = state = 0;
-                    }else{
-                        thr->tsleep(this, "selecting");
-                    }
-                }else{
+                if (thr->reset_timeout()){
                     for (int i=0; i<b_outqueue.size(); i++){
                         if (b_outqueue[i].ship != NULL){
                             failed_contact(&b_outqueue[i].item);
@@ -180,9 +173,18 @@ kfind::vcall()
                     }
                     b_outqueue.resize(0);
                     b_concurrency = 0;
-                    error = state = 0;
                 }
+                if (b_concurrency<CONCURRENT_REQUEST && b_last_finding){
+                    b_last_finding = 0;
+                    error = state = 0;
+                }else if (b_concurrency > 0){
+                    thr->tsleep(this, "selecting");
+                }else{
+                    return b_sumumery;
+                }
+                break;
             default:
+                assert(0);
                 break;
         }
     }
