@@ -172,13 +172,12 @@ ktable::get_ping(kitem_t items[], size_t size)
         return 0;
     }
 
-    b_need_ping = false;
     for (i=0; i<b_nbucket1&&count<size; i++){
         if (b_buckets[i].need_ping()){
             count += b_buckets[i].get_ping(&items[count], size-count);
-            b_need_ping = true;
         }
     }
+    b_need_ping = count>0;
     return count;
 }
 
