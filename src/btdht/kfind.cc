@@ -34,7 +34,11 @@ kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
         kfs.ship = NULL;
         kfs.item = items[i];
         kaddist_t dist(items[i].kadid, b_target);
-        b_qfind.insert(std::make_pair(dist, kfs));
+        if (b_mapoutedkadid.insert(std::make_pair(dist, 1)).second){
+            if (b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1)).second){
+                b_qfind.insert(std::make_pair(dist, kfs));
+            }
+        }
     }
 }
 
@@ -94,10 +98,9 @@ kfind::kfind_expand(const char buffer[], size_t count,
             if (b_trim && b_ended < dist){
                 continue;
             }
-            if (b_mapoutedkadid.find(dist)==b_mapoutedkadid.end() 
-                    && b_mapoutedaddr.find(kfs.item.host)==b_mapoutedaddr.end()){
-                if (b_qfind.insert(std::make_pair(dist, kfs)).second == false) {
-                    /* nothing to do */
+            if (b_mapoutedkadid.insert(std::make_pair(dist, 1)).second){
+                if (b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1)).second){
+                    b_qfind.insert(std::make_pair(dist, kfs));
                 }
             }
         }
@@ -130,9 +133,6 @@ kfind::vcall()
                         break;
                     }
                     kfind_t kfs = b_qfind.begin()->second;
-                    kaddist_t ord = b_qfind.begin()->first;
-                    b_mapoutedkadid.insert(std::make_pair(ord, 1));
-                    b_mapoutedaddr.insert(std::make_pair(kfs.item.host, 1));
                     b_qfind.erase(b_qfind.begin());
                     kfs.ship = b_net->get_kship();
                     kfs.ship->find_node(kfs.item.host,

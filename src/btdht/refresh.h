@@ -13,6 +13,9 @@ class refreshd: public bthread
     private:
         int b_index;
         int b_state;
+
+        int b_count;
+	char b_target[20];
         kitem_t b_findNodes[8];
 
     private:

@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <map>
 
@@ -69,6 +71,9 @@ refreshd::bdocall()
                     tsleep(NULL, "exit");
                     return 0;
                 }
+		b_count = count;
+                memcpy(b_target, bootid, 20);
+		memcpy(b_findNodes, items, count*sizeof(kitem_t));
                 b_find = kfind_new(bootid, items, count);
                 b_last_update = time(NULL);
                 b_usevalid = false;
@@ -77,14 +82,27 @@ refreshd::bdocall()
                 error = b_find->vcall();
                 break;
             case 2:
-                if (error < 3){
+                if (error<3 && b_retry<3){
                     b_usevalid = true;
                     state = 0;
                 }
+		if (error == 0){
+                    int i;
+                    printf("refresh: ");
+                    printf("%s\n", idstr(b_target));
+                    for (i=0; i<b_count; i++){
+                        printf("%s  %s:%d\n",
+                                idstr(b_findNodes[i].kadid),
+                                inet_ntoa(*(in_addr*)&b_findNodes[i].host),
+                                htons(b_findNodes[i].port));
+                    }
+                    printf("re:%d@%d\n", b_retry, b_index);
+		}
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){
                     tsleep(NULL, "exit");
+                    b_retry = 0;
                 }
                 state = 0;
                 break;
