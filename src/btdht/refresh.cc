@@ -77,23 +77,14 @@ refreshd::bdocall()
                 error = b_find->vcall();
                 break;
             case 2:
-                if (error < 4 && b_retry<3){
+                if (error < 3){
                     b_usevalid = true;
-                    b_retry++;
                     state = 0;
                 }
-#if 0
-                printf("===================================================n\n");
-                b_find->dump();
-                printf("refresh%02x: %d-%d\n", b_index, b_usevalid, error);
-                dump_bucket(b_index);
-                printf("--------------------------------------------------\n\n");
-#endif
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){
                     tsleep(NULL, "exit");
-                    b_retry = 0;
                 }
                 state = 0;
                 break;

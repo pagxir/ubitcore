@@ -66,6 +66,7 @@ kfind::kfind_expand(const char buffer[], size_t count,
     }
     b_loging += idstr(vip);
     b_loging += "\n";
+    b_last_finding++;
     kaddist_t dist(vip, b_target);
     kfs.item.port = port;
     kfs.item.host = address;
@@ -138,13 +139,13 @@ kfind::vcall()
                             kfs.item.port, (uint8_t*)b_target);
                     b_outqueue.push_back(kfs);
                     b_last_update = time(NULL);
+                    delay_resume(b_last_update+5);
                     b_last_finding++;
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
                     return b_sumumery;
                 }
-                delay_resume(b_last_update+5);
                 break;
             case 2:
                 error = -1;

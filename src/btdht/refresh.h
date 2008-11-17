@@ -1,5 +1,6 @@
 #ifndef __REFRESH_H__
 #define __REFRESH_H__
+#include "kutils.h"
 #include "bthread.h"
 class kfind;
 class refreshd: public bthread
@@ -12,6 +13,7 @@ class refreshd: public bthread
     private:
         int b_index;
         int b_state;
+        kitem_t b_findNodes[8];
 
     private:
         time_t b_random;

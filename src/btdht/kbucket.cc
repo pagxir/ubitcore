@@ -109,7 +109,7 @@ kbucket::update_backup(const kitem_t *in, bool contacted)
         }
     }
     if (b_nbackup < 8){
-        int r = b_nbackup++;
+        int r = b_nbackup++; 
         b_backups[r] = knode(in->kadid, in->host, in->port);
         contacted&&b_backups[r].touch();
         return 0;

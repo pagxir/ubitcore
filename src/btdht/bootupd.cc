@@ -56,7 +56,6 @@ bootupd::bdocall()
                     tsleep(NULL, "exit");
                     return 0;
                 }
-                printf("booting .....: %d\n", count);
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
@@ -73,7 +72,6 @@ bootupd::bdocall()
             case 4:
                 if (size_of_table() > 4){
                     if (b_refresh == true){
-                        printf("bootup refresh routing\n");
                         refresh_routing_table();
                         b_refresh = false;
                     }
