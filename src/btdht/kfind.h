@@ -3,6 +3,7 @@
 #include "btkad.h"
 #include "kutils.h"
 #include <vector>
+#include <string>
 class kship;
 class bdhtnet;
 
@@ -15,6 +16,7 @@ class kfind{
     public:
         kfind(bdhtnet *net, const char target[20],
                 kitem_t items[], size_t count);
+        void dump();
         void kfind_expand(const char buffer[], size_t count,
                 in_addr_t host, in_port_t port, const kitem_t *old);
         int vcall();
@@ -22,6 +24,7 @@ class kfind{
     private:
         int b_sumumery;
         int b_last_finding;
+        std::string b_loging;
 
     private:
         char b_target[20];

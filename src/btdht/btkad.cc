@@ -122,6 +122,8 @@ add_boot_contact(in_addr_t addr, in_port_t port)
         __boot_contacts[idx].port = port;
         return 0;
     }
+    __static_pingd.add_contact(addr, port);
+    __static_pingd.bwakeup(&__static_pingd);
     return 0;
 }
 
@@ -170,6 +172,11 @@ dump_routing_table()
 #endif
 }
 
+void
+dump_bucket(int index)
+{
+    __static_table.dump(index);
+}
 
 int
 bdhtnet_start()

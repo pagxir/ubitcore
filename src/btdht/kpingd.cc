@@ -77,7 +77,6 @@ pingd::bdocall()
     kping_t ping_struct;
     std::map<in_addr_t, kping_t> *ping_q;
 
-
     while (b_runable){
         b_state = state++;
         switch(b_state){
@@ -96,10 +95,8 @@ pingd::bdocall()
                     b_concurrency++;
                 }
                 if (b_concurrency > 0){
-                    printf("wait resume\n");
                     delay_resume(b_last_seen+3);
                 }else if (!table_is_pingable()){
-                    printf("wait ping\n");
                     b_text_satus = "wait ping";
                     tsleep(NULL, "wait ping");
                     return 0;
@@ -111,7 +108,6 @@ pingd::bdocall()
                         __static_ping_queue.insert(
                                 std::make_pair(items[i].host, ping_struct));
                     }
-                    printf("ping kbucket\n");
                     state = 0;
                 }
                 break;
@@ -158,7 +154,6 @@ pingd::bdocall()
                 break;
         }
     }
-    printf("pingd status: %s\n", b_wmsg);
     return 0;
 }
 

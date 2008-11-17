@@ -73,6 +73,7 @@ bootupd::bdocall()
             case 4:
                 if (size_of_table() > 4){
                     if (b_refresh == true){
+                        printf("bootup refresh routing\n");
                         refresh_routing_table();
                         b_refresh = false;
                     }

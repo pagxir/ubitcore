@@ -28,4 +28,6 @@ int get_bootup_nodes(kitem_t items[], size_t size);
 int get_table_ping(kitem_t items[], size_t size);
 int size_of_bucket(int index);
 int size_of_table();
+void dump_bucket(int index);
+
 #endif

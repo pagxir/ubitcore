@@ -62,7 +62,6 @@ refreshd::bdocall()
             case 0:
                 genrefreshid(bootid, b_index);
                 count = find_nodes(bootid, items, b_usevalid);
-                //printf("refresh: %02d:%s:%d\n", b_index, idstr(bootid), count);
                 if (count == 0){
                     count = find_nodes(bootid, items, false);
                 }
@@ -83,6 +82,13 @@ refreshd::bdocall()
                     b_retry++;
                     state = 0;
                 }
+#if 0
+                printf("===================================================n\n");
+                b_find->dump();
+                printf("refresh%02x: %d-%d\n", b_index, b_usevalid, error);
+                dump_bucket(b_index);
+                printf("--------------------------------------------------\n\n");
+#endif
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){

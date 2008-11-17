@@ -9,6 +9,7 @@ class ktable{
         ktable();
         ~ktable();
         void dump();
+        void dump(int i);
 
     public:
         time_t last_seen(){ return b_last_seen; }

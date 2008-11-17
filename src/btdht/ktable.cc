@@ -199,3 +199,11 @@ ktable::dump()
     }
     printf("dump ended: %s\n", idstr(b_tableid));
 }
+
+void
+ktable::dump(int idx)
+{
+    printf("%02xbucket@%s:\n", idx,
+            b_buckets[idx].need_ping()?"PING":"WAIT");
+    b_buckets[idx].dump();
+}

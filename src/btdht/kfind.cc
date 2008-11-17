@@ -64,6 +64,8 @@ kfind::kfind_expand(const char buffer[], size_t count,
     if (memcmp(vip, old->kadid, 20) != 0){
         failed_contact(old);
     }
+    b_loging += idstr(vip);
+    b_loging += "\n";
     kaddist_t dist(vip, b_target);
     kfs.item.port = port;
     kfs.item.host = address;
@@ -189,4 +191,10 @@ kfind::vcall()
         }
     }
     return error;
+}
+
+void
+kfind::dump()
+{
+    printf("kfind result: \n%s", b_loging.c_str());
 }

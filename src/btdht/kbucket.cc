@@ -89,7 +89,7 @@ kbucket::find_nodes(kitem_t nodes[], bool validate)
     int count = 0;
     assert(b_nknode <= _K);
     for (i=0; i<b_nknode; i++){
-        if (!validate || b_knodes[i]._isvalidate()){
+        if (!validate || b_knodes[i]._isgood()){
             b_knodes[i].get(&nodes[count]);
             count++;
         }
@@ -150,7 +150,7 @@ kbucket::update_contact(const kitem_t *in, bool contacted)
     }
     /* replace bad node */
     for (i=0; i<b_nknode; i++){
-        if (b_knodes[i]._isvalidate() == false){
+        if (b_knodes[i]._isbad()){
             b_knodes[i] = knode(in->kadid, in->host, in->port);
             contacted&&b_knodes[i].touch();
             return contacted&&touch();
@@ -189,6 +189,7 @@ kbucket::get_ping(kitem_t items[], size_t size)
     for (i=0; i<b_nknode&&count<real_size; i++){
         if (b_knodes[i]._isdoubt()){
             b_knodes[i].get(&items[count]);
+            b_need_ping = true;
             count++;
         }
     }

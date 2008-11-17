@@ -33,12 +33,20 @@ knode::touch()
 bool
 knode::_isdoubt()
 {
-    if (b_failed < 2){
+    if (b_last_seen == 0){
+        return b_failed<2;
+    }
+    if (b_failed < 3){
         return (b_last_seen+900<time(NULL));
     }
     return false;
 }
 
+bool
+knode::_isbad()
+{
+    return !(b_failed<3);
+}
 
 int
 knode::set(const kitem_t *in)
@@ -74,4 +82,13 @@ int
 knode::cmpid(const char id[20])
 {
     return memcmp(id, b_ident, 20);
+}
+
+bool
+knode::_isgood()
+{ 
+    if (_isdoubt()){
+        return false;
+    }
+    return  b_failed<3;
 }
