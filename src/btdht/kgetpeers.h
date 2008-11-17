@@ -21,6 +21,7 @@ class kgetpeers{
 
     private:
         int b_sumumery;
+        int b_last_concurrency;
 
     private:
         char b_target[20];

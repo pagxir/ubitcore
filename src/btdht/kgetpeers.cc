@@ -28,6 +28,7 @@ kgetpeers::kgetpeers(bdhtnet *net, const char target[20],
     b_sumumery = 0;
     kgetpeers_t kfs;
     b_concurrency = 0;
+    b_last_concurrency = 0;
     memcpy(b_target, target, 20);
     for (i=0; i<count; i++){
         kfs.item = items[i];
@@ -107,11 +108,6 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         }
         peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }
-    if (len > 6){
-        printf("------%p:%d @%s------\n", peers, len, idstr(b_target));
-    }else{
-        printf("-------------%s------\n", idstr(b_target));
-    }
 }
 
 int
@@ -125,7 +121,6 @@ kgetpeers::vcall()
     in_addr_t host;
     in_port_t port;
     bthread  *thr = NULL;
-    std::vector<kgetpeers_t>::iterator iter;
 
     while (error != -1){
         b_state = state++;
@@ -133,7 +128,7 @@ kgetpeers::vcall()
             case 0:
                 break;
             case 1:
-                while (b_concurrency<3){
+                while (b_concurrency<CONCURRENT_REQUEST){
                     if (b_qfind.empty()){
                         break;
                     }
@@ -149,22 +144,36 @@ kgetpeers::vcall()
                     kfs.ship->get_peers(kfs.item.host, kfs.item.port,
                             (uint8_t*)b_target);
                     b_outqueue.push_back(kfs);
+                    b_last_update = time(NULL);
+                    b_last_concurrency++;
                     b_concurrency++;
                 }
                 if (b_concurrency == 0){
                     //printf("summery: %d\n", b_sumumery);
                     return b_sumumery;
                 }
-                b_last_update = time(NULL);
-                thr = bthread::now_job();
-                thr->tsleep(thr, "kgetpeers");
+                delay_resume(b_last_update+5);
                 break;
             case 2:
-                if (b_last_update+5 > now_time()){
-                    error = -1;
-                    thr = bthread::now_job();
-                    delay_resume(b_last_update+5);
-                }else{
+                error = -1;
+                for (int i=0; i<b_outqueue.size(); i++){
+                    if (b_outqueue[i].ship == NULL){
+                        continue;
+                    }
+                    kship *ship = b_outqueue[i].ship;
+                    count = ship->get_response(buffer,
+                            sizeof(buffer), &host, &port);
+                    if (count <= 0){
+                        continue;
+                    }
+                    kgetpeers_expand(buffer, count, host, port,
+                            &b_outqueue[i].item);
+                    b_outqueue[i].ship = NULL;
+                    b_concurrency--;
+                    delete ship;
+                }
+                thr = bthread::now_job();
+                if (thr->reset_timeout()){
                     for (int i=0; i<b_outqueue.size(); i++){
                         if (b_outqueue[i].ship != NULL){
                             failed_contact(&b_outqueue[i].item);
@@ -174,32 +183,14 @@ kgetpeers::vcall()
                     }
                     b_outqueue.resize(0);
                     b_concurrency = 0;
-                    error = state = 0;
-                    break;
                 }
-                for (int i=0; i<b_outqueue.size(); i++){
-                    if (b_outqueue[i].ship == NULL){
-                        continue;
-                    }
-                    kship *ship = b_outqueue[i].ship;
-                    count = ship->get_response(buffer,
-                            sizeof(buffer), &host, &port);
-                    if (count > 0){
-                        if (b_concurrency > 0){
-                            b_concurrency--;
-                        }
-                        kgetpeers_expand(buffer, count, host, port, &b_outqueue[i].item);
-                        b_outqueue[i].ship = NULL;
-                        error = state = 0;
-                        delete ship;
-                    }else{
-#if 0
-                    if (b_trim && b_ended<b_qfind.begin()->first){
-                        printf("empty0\n");
-                        break;
-                    }
-#endif
-                    }
+                if (b_concurrency < CONCURRENT_REQUEST && b_last_concurrency){
+                    b_last_concurrency = 0;
+                    error = state = 0;
+                }else if (b_concurrency > 0){
+                    thr->tsleep(this, "selecting");
+                }else {
+                    return b_sumumery;
                 }
                 break;
             default:

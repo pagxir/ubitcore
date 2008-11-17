@@ -13,6 +13,12 @@ libsub_btdht_a_SOURCES = \
 	kgetpeers.h  \
 	dhtracker.h  \
 	dhtracker.cc \
+	kpingd.h     \
+	kpingd.cc    \
+	bootupd.h    \
+        bootupd.cc   \
+	checkerd.h  \
+	checkerd.cc \
 	kfind.h     \
 	kutils.cc   \
 	kutils.h    \
