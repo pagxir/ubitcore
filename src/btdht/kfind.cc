@@ -152,7 +152,7 @@ kfind::vcall()
                     b_concurrency--;
                 }
                 thr = bthread::now_job();
-                if (b_last_update+5>=now_time()){
+                if (b_last_update+5<=now_time()){
                     std::map<kaddist_t, kitem_t>::iterator iter;
                     for (iter=b_outqueue.begin(); iter!=b_outqueue.end(); iter++){
                         failed_contact(&iter->second);

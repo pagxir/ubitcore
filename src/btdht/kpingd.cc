@@ -129,7 +129,7 @@ pingd::bdocall()
                     count = b_ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
                 }
-                if (b_last_seen+3>=now_time()){
+                if (b_last_seen+3<=now_time()){
                     std::map<in_addr_t, kitem_t>::iterator iter;
                     for (iter=b_queue.begin(); iter!=b_queue.end(); iter++){
                         failed_contact(&iter->second);
