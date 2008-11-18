@@ -146,12 +146,15 @@ refresh_routing_table()
 {
     int i;
     printf("refresh routing\n");
+#if 0
     for (i=0; i<__static_table.size(); i++){
         if (__static_refresh[i] == NULL){
             __static_refresh[i] = new refreshd(i);
         }
         __static_refresh[i]->bwakeup(NULL);
     }
+#endif
+    __static_checkerd.bwakeup(NULL);
     return 0;
 }
 
@@ -223,5 +226,31 @@ tracker_start(const char info_hash[20])
 {
     dhtrackerd *d = new dhtrackerd(info_hash);
     d->bwakeup(NULL);
+    return 0;
+}
+
+static uint8_t __mask[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF};
+
+int
+genrefreshid(char bootid[20], int index)
+{
+    uint8_t mask;
+    char tmpid[20];
+    int u, i, j;
+    genkadid(bootid);
+    getkadid(tmpid);
+    j = 0;
+    u = index;
+    while (u >= 8){
+        bootid[j] = tmpid[j];
+        u -= 8;
+        j++;
+    }
+    mask =  __mask[u];
+    bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
+    if (size_of_table() > index){
+        bootid[j] ^= (0x80>>u);
+        assert(bit1_index_of(bootid) == index);
+    }
     return 0;
 }

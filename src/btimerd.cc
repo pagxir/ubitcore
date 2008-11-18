@@ -112,24 +112,18 @@ now_time()
     return btimerd::_tnow;
 }
 
-int
+void
 delay_resume(time_t timeout)
 {
     __timer_daemon.enqueue(timeout);
-    return 0;
 }
 
-int
+void
 btime_wait(time_t t)
 {
     static int _twait;
     bthread *thr = bthread::now_job();
-    if (t <= now_time()){
-        thr->timeout();
-        return 0;
-    }
     thr->tsleep(&_twait, "time wait");
     __timer_daemon.enqueue(t);
-    return -1;
 }
 

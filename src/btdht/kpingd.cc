@@ -106,7 +106,7 @@ pingd::bdocall()
                     b_concurrency++;
                 }
                 if (b_concurrency > 0){
-                    delay_resume(b_last_seen+3);
+                    /* nothing to do */
                 }else if (!table_is_pingable()){
                     tsleep(NULL, "wait ping");
                     return 0;
@@ -129,7 +129,7 @@ pingd::bdocall()
                     count = b_ship->get_response(buffer,
                             sizeof(buffer), &host, &port);
                 }
-                if (reset_timeout()){
+                if (b_last_seen+3>=now_time()){
                     std::map<in_addr_t, kitem_t>::iterator iter;
                     for (iter=b_queue.begin(); iter!=b_queue.end(); iter++){
                         failed_contact(&iter->second);
@@ -142,6 +142,7 @@ pingd::bdocall()
                     b_sendmore = false;
                     state = 1;
                 }else if (b_concurrency > 0){
+                    delay_resume(b_last_seen+3);
                     tsleep(this, "select");
                 }else{
                     state = 1;

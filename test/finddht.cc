@@ -53,6 +53,7 @@ void find_dump(const char *buff, size_t len,
 {
     size_t tlen = 0;
     btcodec codec;
+
     printf("recv packet: %d\n", len);
     codec.bload(buff, len);
     const char *ident = codec.bget().bget("r").bget("id").c_str(&tlen);
@@ -96,12 +97,12 @@ int main(int argc, char *argv[])
         return -1;
     }
     remote.sin_family = AF_INET;
-    remote.sin_port = htons(atoi(argv[2]));
-    remote.sin_addr.s_addr = inet_addr(argv[1]);
+    remote.sin_port = htons(atoi(argv[3]));
+    remote.sin_addr.s_addr = inet_addr(argv[2]);
     for (i=0; i<3; i++){
         printf("send: %d\n", i);
         memcpy(buffer, __find_struct, strlen(__find_struct));
-        memcpy(&buffer[43], strid(argv[3]), 20);
+        memcpy(&buffer[43], strid(argv[1]), 20);
         error = sendto(udp, buffer, strlen(__find_struct), 0,
                 (struct sockaddr*)&remote, sizeof(remote));
         if (error == -1){

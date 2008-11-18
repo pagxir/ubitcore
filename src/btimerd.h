@@ -3,6 +3,6 @@
 time_t now_time();
 time_t comming_time();
 int btimerdrun();
-int delay_resume(time_t timeout);
-int btime_wait(time_t timeout);
+void delay_resume(time_t timeout);
+void btime_wait(time_t timeout);
 #endif

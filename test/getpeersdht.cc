@@ -117,12 +117,12 @@ int main(int argc, char *argv[])
         return -1;
     }
     remote.sin_family = AF_INET;
-    remote.sin_port = htons(atoi(argv[2]));
-    remote.sin_addr.s_addr = inet_addr(argv[1]);
+    remote.sin_port = htons(atoi(argv[3]));
+    remote.sin_addr.s_addr = inet_addr(argv[2]);
     for (i=0; i<3; i++){
         printf("send: %d\n", i);
         memcpy(buffer, __get_peers_struct, strlen(__get_peers_struct));
-        memcpy(&buffer[46], strid(argv[3]), 20);
+        memcpy(&buffer[46], strid(argv[1]), 20);
         error = sendto(udp, buffer, strlen(__get_peers_struct), 0,
                 (struct sockaddr*)&remote, sizeof(remote));
         if (error == -1){

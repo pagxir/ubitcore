@@ -22,10 +22,11 @@ bclock::bdocall()
     printf("bcall(%s): %s\n", ident_text.c_str(), ctime(&now));
 #endif
     while (b_runable){
-        if (reset_timeout()){
-            last_time = now_time(); 
+        if (last_time+b_second < now_time()){
+            btime_wait(last_time+b_second);
+            break;
         }
-        btime_wait(last_time+b_second);
+        last_time = now_time(); 
     }
     return -1;
 }

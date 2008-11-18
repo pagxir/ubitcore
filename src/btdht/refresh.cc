@@ -13,7 +13,6 @@
 #include "btimerd.h"
 
 
-static uint8_t __mask[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF};
 
 refreshd::refreshd(int index)
 {
@@ -24,29 +23,6 @@ refreshd::refreshd(int index)
     b_ident = "refreshd";
     b_usevalid = false;
     b_last_update = now_time();
-}
-
-int genrefreshid(char bootid[20], int index)
-{
-    uint8_t mask;
-    char tmpid[20];
-    int u, i, j;
-    genkadid(bootid);
-    getkadid(tmpid);
-    j = 0;
-    u = index;
-    while (u >= 8){
-        bootid[j] = tmpid[j];
-        u -= 8;
-        j++;
-    }
-    mask =  __mask[u];
-    bootid[j] = (tmpid[j]&mask)|(bootid[j]&~mask);
-    if (size_of_table() > index){
-        bootid[j] ^= (0x80>>u);
-        assert(bit1_index_of(bootid) == index);
-    }
-    return 0;
 }
 
 int

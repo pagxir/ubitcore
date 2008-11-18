@@ -136,7 +136,6 @@ kfind::vcall()
                     b_ship->find_node(item.host,
                             item.port, (uint8_t*)b_target);
                     b_last_update = time(NULL);
-                    delay_resume(b_last_update+5);
                     b_last_finding++;
                     b_concurrency++;
                 }
@@ -153,7 +152,7 @@ kfind::vcall()
                     b_concurrency--;
                 }
                 thr = bthread::now_job();
-                if (thr->reset_timeout()){
+                if (b_last_update+5>=now_time()){
                     std::map<kaddist_t, kitem_t>::iterator iter;
                     for (iter=b_outqueue.begin(); iter!=b_outqueue.end(); iter++){
                         failed_contact(&iter->second);
@@ -165,6 +164,7 @@ kfind::vcall()
                     b_last_finding = 0;
                     error = state = 0;
                 }else if (b_concurrency > 0){
+                    delay_resume(b_last_update+5);
                     thr->tsleep(this, "selecting");
                 }else{
                     return b_sumumery;

@@ -45,6 +45,9 @@ knode::_isdoubt()
 bool
 knode::_isbad()
 {
+    if (last_seen() == 0){
+        return !(b_failed<2);
+    }
     return !(b_failed<3);
 }
 

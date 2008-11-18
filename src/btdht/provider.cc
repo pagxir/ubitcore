@@ -33,6 +33,22 @@ char __get_peers[] =  {
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
 
+int padto(char buff[], kitem_t items[], size_t n)
+{
+    int i = 0;
+    int count = 0;
+    count = sprintf(buff, "%d:", n*26);
+    for (i=0; i<n; i++){
+        memcpy(&buff[count], items[i].kadid, 20);
+        count += 20;
+        memcpy(&buff[count], &items[i].host, 4);
+        count += 4;
+        memcpy(&buff[count], &items[i].port, 2);
+        count += 2;
+    }
+    return count;
+}
+
 int
 bdhtcodec::bload(const char *buffer, size_t length)
 {
@@ -140,11 +156,48 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
     }
     if (memcmp(query, "get_peers", tlen) == 0){
         printf("get peers\n");
+        size_t target_len = 0;
+        const char *target = btc.bget().bget("a").bget("info_hash").c_str(&target_len);
+        if (target_len==20 && target!=NULL){
+            kitem_t item, items[8];
+            int n = find_nodes(target, items, true);
+            char buff[8192] = {
+                "d1:rd5:token5:noown2:id20:XXXXXXXXXXXXXXXXXXXX5:nodes"
+                    "26:NNNNNNNNNNNNNNNNNNNNNNNNNNe1:t1:01:y1:re" 
+            };
+            getkadid(&buff[12+14]);
+            int n1 = padto(&buff[39+14], items, n);
+            const char *t = btc.bget().bget("t").b_str(&tlen);
+            memcpy(&buff[n1+39+14], "e1:t", 4);
+            memcpy(&buff[n1+43+14], t, tlen);
+            memcpy(&buff[n1+43+14+tlen], "1:y1:re", 7);
+            b_socket.bsendto(buff, 14+n1+43+7+tlen, host, port);
+            memcpy(item.kadid, kadid, 20);
+            item.host = host;
+            item.port = port;
+            update_contact(&item, false);
+        }
     }else if (memcmp(query, "find_node", tlen) == 0){
         size_t target_len = 0;
         const char *target = btc.bget().bget("a").bget("target").c_str(&target_len);
         if (target_len==20 && target!=NULL){
-            printf("find node: %s\n", idstr(target));
+            kitem_t item, items[8];
+            int n = find_nodes(target, items, true);
+            char buff[8192] = {
+                "d1:rd2:id20:XXXXXXXXXXXXXXXXXXXX5:nodes"
+                    "26:NNNNNNNNNNNNNNNNNNNNNNNNNNe1:t1:01:y1:re" 
+            };
+            getkadid(&buff[12]);
+            int n1 = padto(&buff[39], items, n);
+            const char *t = btc.bget().bget("t").b_str(&tlen);
+            memcpy(&buff[n1+39], "e1:t", 4);
+            memcpy(&buff[n1+43], t, tlen);
+            memcpy(&buff[n1+43+tlen], "1:y1:re", 7);
+            b_socket.bsendto(buff, n1+43+7+tlen, host, port);
+            memcpy(item.kadid, kadid, 20);
+            item.host = host;
+            item.port = port;
+            update_contact(&item, false);
         }else{
             printf("find node unkown now");
         }
