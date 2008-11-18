@@ -35,6 +35,11 @@ kfind::kfind(bdhtnet *net, const char target[20], kitem_t items[], size_t count)
                 b_qfind.insert(std::make_pair(dist, items[i]));
             }
         }
+        char buff[203];
+        sprintf(buff, "%s:%d\n",
+                inet_ntoa(*(in_addr*)&items[i].host),
+                htons(items[i].port));
+        b_loging +=  buff;
     }
     b_ship = net->get_kship();
 }

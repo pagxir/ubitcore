@@ -19,15 +19,21 @@
 #include "btimerd.h"
 #include "kpingd.h"
 
-static std::map<in_addr_t, kping_t> __static_ping_queue;
+static std::map<in_addr_t, kitem_t> __static_ping_queue;
 
 pingd::pingd()
     :b_state(0), b_concurrency(0)
 {
     b_ident = "pingd";
+    b_ship  =  NULL;
     b_sendmore = false;
     b_last_seen = time(NULL);
     b_swaitident = this;
+}
+
+pingd::~pingd()
+{
+    delete b_ship;
 }
 
 void
@@ -37,11 +43,8 @@ pingd::dump()
 }
 
 
-static std::vector<kitem_t> __static_ping_cache;
-
 int
-kping_expand(char *buffer, int count, in_addr_t addr,
-        in_port_t port, kitem_t *old)
+pingd::kping_expand(char *buffer, int count, in_addr_t addr, in_port_t port)
 {
     size_t lid;
     btcodec codec;
@@ -50,11 +53,15 @@ kping_expand(char *buffer, int count, in_addr_t addr,
     kitem_t initem;
     const char *kadid = codec.bget().bget("r").bget("id").c_str(&lid);
     if (kadid==NULL || lid!=20){
-        failed_contact(old);
         return 0;
     }
-    if (memcmp(old->kadid, kadid, 20) != 0){
-        failed_contact(old);
+    std::map<in_addr_t, kitem_t>::iterator iter = b_queue.find(addr);
+    if (iter != b_queue.end()){
+        kitem_t item = iter->second;
+        if (memcmp(item.kadid, kadid, 20)!=20){
+            failed_contact(&item);
+        }
+        b_queue.erase(iter);
     }
     initem.host = addr;
     initem.port = port;
@@ -71,25 +78,29 @@ kping_expand(char *buffer, int count, in_addr_t addr,
 int
 pingd::bdocall()
 {
-    int i;
+    int i, count;
     int state = b_state;
     char buffer[8192];
-    kping_t ping_struct;
-    std::map<in_addr_t, kping_t> *ping_q;
+    kitem_t item;
+    in_addr_t host;
+    in_port_t port;
+    std::map<in_addr_t, kitem_t> *ping_q;
 
     while (b_runable){
         b_state = state++;
         switch(b_state){
             case 0:
+                if (b_ship == NULL){
+                    b_ship = kship_new();
+                }
+                break;
+            case 1:
                 ping_q = &__static_ping_queue;
-                while (!ping_q->empty() && b_concurrency<_K){
-                    ping_struct = ping_q->begin()->second;
+                while (!ping_q->empty() && b_concurrency<3){
+                    item = ping_q->begin()->second;
+                    b_queue.insert(*ping_q->begin());
                     ping_q->erase(ping_q->begin());
-                    kship *transfer = kship_new();
-                    ping_struct.ship = transfer;
-                    b_queue.push_back(ping_struct);
-                    transfer->ping_node(ping_struct.item.host,
-                            ping_struct.item.port);
+                    b_ship->ping_node(item.host, item.port);
                     b_last_seen = time(NULL);
                     b_sendmore = true;
                     b_concurrency++;
@@ -97,56 +108,43 @@ pingd::bdocall()
                 if (b_concurrency > 0){
                     delay_resume(b_last_seen+3);
                 }else if (!table_is_pingable()){
-                    b_text_satus = "wait ping";
                     tsleep(NULL, "wait ping");
                     return 0;
                 }else {
                     kitem_t items[_K];
                     int count = get_table_ping(items, _K);
                     for (int i=0; i<count; i++){
-                        ping_struct.item = items[i];
                         __static_ping_queue.insert(
-                                std::make_pair(items[i].host, ping_struct));
+                                std::make_pair(items[i].host, items[i]));
                     }
-                    state = 0;
+                    state = 1;
                 }
                 break;
-            case 1:
-                for (i=0; i<b_queue.size(); i++){
-                    int count = -1;
-                    in_addr_t host;
-                    in_port_t port;
-                    if (b_queue[i].ship == NULL){
-                        continue;
-                    }
-                    count = b_queue[i].ship->get_response(buffer,
-                            sizeof(buffer), &host, &port);
-                    if (count == -1){
-                        continue;
-                    }
-                    kping_expand(buffer, count, host, port, &b_queue[i].item);
-                    delete b_queue[i].ship;
-                    b_queue[i].ship = NULL;
+            case 2:
+                count = b_ship->get_response(buffer,
+                        sizeof(buffer), &host, &port);
+                while (count != -1){
+                    kping_expand(buffer, count, host, port);
                     b_concurrency--;
+                    count = b_ship->get_response(buffer,
+                            sizeof(buffer), &host, &port);
                 }
                 if (reset_timeout()){
-                    for (int i=0; i<b_queue.size(); i++){
-                        if (b_queue[i].ship != NULL){
-                            failed_contact(&b_queue[i].item);
-                            delete b_queue[i].ship;
-                            b_queue[i].ship = NULL;
-                        }
+                    std::map<in_addr_t, kitem_t>::iterator iter;
+                    for (iter=b_queue.begin(); iter!=b_queue.end(); iter++){
+                        failed_contact(&iter->second);
                     }
-                    b_concurrency = state = 0;
+                    b_concurrency = 0;
                     b_queue.clear();
+                    state = 1;
                 }
                 if (b_concurrency<_K && b_sendmore){
                     b_sendmore = false;
-                    state = 0;
+                    state = 1;
                 }else if (b_concurrency > 0){
                     tsleep(this, "select");
                 }else{
-                    state = 0;
+                    state = 1;
                 }
                 break;
             default:
@@ -160,15 +158,15 @@ pingd::bdocall()
 int
 pingd::add_contact(in_addr_t addr, in_port_t port)
 {
-    kping_t ping_struct ;
-    memset(ping_struct.item.kadid, 0, 20);
-    ping_struct.item.host = addr;
-    ping_struct.item.port = port;
+    kitem_t item;
+    memset(item.kadid, 0, 20);
+    item.host = addr;
+    item.port = port;
     if (__static_ping_queue.find(addr)
             != __static_ping_queue.end()){
         return 0;
     }
     __static_ping_queue.insert(
-            std::make_pair(addr, ping_struct));
+            std::make_pair(addr, item));
     return 0;
 }
