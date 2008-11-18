@@ -75,7 +75,9 @@ bootupd::bdocall()
                         refresh_routing_table();
                         b_refresh = false;
                     }
-                    btime_wait(b_start_time+b_random);
+                    if (b_start_time+b_random > now_time()){
+                        btime_wait(b_start_time+b_random);
+                    }
                 }
                 break;
             case 5:
