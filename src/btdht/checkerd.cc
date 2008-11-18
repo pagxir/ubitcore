@@ -80,7 +80,7 @@ checkerd::bdocall()
                 break;
             case 4:
                 dump_routing_table();
-                if (time(NULL)<__wait+800){
+                if (time(NULL)>__wait+800){
                     btime_wait(__wait+800);
                 }
                 break;
