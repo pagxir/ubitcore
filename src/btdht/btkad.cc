@@ -23,9 +23,11 @@
 #include "checkerd.h"
 #include "btimerd.h"
 #include "bootupd.h"
+#include "services.h"
 #include "kpingd.h"
 
 static int __boot_count = 0;
+static bsocket __static_socket;
 static kitem_t __boot_contacts[8];
 static refreshd *__static_refresh[160];
 
@@ -34,6 +36,7 @@ static ktable __static_table;
 static bdhtnet __static_dhtnet;
 static bootupd __static_bootupd;
 static checkerd __static_checkerd;
+static serviced __static_serviced;
 
 kship *
 kship_new()
@@ -198,8 +201,10 @@ bdhtnet_start()
     getkadid(&__find_node[12]);
     extern char __get_peers[];
     getkadid(&__get_peers[12]);
+    __static_socket.blisten(0, 6880);
     __static_bootupd.bwakeup(NULL);
     __static_checkerd.bwakeup(NULL);
+    __static_serviced.bwakeup(NULL);
     return 0;
 }
 
@@ -253,4 +258,10 @@ genrefreshid(char bootid[20], int index)
         assert(bit1_index_of(bootid) == index);
     }
     return 0;
+}
+
+int
+accept_request(bsocket *si)
+{
+    return __static_socket.baccept(si);
 }

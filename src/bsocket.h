@@ -19,7 +19,8 @@ class bsocket
         bsocket();
         ~bsocket();
         bsocket &operator=(bsocket&);
-        int baccept(in_addr_t *host, in_port_t *port);
+        int baccept(bsocket *saddr);
+        int blisten(in_addr_t host, in_port_t port);
         int bconnect(const char *host, in_port_t port);
         int bconnect(in_addr_t host, in_port_t port);
         int bsend(const void *buf, size_t len);

@@ -19,6 +19,8 @@ libsub_btdht_a_SOURCES = \
         bootupd.cc   \
 	checkerd.h  \
 	checkerd.cc \
+	services.cc \
+	services.h  \
 	kfind.h     \
 	kutils.cc   \
 	kutils.h    \

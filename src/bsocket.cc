@@ -128,9 +128,43 @@ bsocket &bsocket::operator=(bsocket &src)
 }
 
 int
-bsocket::baccept(in_addr_t *host, in_port_t *port)
+bsocket::blisten(in_addr_t host, in_port_t port)
 {
-    return 0;
+    int error;
+    int fflag;
+    sockaddr_in siaddr;
+    siaddr.sin_family = AF_INET;
+    siaddr.sin_port = port;
+    siaddr.sin_addr.s_addr = host;
+    if (b_fd == -1){
+        b_fd = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    fflag = fcntl(b_fd, F_GETFL);
+    fflag |= O_NONBLOCK;
+    fcntl(b_fd, F_SETFL, fflag);
+    error = bind(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
+    assert(error != -1);
+    error = listen(b_fd, 5);
+    assert(error != -1);
+    return error;
+}
+
+int
+bsocket::baccept(bsocket *saddr)
+{
+    sockaddr_in siaddr;
+    socklen_t silen = sizeof(siaddr);
+    assert(saddr != NULL);
+    int fd = accept(b_fd, (sockaddr*)&siaddr, &silen);
+    if (fd == -1){
+        bwait_receive();
+        return -1;
+    }
+    if (saddr->b_fd != -1){
+        close(saddr->b_fd);
+    }
+    saddr->b_fd = fd;
+    return fd;
 }
 
 int
