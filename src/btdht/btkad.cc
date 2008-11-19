@@ -201,7 +201,7 @@ bdhtnet_start()
     getkadid(&__find_node[12]);
     extern char __get_peers[];
     getkadid(&__get_peers[12]);
-    __static_socket.blisten(0, 6880);
+    __static_socket.blisten(0, htons(6889));
     __static_bootupd.bwakeup(NULL);
     __static_checkerd.bwakeup(NULL);
     __static_serviced.bwakeup(NULL);

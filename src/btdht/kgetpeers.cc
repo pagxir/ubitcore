@@ -110,6 +110,9 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
     while (peers!=NULL && (len%6)==0){
         peer_t *iter, *peered = (peer_t*)(peers+len);
         for (iter=(peer_t*)peers; iter<peered; iter++){
+            printf("peer: %s:%d\n",
+                    inet_ntoa(*(in_addr*)&(*iter)[0]),
+                    htons(*(in_port_t*)&(*iter)[4]));
         }
         peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }

@@ -136,9 +136,8 @@ bsocket::blisten(in_addr_t host, in_port_t port)
     siaddr.sin_family = AF_INET;
     siaddr.sin_port = port;
     siaddr.sin_addr.s_addr = host;
-    if (b_fd == -1){
-        b_fd = socket(AF_INET, SOCK_STREAM, 0);
-    }
+    assert (b_fd == -1);
+    b_fd = socket(AF_INET, SOCK_STREAM, 0);
     fflag = fcntl(b_fd, F_GETFL);
     fflag |= O_NONBLOCK;
     fcntl(b_fd, F_SETFL, fflag);
@@ -156,12 +155,13 @@ bsocket::baccept(bsocket *saddr)
     socklen_t silen = sizeof(siaddr);
     assert(saddr != NULL);
     int fd = accept(b_fd, (sockaddr*)&siaddr, &silen);
+    if (saddr->b_fd != -1){
+        close(saddr->b_fd);
+        saddr->b_fd = -1;
+    }
     if (fd == -1){
         bwait_receive();
         return -1;
-    }
-    if (saddr->b_fd != -1){
-        close(saddr->b_fd);
     }
     saddr->b_fd = fd;
     return fd;
