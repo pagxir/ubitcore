@@ -17,7 +17,7 @@ class bidlethread: public bthread
 };
 
 static bool __polling = false;
-static bool __pollable = false;
+static bool __pollable = true;
 static bidlethread __idlethread;
 
 bidlethread::bidlethread()
@@ -61,6 +61,7 @@ pollable()
 int
 poll_end()
 {
+    __pollable = false;
     __polling = false;
     return 0;
 }

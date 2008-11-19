@@ -44,11 +44,10 @@ btimerd::btimerd()
     b_ident = "btimerd";
 }
 
-static time_t __comming_time = time(NULL);
-
 time_t comming_time()
 {
-    time_t now = now_time();
+    /* 36000 max schedle time */
+    time_t now = now_time()+36000;
     if (!__q_timer.empty()){
         now = __q_timer.begin()->tt_tick;
     }
@@ -59,7 +58,7 @@ time_t
 btimerd::check_timer()
 {
     _tnow = time(NULL);
-    __comming_time = _tnow;
+    time_t comming = _tnow + 36000;
     bthread *item = NULL;
 #define THEADER __q_timer.begin()
     while (!__q_timer.empty()){
@@ -68,13 +67,13 @@ btimerd::check_timer()
         if (_tnow >= item->b_tick){
             item->timeout();
         }else if (_tnow < THEADER->tt_tick){
-            __comming_time = THEADER->tt_tick;
+            comming = THEADER->tt_tick;
             break;
         }
         __q_timer.erase(THEADER);
     }
 #undef THEADER
-    return __comming_time;
+    return comming;
 }
 
 int

@@ -12,7 +12,6 @@
 #include <fstream>
 #include <queue>
 
-#include "sha1.h"
 #include "butils.h"
 #include "bthread.h"
 #include "biothread.h"
@@ -62,12 +61,6 @@ btseed_load(const char *buf, int len)
     btcodec codec;
     uint8_t digest[20];
     codec.bload(buf, len);
-    const char *info = codec.bget().bget("info").b_str(&eln);
-
-    if (info != NULL){
-        SHA1Hash(digest, info, eln);
-        set_info_hash((char*)digest);
-    }
 
 #if 1
     bentity &nodes = codec.bget().bget("nodes");
@@ -82,25 +75,14 @@ btseed_load(const char *buf, int len)
     return 0;
 }
 
-int
-genclientid(char ident[20])
-{
-    int i;
-    for (i=0; i<20; i++){
-        ident[i] = rand()%256;
-    }
-    return 0;
-}
+static bclock __test_clock("socket connect clock", 7);
 
 int
-main(int argc, char *argv[])
+dht_load(int argc, char *argv[])
 {
     int i;
-    char ident[20];
     srand(time(NULL));
-    genclientid(ident);
-    setclientid(ident);
-    signal(SIGPIPE, SIG_IGN);
+
     for (i=1; i<argc; i++){
         if (i > 1){
             tracker_start(strid(argv[i]));
@@ -121,19 +103,29 @@ main(int argc, char *argv[])
 
 #ifndef DEFAULT_TCP_TIME_OUT
     /* NOTICE: Keep this to less socket connect timeout work ok! */
-    bclock c("socket connect clock", 7);
-    c.bwakeup(NULL); 
+    __test_clock.bwakeup(NULL); 
 #endif
     return 0;
 }
 
-int dhtpoll()
+int dht_poll(bool nonblock)
 {
-    bthread *j;
-    poll_start();
-    while (pollable() && -1!=bthread::bpoll(&j)){
-        j->bdocall();
+    bthread *j = NULL;
+
+    if (nonblock ){
+        poll_start();
     }
-    poll_end();
+
+    do {
+        if (-1!=bthread::bpoll(&j)){
+            j->bdocall();
+        }else{
+            break;
+        }
+    }while(pollable());
+
+    if (nonblock ){
+        poll_end();
+    }
     return 0;
 }

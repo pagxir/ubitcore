@@ -12,7 +12,6 @@
 #include <fstream>
 #include <queue>
 
-#include "sha1.h"
 #include "butils.h"
 #include "bthread.h"
 #include "biothread.h"
@@ -62,12 +61,6 @@ btseed_load(const char *buf, int len)
     btcodec codec;
     uint8_t digest[20];
     codec.bload(buf, len);
-    const char *info = codec.bget().bget("info").b_str(&eln);
-
-    if (info != NULL){
-        SHA1Hash(digest, info, eln);
-        set_info_hash((char*)digest);
-    }
 
 #if 1
     bentity &nodes = codec.bget().bget("nodes");
