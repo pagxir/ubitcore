@@ -1,4 +1,4 @@
-SUBDIRS = src
+SUBDIRS = src test
 
 EXTRA_DIST = autogen.sh \
 	include/win32/sys/socket.h \

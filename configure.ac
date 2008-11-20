@@ -33,4 +33,4 @@ AC_TYPE_SIZE_T
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([gethostbyname inet_ntoa memmove memset mkdir pow select socket])
 
-AC_OUTPUT([Makefile src/Makefile src/btdht/Makefile])
+AC_OUTPUT([Makefile test/Makefile src/Makefile src/btdht/Makefile])

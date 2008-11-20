@@ -226,14 +226,6 @@ bit1_index_of(const char kadid[20])
     return __static_table.bit1_index_of(kadid);
 }
 
-int
-tracker_start(const char info_hash[20])
-{
-    dhtrackerd *d = new dhtrackerd(info_hash);
-    d->bwakeup(NULL);
-    return 0;
-}
-
 static uint8_t __mask[] = {0x80, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF};
 
 int

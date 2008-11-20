@@ -12,7 +12,6 @@ kfind *kfind_new(char target[20], kitem_t items[], size_t count);
 kgetpeers *kgetpeers_new(char target[20], kitem_t items[], size_t count);
 
 int bdhtnet_start();
-int tracker_start(const char info_hash[20]);
 int refresh_routing_table();
 void dump_routing_table();
 int genkadid(char ident[20]);

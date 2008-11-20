@@ -23,6 +23,7 @@
 #include "bidle.h"
 #include "netdb.h"
 #include "btdht/btkad.h"
+#include "btdht/loadsess.h"
 
 #ifndef NDEBUG
 #include "bsocket.h"
@@ -91,14 +92,9 @@ main(int argc, char *argv[])
     int i;
     char ident[20];
     srand(time(NULL));
-    genclientid(ident);
-    setclientid(ident);
     signal(SIGPIPE, SIG_IGN);
+
     for (i=1; i<argc; i++){
-        if (i > 1){
-            tracker_start(strid(argv[i]));
-            continue;
-        }
         std::string btseed;
         std::ifstream ifs(argv[i], std::ios::in|std::ios::binary);
         std::copy(std::istreambuf_iterator<char>(ifs),
@@ -106,6 +102,8 @@ main(int argc, char *argv[])
                 std::back_inserter(btseed));
         btseed_load(btseed.c_str(), btseed.size());
     }
+
+    load_session("dhtsess.dat");
 
     biorun();
     bidlerun();

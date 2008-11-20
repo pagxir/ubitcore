@@ -11,8 +11,6 @@ libsub_btdht_a_SOURCES = \
 	kfind.cc    \
 	kgetpeers.cc \
 	kgetpeers.h  \
-	dhtracker.h  \
-	dhtracker.cc \
 	kpingd.h     \
 	kpingd.cc    \
 	bootupd.h    \
@@ -30,6 +28,8 @@ libsub_btdht_a_SOURCES = \
 	btkad.h     \
 	ktable.h    \
 	ktable.cc   \
+	loadsess.cc \
+	loadsess.h  \
 	transfer.h
 	
 
