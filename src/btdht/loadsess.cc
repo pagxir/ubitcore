@@ -14,7 +14,12 @@
 int load_session(const char *path)
 {
     char buffer[1024*32];
+    genkadid(buffer);
+    setkadid(buffer);
     FILE *fp = fopen(path, "rb");
+    if (fp == NULL){
+        return 0;
+    }
     int n = fread(buffer, 1, sizeof(buffer), fp);
     fclose(fp);
     size_t len;
@@ -33,10 +38,6 @@ int load_session(const char *path)
     const char *id = codec.bget().bget("id").c_str(&len);
     if (id != NULL){
         printf("ident: %s\n", idstr(id));
-        setkadid(id);
-    }else{
-        char rndid[20];
-        genkadid(rndid);
         setkadid(id);
     }
     kitem_t item;

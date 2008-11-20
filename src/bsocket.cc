@@ -141,6 +141,8 @@ bsocket::blisten(in_addr_t host, in_port_t port)
     fflag = fcntl(b_fd, F_GETFL);
     fflag |= O_NONBLOCK;
     fcntl(b_fd, F_SETFL, fflag);
+    fflag = 1;
+    setsockopt(b_fd, SOL_SOCKET, SO_REUSEADDR, &fflag, sizeof(fflag));
     error = bind(b_fd, (sockaddr*)&siaddr, sizeof(siaddr));
     assert(error != -1);
     error = listen(b_fd, 5);
