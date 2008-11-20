@@ -2,10 +2,15 @@
 #define __KGET_PEERS_H__
 #include "btkad.h"
 #include "kutils.h"
-#include <vector>
+#include <queue>
 #include <string>
 class kship;
 class bdhtnet;
+
+struct peer{
+    in_addr_t addr;
+    in_port_t port;
+};
 
 class kgetpeers{
     public:
@@ -16,6 +21,14 @@ class kgetpeers{
         void kgetpeers_expand(const char buffer[],
                 size_t count, in_addr_t host, in_port_t port);
         int vcall();
+
+    private:
+        std::queue<peer> b_peers;
+
+    public:
+        bool empty();
+        peer front();
+        void pop();
 
     private:
         int b_sumumery;

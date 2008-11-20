@@ -52,7 +52,10 @@ serviced::bdocall()
                 break;
             case 2:
                 printf("len: %d\n", n);
-                assert(n > 0);
+                if (n < 20){
+                    state = 0;
+                    break;
+                }
                 buff[n] = 0;
                 break;
             case 3:
@@ -66,6 +69,20 @@ serviced::bdocall()
                 break;
             case 5:
                 b_getpeers->vcall();
+                while (!b_getpeers->empty()){
+                    char sbuff[6];
+                    peer p = b_getpeers->front();
+                    memcpy(sbuff, &p.addr, sizeof(p.addr));
+                    memcpy(&sbuff[4], &p.port, sizeof(p.port));
+                    if (-1 == b_socket.bsend(sbuff, sizeof(sbuff))){
+                        delete b_getpeers;
+                        b_getpeers = NULL;
+                        b_state = state = 0;
+                        b_runable = true;
+                        break;
+                    }
+                    b_getpeers->pop();
+                }
                 break;
             case 6:
                 delete b_getpeers;

@@ -105,14 +105,15 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
     }
 
     int index = 0;
+    peer one;
     typedef char peer_t[6];
     const char *peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     while (peers!=NULL && (len%6)==0){
         peer_t *iter, *peered = (peer_t*)(peers+len);
         for (iter=(peer_t*)peers; iter<peered; iter++){
-            printf("peer: %s:%d\n",
-                    inet_ntoa(*(in_addr*)&(*iter)[0]),
-                    htons(*(in_port_t*)&(*iter)[4]));
+            one.addr = *(in_addr_t*)&(*iter)[0];
+            one.port = *(in_port_t*)&(*iter)[4];
+            b_peers.push(one);
         }
         peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }
@@ -200,4 +201,22 @@ void
 kgetpeers::dump()
 {
     printf("kgetpeers result: \n%s", b_loging.c_str());
+}
+
+peer
+kgetpeers::front()
+{
+    return b_peers.front();
+}
+
+void
+kgetpeers::pop()
+{
+    b_peers.pop();
+}
+
+bool
+kgetpeers::empty()
+{
+    return b_peers.empty();
 }

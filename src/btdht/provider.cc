@@ -155,10 +155,10 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
         return;
     }
     if (memcmp(query, "get_peers", tlen) == 0){
-        printf("get peers\n");
         size_t target_len = 0;
         const char *target = btc.bget().bget("a").bget("info_hash").c_str(&target_len);
         if (target_len==20 && target!=NULL){
+            printf("get peers: %s\n", idstr(target));
             kitem_t item, items[8];
             int n = find_nodes(target, items, true);
             char buff[8192] = {

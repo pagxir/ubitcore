@@ -48,6 +48,7 @@ const char *idstr(const char *id)
 
 int main(int argc, char *argv[])
 {
+    char buffer[1024];
     char __target[20];
     int udp = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -67,6 +68,17 @@ int main(int argc, char *argv[])
 
     e = send(udp, __target, 20, 0);
     assert(e != -1);
+
+    typedef char peer_t[6];
+    e = recv(udp, buffer, sizeof(buffer), 0);
+    while (e > 0){
+        peer_t *iter, *end = (peer_t*)(buffer+e);
+        for (iter=(peer_t*)buffer; iter<end; iter++){
+            printf("peer: %s:%d\n", inet_ntoa(*(in_addr*)&(*iter)[0]),
+                    htons(*(in_port_t*)&(*iter)[4]));
+        }
+        e = recv(udp, buffer, sizeof(buffer), 0);
+    }
 
     close(udp);
     return 0;
