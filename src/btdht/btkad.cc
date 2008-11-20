@@ -191,9 +191,6 @@ bdhtnet_start()
     if (__call_once_only++ > 0){
         return -1;
     }
-    char bootid[20];
-    genkadid(bootid);
-    setkadid(bootid);
     extern char __ping_node[];
     getkadid(&__ping_node[12]);
     extern char __find_node[];
