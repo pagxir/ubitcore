@@ -18,7 +18,6 @@
 #include "transfer.h"
 #include "refresh.h"
 #include "kgetpeers.h"
-#include "dhtracker.h"
 #include "provider.h"
 #include "checkerd.h"
 #include "btimerd.h"

@@ -34,13 +34,17 @@ int load_session(const char *path)
     if (id != NULL){
         printf("ident: %s\n", idstr(id));
         setkadid(id);
+    }else{
+        char rndid[20];
+        genkadid(rndid);
+        setkadid(id);
     }
+    kitem_t item;
     typedef char compat_t[26];
     const char *nodes = codec.bget().bget("nodes").c_str(&len);
     if (nodes != NULL){
         compat_t *iter, *end = (compat_t*)(nodes+len);
         for (iter=(compat_t*)nodes; iter<end; iter++){
-            kitem_t item;
             memcpy(item.kadid, &(*iter)[0], 20);
             item.host = *(in_addr_t*)&(*iter)[20];
             item.port = *(in_port_t*)&(*iter)[24];
