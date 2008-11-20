@@ -91,6 +91,7 @@ static kadid __last_kadid(__target, __target);
 static std::map<kadid, int> __kadid_map;
 static std::map<kadid, int> __kadid_inmap;
 static std::map<pair_addr, int> __pairaddr_map;
+static std::map<pair_addr, int> __peeraddr_map;
 static std::map<kadid, pair_addr> __address_list;
 
 void find_dump(const char *buff, size_t len,
@@ -130,8 +131,13 @@ void find_dump(const char *buff, size_t len,
         typedef char peer_t[6];
         peer_t *peer_iter, *peer_end = (peer_t*)(peers+tlen);
         for (peer_iter=(peer_t*)peers; peer_iter<peer_end; peer_iter++){
-            printf("peer: %s:%d\n", inet_ntoa(*(in_addr*)&(*peer_iter)[0]),
+            pair_addr addr;
+            memcpy(&addr.addr, &(*peer_iter)[0], 4);
+            memcpy(&addr.port, &(*peer_iter)[4], 2);
+            if (__peeraddr_map.insert(std::make_pair(addr, 1)).second){
+                printf("peer: %s:%d\n", inet_ntoa(*(in_addr*)&(*peer_iter)[0]),
                         htons(*(in_port_t*)&(*peer_iter)[4]));
+            }
         }
         peers = codec.bget().bget("r").bget("values").bget(idx++).c_str(&tlen);
     }
@@ -144,16 +150,16 @@ void find_dump(const char *buff, size_t len,
     typedef char compat_t[26];
     compat_t *iter, *end  = (compat_t*)(nodes+tlen);
     for (iter=(compat_t*)nodes; iter<end; iter++){
-        printf("nodeid: %s\n", idstr(&(*iter)[0]));
-        printf("address: %s:%d\n",
-                inet_ntoa(*(in_addr*)&(*iter)[20]),
-                htons(*(in_port_t*)&(*iter)[24]));
         pair_addr addr;
         memcpy(&addr.addr, &(*iter)[20], 4);
         memcpy(&addr.port, &(*iter)[24], 2);
         if (__pairaddr_map.insert(std::make_pair(addr, 1)).second){
             kadid id = kadid(__target, &(*iter)[0]);
             if (__kadid_map.insert(std::make_pair(id, 1)).second){
+                printf("nodeid: %s\n", idstr(&(*iter)[0]));
+                printf("address: %s:%d\n",
+                        inet_ntoa(*(in_addr*)&(*iter)[20]),
+                htons(*(in_port_t*)&(*iter)[24]));
                 __address_list.insert(std::make_pair(id, addr));
                 __count++;
             }

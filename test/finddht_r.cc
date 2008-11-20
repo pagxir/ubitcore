@@ -122,16 +122,16 @@ void find_dump(const char *buff, size_t len,
     typedef char compat_t[26];
     compat_t *iter, *end  = (compat_t*)(nodes+tlen);
     for (iter=(compat_t*)nodes; iter<end; iter++){
-        printf("nodeid: %s\n", idstr(&(*iter)[0]));
-        printf("address: %s:%d\n",
-                inet_ntoa(*(in_addr*)&(*iter)[20]),
-                htons(*(in_port_t*)&(*iter)[24]));
         pair_addr addr;
         memcpy(&addr.addr, &(*iter)[20], 4);
         memcpy(&addr.port, &(*iter)[24], 2);
         if (__pairaddr_map.insert(std::make_pair(addr, 1)).second){
             kadid id = kadid(__target, &(*iter)[0]);
             if (__kadid_map.insert(std::make_pair(id, 1)).second){
+                printf("nodeid: %s\n", idstr(&(*iter)[0]));
+                printf("address: %s:%d\n",
+                        inet_ntoa(*(in_addr*)&(*iter)[20]),
+                        htons(*(in_port_t*)&(*iter)[24]));
                 __address_list.insert(std::make_pair(id, addr));
                 __count++;
             }

@@ -12,6 +12,14 @@ struct peer{
     in_port_t port;
 };
 
+inline bool operator<(const peer &a, const peer &b)
+{
+    if (a.addr != b.addr){
+        return a.addr < b.addr;
+    }
+    return a.port < b.port;
+}
+
 class kgetpeers{
     public:
         kgetpeers(bdhtnet *net, const char target[20],
@@ -24,6 +32,7 @@ class kgetpeers{
 
     private:
         std::queue<peer> b_peers;
+        std::map<peer, int> b_peerfilter;
 
     public:
         bool empty();

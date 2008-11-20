@@ -113,7 +113,9 @@ kgetpeers::kgetpeers_expand(const char buffer[], size_t count,
         for (iter=(peer_t*)peers; iter<peered; iter++){
             one.addr = *(in_addr_t*)&(*iter)[0];
             one.port = *(in_port_t*)&(*iter)[4];
-            b_peers.push(one);
+            if (b_peerfilter.insert(std::make_pair(one, 1)).second){
+                b_peers.push(one);
+            }
         }
         peers = codec.bget().bget("r").bget("values").bget(index++).c_str(&len);
     }
