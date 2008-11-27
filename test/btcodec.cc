@@ -78,6 +78,7 @@ bentity& btlist::bget(int index)
             TRY_KILL(en);
             return __INFINITE;
         }
+        TRY_KILL(en);
         off += len;
     }
     TRY_KILL(b_entity);

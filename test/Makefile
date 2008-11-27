@@ -31,7 +31,8 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = pingdht$(EXEEXT) finddht$(EXEEXT) getpeersdht$(EXEEXT) \
-	getpeersdht_r$(EXEEXT) finddht_r$(EXEEXT) get_peers$(EXEEXT)
+	getpeersdht_r$(EXEEXT) finddht_r$(EXEEXT) get_peers$(EXEEXT) \
+	btcodec_bench$(EXEEXT)
 subdir = test
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -44,6 +45,9 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
+am_btcodec_bench_OBJECTS = btcodec_bench.$(OBJEXT) btcodecx.$(OBJEXT)
+btcodec_bench_OBJECTS = $(am_btcodec_bench_OBJECTS)
+btcodec_bench_LDADD = $(LDADD)
 am_finddht_OBJECTS = finddht.$(OBJEXT) btcodec.$(OBJEXT)
 finddht_OBJECTS = $(am_finddht_OBJECTS)
 finddht_LDADD = $(LDADD)
@@ -74,12 +78,14 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(finddht_SOURCES) $(finddht_r_SOURCES) $(get_peers_SOURCES) \
+SOURCES = $(btcodec_bench_SOURCES) $(finddht_SOURCES) \
+	$(finddht_r_SOURCES) $(get_peers_SOURCES) \
 	$(getpeersdht_SOURCES) $(getpeersdht_r_SOURCES) \
 	$(pingdht_SOURCES)
-DIST_SOURCES = $(finddht_SOURCES) $(finddht_r_SOURCES) \
-	$(get_peers_SOURCES) $(getpeersdht_SOURCES) \
-	$(getpeersdht_r_SOURCES) $(pingdht_SOURCES)
+DIST_SOURCES = $(btcodec_bench_SOURCES) $(finddht_SOURCES) \
+	$(finddht_r_SOURCES) $(get_peers_SOURCES) \
+	$(getpeersdht_SOURCES) $(getpeersdht_r_SOURCES) \
+	$(pingdht_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -181,6 +187,7 @@ finddht_r_SOURCES = finddht_r.cc btcodec.cc btcodec.h
 getpeersdht_SOURCES = getpeersdht.cc btcodec.cc btcodec.h
 getpeersdht_r_SOURCES = getpeersdht_r.cc btcodec.cc btcodec.h
 get_peers_SOURCES = get_peers.cc
+btcodec_bench_SOURCES = btcodec_bench.cc btcodecx.cc
 all: all-am
 
 .SUFFIXES:
@@ -237,6 +244,9 @@ uninstall-binPROGRAMS:
 
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+btcodec_bench$(EXEEXT): $(btcodec_bench_OBJECTS) $(btcodec_bench_DEPENDENCIES) 
+	@rm -f btcodec_bench$(EXEEXT)
+	$(CXXLINK) $(btcodec_bench_OBJECTS) $(btcodec_bench_LDADD) $(LIBS)
 finddht$(EXEEXT): $(finddht_OBJECTS) $(finddht_DEPENDENCIES) 
 	@rm -f finddht$(EXEEXT)
 	$(CXXLINK) $(finddht_OBJECTS) $(finddht_LDADD) $(LIBS)
@@ -263,6 +273,8 @@ distclean-compile:
 	-rm -f *.tab.c
 
 include ./$(DEPDIR)/btcodec.Po
+include ./$(DEPDIR)/btcodec_bench.Po
+include ./$(DEPDIR)/btcodecx.Po
 include ./$(DEPDIR)/finddht.Po
 include ./$(DEPDIR)/finddht_r.Po
 include ./$(DEPDIR)/get_peers.Po
