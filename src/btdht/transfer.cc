@@ -56,8 +56,9 @@ kship::get_response(void *buf, size_t len,
         *port = pkg->b_port;
     }
     free(pkg->b_ibuf);
+    int count = pkg->b_len;
     delete pkg;
-    return pkg->b_len;
+    return count;
 }
 
 int

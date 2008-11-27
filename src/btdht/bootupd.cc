@@ -56,6 +56,7 @@ bootupd::bdocall()
                     tsleep(NULL, "exit");
                     return 0;
                 }
+                assert(b_find == NULL);
                 b_find = kfind_new(bootid, items, count);
                 break;
             case 1:
@@ -82,6 +83,7 @@ bootupd::bdocall()
                 break;
             case 5:
                 delete b_find;
+                b_find = NULL;
                 state = 0;
                 break;
             default:

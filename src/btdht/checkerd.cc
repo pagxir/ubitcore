@@ -57,6 +57,7 @@ checkerd::bdocall()
                     tsleep(NULL, "exit");
                     return 0;
                 }
+                assert(__find==NULL);
                 __find = kfind_new(bootid, items, count);
                 __retry = false;
                 __index++;
@@ -71,6 +72,7 @@ checkerd::bdocall()
                     __index--;
                 }
                 delete __find;
+                __find = NULL;
                 if (__index < size_of_table()){
                     state = 0;
                 }

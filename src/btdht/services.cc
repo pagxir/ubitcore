@@ -64,6 +64,7 @@ serviced::bdocall()
                     state = 0;
                 break;
             case 4:
+                assert(b_getpeers==NULL);
                 b_getpeers = kgetpeers_new(buff, items, n);
                 printf("get peers: %s\n", idstr(buff));
                 break;

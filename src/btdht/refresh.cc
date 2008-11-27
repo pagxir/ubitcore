@@ -50,6 +50,7 @@ refreshd::bdocall()
 		b_count = count;
                 memcpy(b_target, bootid, 20);
 		memcpy(b_findNodes, items, count*sizeof(kitem_t));
+                assert(b_find == NULL);
                 b_find = kfind_new(bootid, items, count);
                 b_last_update = time(NULL);
                 b_usevalid = false;
@@ -59,6 +60,8 @@ refreshd::bdocall()
                 break;
             case 2:
                 if (error<3 && b_retry<3){
+                    delete b_find;
+                    b_find = NULL;
                     b_usevalid = true;
                     state = 0;
                 }
@@ -77,6 +80,8 @@ refreshd::bdocall()
                 break;
             case 3:
                 if (b_last_update + 800 > time(NULL)){
+                    delete b_find;
+                    b_find = NULL;
                     tsleep(NULL, "exit");
                     b_retry = 0;
                 }
