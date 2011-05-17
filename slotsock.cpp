@@ -96,6 +96,44 @@ static struct sockcb * sock_attach(int sockfd, struct waitcb * waitcbp)
 	return 0;
 }
 
+int getaddrbyname(const char * name, struct sockaddr_in * addr)
+{
+	char buf[1024];
+	in_addr in_addr1;
+	u_long peer_addr;
+	char * port, * hostname;
+	struct hostent * phost;
+	struct sockaddr_in * p_addr;
+
+	strcpy(buf, name);
+	hostname = buf;
+
+	port = strchr(buf, ':');
+	if (port != NULL) {
+		*port++ = 0;
+	}
+
+	p_addr = (struct sockaddr_in *)addr;
+	p_addr->sin_family = AF_INET;
+	p_addr->sin_port   = htons(port? atoi(port): 3478);
+
+	peer_addr = inet_addr(hostname);
+	if (peer_addr != INADDR_ANY &&
+		peer_addr != INADDR_NONE) {
+		p_addr->sin_addr.s_addr = peer_addr;
+		return 0;
+	}
+
+	phost = gethostbyname(hostname);
+	if (phost == NULL) {
+		return -1;
+	}
+
+	memcpy(&in_addr1, phost->h_addr, sizeof(in_addr1));
+	p_addr->sin_addr = in_addr1;
+	return 0;
+}
+
 static void do_quick_scan(void * upp)
 {
 	int error;

@@ -3,7 +3,7 @@ CFLAGS = -g
 LDLIBS = -lws2_32 -lstdc++
 OBJECTS = module.o slotwait.o main.o proto_kad.o \
 		  udp_daemon.o slotsock.o timer.o \
-		  btcodec.o ui.o
+		  btcodec.o utils.o ui.o
 
 all: client.exe test.exe
 

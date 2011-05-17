@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include "ui.h"
+#include "utils.h"
 #include "timer.h"
 #include "module.h"
 #include "slotwait.h"
@@ -60,6 +61,11 @@ static uintptr_t h_input;
 static struct waitcb _wait_input;
 static void parse_request(void * upp)
 {
+	int count;
+	char server[20];
+	char ident1[20];
+	char ident0[60];
+
    	if (InterlockedExchange(&_cmd_lck, 1)) {
 	   	callout_reset(&_wait_input, 500);
 		return;
@@ -71,10 +77,24 @@ static void parse_request(void * upp)
 	}
 
 	if (InterlockedExchange(&_cmd_yes, 0)) {
-		if (!strncmp(_cmd_buf, "setident ")) {
-		} else if (!strncmp(_cmd_buf, "get_peers ")) {
-		} else if (!strncmp(_cmd_buf, "find_node ")) {
-		} else if (!strncmp(_cmd_buf, "ping_node ")) {
+		if (!strncmp(_cmd_buf, "setident ", 9)) {
+			count = sscanf(_cmd_buf, "%*s %s", ident0);
+			hex_decode(ident0, ident1, sizeof(ident1));
+			kad_setident(ident1);
+		} else if (!strncmp(_cmd_buf, "get_peers ", 9)) {
+			count = sscanf(_cmd_buf, "%*s %s %s", ident0, server);
+			hex_decode(ident0, ident1, sizeof(ident1));
+			kad_getpeers(ident1, server);
+			fprintf(stderr, "kad_getpeers\n");
+		} else if (!strncmp(_cmd_buf, "find_node ", 9)) {
+			count = sscanf(_cmd_buf, "%*s %s %s", ident0, server);
+			hex_decode(ident0, ident1, sizeof(ident1));
+			kad_findnode(ident1, server);
+			fprintf(stderr, "kad_findnode\n");
+		} else if (!strncmp(_cmd_buf, "ping_node ", 9)) {
+			count = sscanf(_cmd_buf, "%*s %s", server);
+			kad_pingnode(server);
+			fprintf(stderr, "kad_pingnode\n");
 		}
 	}
 

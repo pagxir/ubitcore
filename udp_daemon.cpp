@@ -11,11 +11,21 @@
 #include "proto_kad.h"
 #include "udp_daemon.h"
 
+static FILE * _log_file;
+static int _udp_sockfd = 0;
 static struct waitcb _sockcb;
 static struct waitcb _stopcb;
 static struct waitcb _startcb;
 
-static void hexdump(char * buf, size_t len)
+static int _idgen = 0;
+static uint8_t _kadid[20];
+static struct waitcb _timer0;
+
+static int _kad_len = 0;
+static char _kad_buf[2048];
+static struct sockaddr_in _kad_addr;
+
+static void hexdump(const char * buf, size_t len)
 {
 	int i, j, c;
 
@@ -37,17 +47,52 @@ static void kad_proto_input(char * buf, size_t len)
 	const char *node, *nodes;
 
 	codec.parse(buf, len);
-	nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
-	for (node = nodes; elen >= 26; node += 26, elen -= 26) {
-		memcpy(&in_addr1, node + 20, sizeof(in_addr1));
-		memcpy(&in_port1, node + 24, sizeof(in_port1));
-		fprintf(stderr, "%s:%d\n", inet_ntoa(in_addr1), ntohs(in_port1));
+
+	nodes = codec.bget().bget("r").bget("id").c_str(&elen);
+	if (nodes != NULL) {
+		fprintf(stderr, "id: ");
+		while (elen-- > 0)
+			fprintf(stderr, "%02X", 0xFF&*nodes++);
+		fprintf(stderr, "\n");
 	}
 
+	nodes = codec.bget().bget("r").bget("token").c_str(&elen);
+	if (nodes != NULL) {
+		fprintf(stderr, "token: ");
+		while (elen-- > 0)
+			fprintf(stderr, "%02X", 0xFF&*nodes++);
+		fprintf(stderr, "\n");
+	}
+
+	nodes = codec.bget().bget("r").bget("values").bget(0).c_str(&elen);
+	if (nodes != NULL) {
+		fprintf(stderr, "values: \n");
+	   	for (node = nodes; elen >= 6; node += 6, elen -= 6) {
+		   	memcpy(&in_addr1, node + 0, sizeof(in_addr1));
+		   	memcpy(&in_port1, node + 4, sizeof(in_port1));
+		   	fprintf(stderr, "%s:%d\n", inet_ntoa(in_addr1), ntohs(in_port1));
+	   	}
+	}
+
+	nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
+	if (nodes != NULL) {
+		int idlen;
+		const char * idstr;
+		fprintf(stderr, "nodes: \n");
+	   	for (node = nodes; elen >= 26; node += 26, elen -= 26) {
+		   	memcpy(&in_addr1, node + 20, sizeof(in_addr1));
+		   	memcpy(&in_port1, node + 24, sizeof(in_port1));
+			idlen = 20;
+			for (idstr = node; idlen > 0; idlen--, idstr++)
+			   	fprintf(stderr, "%02X", 0xFF & *idstr++);
+		   	fprintf(stderr, " %s:%d\n", inet_ntoa(in_addr1), ntohs(in_port1));
+	   	}
+	}
+
+	_kad_len = 0;
 	return;
 }
 
-static int _udp_sockfd = 0;
 static void udp_routine(void * upp)
 {
 	int count, sockfd;
@@ -60,8 +105,11 @@ static void udp_routine(void * upp)
 	   	count = recvfrom2(sockfd, sockbuf,
 			   	sizeof(sockbuf), &in_addr1, &_sockcb);
 		if (count >= 0) {
+			fprintf(stderr, "receive %d data from %s:%d\n",
+					count, inet_ntoa(in_addr1.sin_addr),
+				   	ntohs(in_addr1.sin_port));
 			kad_proto_input(sockbuf, count);
-			hexdump(sockbuf, count);
+			fwrite(sockbuf, count, 1, _log_file);
 		} else if (waitcb_active(&_sockcb)) {
 			/* recv is blocking! */
 			break;
@@ -74,27 +122,86 @@ static void udp_routine(void * upp)
 	return;
 }
 
-static int _idgen = 0;
-static uint8_t _kadid[20];
-static struct waitcb _timer0;
+static void udp_timer(void * upp)
+{
+	int len;
+
+	if (_kad_len > 0) {
+	   	len = sendto2(_udp_sockfd, _kad_buf,
+			   	_kad_len, &_kad_addr, &_timer0);
+	   	callout_reset(&_timer0, 2000);
+	}
+}
+
+int kad_auto_send(char * buf, size_t len, struct sockaddr_in * so_addr)
+{
+	_kad_addr = *so_addr;
+	assert(len < sizeof(_kad_buf));
+	memcpy(_kad_buf, buf, len);
+	_kad_len = len;
+
+	waitcb_cancel(&_timer0);
+	udp_timer(0);
+	return 0;
+}
+
 /*
  * router.utorrent.com
  * router.bittorrent.com:6881
  */
-
-static void udp_timer(void * upp)
+int kad_setident(const char * ident)
 {
-	int len;
+	uint8_t * uident;
+
+	uident = (uint8_t *)ident;
+	kad_set_ident(uident);
+
+	return 0;
+}
+
+int kad_getpeers(const char * ident, const char * server)
+{
+   	int len;
+	int error;
 	char buf[2048];
 	struct sockaddr_in so_addr;
 
-	so_addr.sin_family = AF_INET;
-	so_addr.sin_port   = htons(6881);
-	so_addr.sin_addr.s_addr = inet_addr("67.215.242.138");
+	error = getaddrbyname(server, &so_addr);
+	assert(error == 0);
 
-	len = kad_get_peers(buf, sizeof(buf), ++_idgen, _kadid);
-	len = sendto2(_udp_sockfd, buf, len, &so_addr, &_timer0);
-	callout_reset(&_timer0, 2000);
+	len = kad_get_peers(buf, sizeof(buf), ++_idgen, (const uint8_t *)ident);
+	len = kad_auto_send(buf, len, &so_addr);
+	return 0;
+}
+
+int kad_pingnode(const char * server)
+{
+   	int len;
+	int error;
+	char buf[2048];
+	struct sockaddr_in so_addr;
+
+	error = getaddrbyname(server, &so_addr);
+	assert(error == 0);
+
+	len = kad_ping_node(buf, sizeof(buf), ++_idgen);
+	len = kad_auto_send(buf, len, &so_addr);
+	return 0;
+}
+
+int kad_findnode(const char * ident, const char * server)
+{
+   	int len;
+	int error;
+	char buf[2048];
+	struct sockaddr_in so_addr;
+
+	error = getaddrbyname(server, &so_addr);
+	assert(error == 0);
+
+	len = kad_find_node(buf, sizeof(buf), ++_idgen, (const uint8_t *)ident);
+	len = kad_auto_send(buf, len, &so_addr);
+	return 0;
 }
 
 static void udp_daemon_control(void * upp)
@@ -138,6 +245,7 @@ static void udp_daemon_control(void * upp)
 
 static void udp_daemon_init(void)
 {
+	_log_file = fopen("C:\\kad_log.dat", "ab");
 	waitcb_init(&_startcb, udp_daemon_control, &_startcb);
 	slotwait_atstart(&_startcb);
 
@@ -150,6 +258,7 @@ static void udp_daemon_init(void)
 
 static void udp_daemon_clean(void)
 {
+	fclose(_log_file);
 	fprintf(stderr, "World\n");
 	waitcb_clean(&_startcb);
 	waitcb_clean(&_stopcb);
