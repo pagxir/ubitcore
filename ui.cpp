@@ -8,6 +8,7 @@
 #include "module.h"
 #include "slotwait.h"
 #include "slotsock.h"
+#include "udp_daemon.h"
 
 static LONG _cmd_lck = 0;
 static LONG _cmd_yes = 0;
@@ -70,7 +71,11 @@ static void parse_request(void * upp)
 	}
 
 	if (InterlockedExchange(&_cmd_yes, 0)) {
-	   	fprintf(stderr, "receive command: %s\n", _cmd_buf);
+		if (!strncmp(_cmd_buf, "setident ")) {
+		} else if (!strncmp(_cmd_buf, "get_peers ")) {
+		} else if (!strncmp(_cmd_buf, "find_node ")) {
+		} else if (!strncmp(_cmd_buf, "ping_node ")) {
+		}
 	}
 
    	InterlockedExchange(&_cmd_lck, 0);

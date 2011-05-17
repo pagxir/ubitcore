@@ -9,6 +9,7 @@
 #include "slotwait.h"
 #include "slotsock.h"
 #include "proto_kad.h"
+#include "udp_daemon.h"
 
 static struct waitcb _sockcb;
 static struct waitcb _stopcb;
