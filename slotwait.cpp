@@ -156,6 +156,7 @@ int slot_wait(wait_call ** callbackp, void ** udatap)
 
 		*callbackp = waitcbp->wt_callback;
 		*udatap = waitcbp->wt_udata;
+		waitcbp->wt_flags |= WT_COMPLETE;
 		break;
 	}
 

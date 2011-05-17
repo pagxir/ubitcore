@@ -7,6 +7,7 @@ typedef void wait_call(void * data);
 struct waitcb {
 	int wt_magic;
 	int wt_flags;
+	int wt_count;
 	struct waitcb * wt_next;
 	struct waitcb ** wt_prev;
 

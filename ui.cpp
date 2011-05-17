@@ -62,7 +62,7 @@ static struct waitcb _wait_input;
 static void parse_request(void * upp)
 {
 	int count;
-	char server[20];
+	char server[200];
 	char ident1[20];
 	char ident0[60];
 
