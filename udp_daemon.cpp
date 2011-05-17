@@ -266,78 +266,81 @@ static int get_peers_bound_check(struct get_peer_context *gpcp, const char * nod
 	return 0;
 }
 
-static void kad_getpeers_output(void * upp)
+static void kad_node_perf(struct one_peer_upp * perf[],
+	   	size_t count, struct one_peer_upp * upp, const char * ident)
 {
 	int i;
+
+	for (i = 0; i < count; i++) {
+	   	if (perf[i] == NULL) {
+		   	perf[i] = upp;
+		   	return;
+	   	}
+   	}
+
+	for (i = 0; i < count; i++) {
+	   	if (upp->gpc_count < perf[i]->gpc_count ||
+			   	(upp->gpc_count == perf[i]->gpc_count &&
+				 ident_less(ident, upp->gpc_ident, perf[i]->gpc_ident))) {
+		   	perf[i] = upp;
+		   	return;
+	   	}
+	}
+}
+
+static void kad_getpeers_output(void * upp)
+{
+	int i, j;
 	int error = -1;
-	int this_send = 0;
-	int bound_check = 0;
-	int times_check = 0;
-	int timeout_check = 0;
 	struct sockaddr_in so_addr;
 	struct one_peer_upp * oupp;
+	struct one_peer_upp * perf[3] = {0};
 	struct get_peer_context * gpcp;
 
 	gpcp = (struct get_peer_context *)upp;
 
-	for (i = 0; i < MAX_PEER_COUNT && this_send < 3; i++) {
+	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		oupp = (struct one_peer_upp *)&gpcp->gpc_nodes[i];
 		if (oupp->gpc_flags == 1) {
-
-			if (!get_peers_bound_check(gpcp, oupp->gpc_ident)) {
-				if (oupp->gpc_touch + 1000 > GetTickCount()) {
-					bound_check = 1;
-				   	error = 0;
-				}
+			if (oupp->gpc_touch + 1000 > GetTickCount()) {
+				error = 0;
+			} else if (!get_peers_bound_check(gpcp, oupp->gpc_ident)) {
 				continue;
-			}
-
-			/* if acked < 8, we should let gpc_count large than 5 */
-			if (oupp->gpc_count <= 3 &&
-				   	oupp->gpc_touch + 1000 <= GetTickCount()) {
-			   	waitcb_cancel(&oupp->gpc_wait0);
-			   	so_addr.sin_family = AF_INET;
-			   	so_addr.sin_port   = oupp->gpc_port0;
-			   	so_addr.sin_addr   = oupp->gpc_addr0;
-			   	error = kad_get_peers_send(gpcp->gpc_target, &so_addr,
-					   	oupp->gpc_response, sizeof(oupp->gpc_response),
-					   	&oupp->gpc_wait0);
-			   	if (error == -1)
-				   	break;
-			   	if (error == 1)
-				   	return;
-				oupp->gpc_touch = GetTickCount();
-			   	gpcp->gpc_sentout++;
-				oupp->gpc_count++;
-			   	this_send++;
-			} 
-
-			if (oupp->gpc_count <= 3 ||
-				   	oupp->gpc_touch + 1000 > GetTickCount()) {
-				times_check = (oupp->gpc_count < 3);
-				timeout_check = (oupp->gpc_touch + 1000 > GetTickCount());
-			   	error = 0;
+			} else if (oupp->gpc_count < 3) {
+			   	kad_node_perf(perf, 3, oupp, gpcp->gpc_target);
 		   	}
 		}
 	}
 
+	for (i = 0; i < 3; i++) {
+		oupp = perf[i];
+		if (perf[i] != NULL) {
+		   	waitcb_cancel(&oupp->gpc_wait0);
+		   	so_addr.sin_family = AF_INET;
+		   	so_addr.sin_port   = oupp->gpc_port0;
+		   	so_addr.sin_addr   = oupp->gpc_addr0;
+		   	error = kad_get_peers_send(gpcp->gpc_target, &so_addr,
+				   	oupp->gpc_response, sizeof(oupp->gpc_response),
+				   	&oupp->gpc_wait0);
+		   	if (error == -1)
+			   	break;
+		   	if (error == 1)
+			   	return;
+		   	oupp->gpc_touch = GetTickCount();
+		   	gpcp->gpc_sentout++;
+		   	oupp->gpc_count++;
+			error = 0;
+		}
+	}
+
 	callout_reset(&gpcp->gpc_timeout, 1000);
+
 	if (error == -1) {
 		fprintf(stderr, "get_peers dump: %d/%d/%d\n",
 			   	gpcp->gpc_total, gpcp->gpc_sentout, gpcp->gpc_acked);
-		for (i = 0; i < MAX_PEER_COUNT; i++) {
-			if (gpcp->gpc_nodes[i].gpc_flags != 0) {
-#if 0
-				fprintf(stderr, "%s:%d\n",
-						inet_ntoa(gpcp->gpc_nodes[i].gpc_addr0),
-					   	ntohs(gpcp->gpc_nodes[i].gpc_port0));
-#endif
-			   	waitcb_cancel(&gpcp->gpc_nodes[i].gpc_wait0);
-			}
-		}
+		for (i = 0; i < MAX_PEER_COUNT; i++)
+		   	waitcb_cancel(&gpcp->gpc_nodes[i].gpc_wait0);
 	   	waitcb_cancel(&gpcp->gpc_timeout);
-		fprintf(stderr, "get_peers finish: %d/%d\n",
-			   	gpcp->gpc_total, gpcp->gpc_sentout);
 		delete gpcp;
 	}
 
