@@ -25,7 +25,8 @@ static struct waitcb _timer0;
 static int _kad_len = 0;
 static char _kad_buf[2048];
 static struct sockaddr_in _kad_addr;
-const int MAX_PEER_COUNT = 2000;
+const int MAX_SEND_OUT = 3;
+const int MAX_PEER_COUNT = 400;
 
 struct one_peer_upp {
    	int gpc_flags;
@@ -48,6 +49,7 @@ struct get_peer_context {
 
 	int gpc_acked;
 	int gpc_total;
+	int gpc_touch;
 	int gpc_sentout;
 	char gpc_target[20];
 	struct waitcb gpc_timeout;
@@ -292,9 +294,10 @@ static void kad_getpeers_output(void * upp)
 {
 	int i, j;
 	int error = -1;
+	DWORD curtick = 0;
 	struct sockaddr_in so_addr;
 	struct one_peer_upp * oupp;
-	struct one_peer_upp * perf[3] = {0};
+	struct one_peer_upp * perf[MAX_SEND_OUT] = {0};
 	struct get_peer_context * gpcp;
 
 	gpcp = (struct get_peer_context *)upp;
@@ -306,13 +309,14 @@ static void kad_getpeers_output(void * upp)
 				error = 0;
 			} else if (!get_peers_bound_check(gpcp, oupp->gpc_ident)) {
 				continue;
-			} else if (oupp->gpc_count < 3) {
-			   	kad_node_perf(perf, 3, oupp, gpcp->gpc_target);
+			} else if (oupp->gpc_count < 3 || gpcp->gpc_acked < 8) {
+			   	kad_node_perf(perf, MAX_SEND_OUT, oupp, gpcp->gpc_target);
 		   	}
 		}
 	}
 
-	for (i = 0; i < 3; i++) {
+	curtick = GetTickCount();
+	for (i = 0; i < MAX_SEND_OUT; i++) {
 		oupp = perf[i];
 		if (perf[i] != NULL) {
 		   	waitcb_cancel(&oupp->gpc_wait0);
@@ -326,13 +330,14 @@ static void kad_getpeers_output(void * upp)
 			   	break;
 		   	if (error == 1)
 			   	return;
-		   	oupp->gpc_touch = GetTickCount();
+		   	oupp->gpc_touch = curtick;
 		   	gpcp->gpc_sentout++;
 		   	oupp->gpc_count++;
 			error = 0;
 		}
 	}
 
+	gpcp->gpc_touch = curtick;
 	callout_reset(&gpcp->gpc_timeout, 1000);
 
 	if (error == -1) {
@@ -437,32 +442,40 @@ static void get_peers_insert(struct get_peer_context *gpcp,
 static void kad_getpeers_input(void * upp)
 {
 	int i;
+	int needouptut;
 	size_t elen;
 	btcodec codec;
 	in_addr in_addr1;
 	u_short in_port1;
 	const char *node, *nodes;
+	struct one_peer_upp * oupp;
 	struct get_peer_context * gpcp;
 
 	gpcp = (struct get_peer_context *)upp;
 
+	needouptut = 0;
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
-		if (waitcb_completed(&gpcp->gpc_nodes[i].gpc_wait0)) {
+		oupp = (struct one_peer_upp *)&gpcp->gpc_nodes[i];
+		if (waitcb_completed(&oupp->gpc_wait0)) {
 			gpcp->gpc_acked++;
-			gpcp->gpc_nodes[i].gpc_flags = 2;
-			codec.parse(gpcp->gpc_nodes[i].gpc_response, 
-					gpcp->gpc_nodes[i].gpc_wait0.wt_count);
+			oupp->gpc_flags = 2;
+			codec.parse(oupp->gpc_response,
+				   	oupp->gpc_wait0.wt_count);
+
+			if (oupp->gpc_count == 1 &&
+					gpcp->gpc_touch == oupp->gpc_touch)
+				needouptut = 1;
 
 			nodes = codec.bget().bget("r").bget("id").c_str(&elen);
 			if (nodes == NULL) {
-			   	waitcb_clear(&gpcp->gpc_nodes[i].gpc_wait0);
+			   	waitcb_clear(&oupp->gpc_wait0);
 				continue;
 			}
 		   
 			get_peers_bound(gpcp, nodes, in_addr1, in_port1);
 			nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
 		   	if (nodes == NULL) {
-			   	waitcb_clear(&gpcp->gpc_nodes[i].gpc_wait0);
+			   	waitcb_clear(&oupp->gpc_wait0);
 				continue;
 			}
 		   
@@ -472,7 +485,7 @@ static void kad_getpeers_input(void * upp)
 			   	get_peers_insert(gpcp, node, in_addr1, in_port1);
 		   	}
 
-			waitcb_clear(&gpcp->gpc_nodes[i].gpc_wait0);
+			waitcb_clear(&oupp->gpc_wait0);
 		}
 	}
 
