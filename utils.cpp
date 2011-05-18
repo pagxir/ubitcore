@@ -35,3 +35,16 @@ size_t hex_decode(const char * hex, void * buf, size_t len)
 	return (p - orig_buf);
 }
 
+void hex_dump(const char * buf, size_t len)
+{
+	int i, j, c;
+
+	for (i = 0; i < len; i += 16) {
+		c = (len - i < 16? len - i: 16);
+	   	fprintf(stderr, "%04x: ", i);
+		for (j = 0; j < c; j++)
+			fprintf(stderr, "%02X ", buf[i + j] & 0xFF); 
+		fprintf(stderr, "%02X\n", buf[i + j] & 0xFF);
+	}
+}
+
