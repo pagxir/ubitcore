@@ -11,7 +11,7 @@
 #include "proto_kad.h"
 #include "udp_daemon.h"
 
-static int kad_less_than(const char * sp, const char * lp, const char * rp)
+static int kad_less_than(const char *sp, const char *lp, const char *rp)
 {
 	int i;
 	uint8_t l, r;
@@ -34,10 +34,10 @@ static int kad_less_than(const char * sp, const char * lp, const char * rp)
 	return 0;
 }
 
-static int kad_bound_check(struct recursive_context *rcp, const char * node)
+static int kad_bound_check(struct recursive_context *rcp, const char *node)
 {
 	int i;
-	struct recursive_well * rwp;
+	struct recursive_well *rwp;
 
 	for (i = 0; i < 8; i++) {
 		if (rcp->rc_well_nodes[i].rn_flags == 0)
@@ -73,15 +73,15 @@ static void kad_node_perf(const char *ident,
 	}
 }
 
-static void kad_recursive_output(void * upp)
+static void kad_recursive_output(void *upp)
 {
 	int i, j;
 	int error = -1;
 	DWORD curtick = 0;
 	struct sockaddr_in so_addr;
-	struct recursive_node * rnp;
-	struct recursive_node * perf[8];
-	struct recursive_context * rcp;
+	struct recursive_node *rnp;
+	struct recursive_node *perf[8];
+	struct recursive_context *rcp;
 	
 	rcp = (struct recursive_context *)upp;
 
@@ -147,7 +147,7 @@ static void kad_bound_update(struct recursive_context *rcp,
 	int i;
 	int index = -1;
 	char bad_ident[20];
-	struct recursive_well * rwp;
+	struct recursive_well *rwp;
 
 	for (i = 0; i < 8; i++) {
 		rwp = &rcp->rc_well_nodes[i];
@@ -235,7 +235,7 @@ static void kad_recursive_update(struct recursive_context *rcp,
 	return;
 }
 
-static void kad_recursive_input(void * upp)
+static void kad_recursive_input(void *upp)
 {
 	int i;
 	int needouptut;
@@ -291,13 +291,13 @@ static void kad_recursive_input(void * upp)
 	return;
 }
 
-int kad_recursive(int type, const char * ident, const char * server)
+int kad_recursive(int type, const char *ident, const char *server)
 {
 	int i;
 	int error;
 	struct sockaddr_in so_addr;
-	struct recursive_node * rnp;
-	struct recursive_context * rcp;
+	struct recursive_node *rnp;
+	struct recursive_context *rcp;
 
 	error = getaddrbyname(server, &so_addr);
 	assert(error == 0);

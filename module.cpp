@@ -14,10 +14,10 @@ void clean_stub(void)
 	return;
 }
 
-void initialize_modules(struct module_stub * list[])
+void initialize_modules(struct module_stub *list[])
 {
 	void (* initp)(void);
-	struct module_stub ** stubp;
+	struct module_stub **stubp;
 
 	stubp = list;
 	while (*stubp) {
@@ -28,10 +28,10 @@ void initialize_modules(struct module_stub * list[])
 	}
 }
 
-void cleanup_modules(struct module_stub * list[])
+void cleanup_modules(struct module_stub *list[])
 {
 	void (* cleanp)(void);
-	struct module_stub ** stubp;
+	struct module_stub **stubp;
 
 	stubp = list;
 	while (*stubp) {

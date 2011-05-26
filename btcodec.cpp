@@ -111,7 +111,7 @@ btdict::~btdict()
 
 const char *btdict::b_str(size_t *len)
 {
-    bentity* en = &__INFINITE;
+    bentity *en = &__INFINITE;
     const char *p = b_codec->b_str(b_off, len);
 
     if (p != NULL) {

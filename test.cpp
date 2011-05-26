@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <winsock.h>
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
 	int error;
 	int sockfd;

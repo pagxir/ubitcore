@@ -15,11 +15,11 @@ static LONG _cmd_lck = 0;
 static LONG _cmd_yes = 0;
 static char _cmd_buf[1024];
 
-static void input_routine(void * upp)
+static void input_routine(void *upp)
 {
 	char buf[1024];
-	char * retp = 0;
-	char * carp = 0;
+	char *retp = 0;
+	char *carp = 0;
 	LONG oldval = 0;
 
 	for ( ; ; ) {
@@ -59,7 +59,7 @@ static void input_routine(void * upp)
 
 static uintptr_t h_input;
 static struct waitcb _wait_input;
-static void parse_request(void * upp)
+static void parse_request(void *upp)
 {
 	int count;
 	char server[200];

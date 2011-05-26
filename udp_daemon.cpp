@@ -12,22 +12,22 @@
 #include "recursive.h"
 #include "udp_daemon.h"
 
-static FILE * _dmp_file;
-static FILE * _log_file;
+static FILE *_dmp_file;
+static FILE *_log_file;
 static int _udp_sockfd = 0;
 static struct waitcb _sockcb;
 static struct waitcb _stopcb;
 static struct waitcb _startcb;
 
 static slotcb _kad_slot = 0;
-static void kad_proto_input(char * buf, size_t len)
+static void kad_proto_input(char *buf, size_t len)
 {
-   	void * idp;
+   	void *idp;
 	size_t elen;
 	btcodec codec;
 	u_short in_port1;
    	in_addr in_addr1;
-   	struct waitcb * waitcbp;
+   	struct waitcb *waitcbp;
 	const char *node, *nodes;
 
 	codec.parse(buf, len);
@@ -101,7 +101,7 @@ static void kad_proto_input(char * buf, size_t len)
 	return;
 }
 
-static void udp_routine(void * upp)
+static void udp_routine(void *upp)
 {
 	int count, sockfd;
 	char sockbuf[2048];
@@ -131,9 +131,9 @@ static void udp_routine(void * upp)
  * router.utorrent.com
  * router.bittorrent.com:6881
  */
-int kad_setident(const char * ident)
+int kad_setident(const char *ident)
 {
-	uint8_t * uident;
+	uint8_t *uident;
 
 	uident = (uint8_t *)ident;
 	kad_set_ident(uident);
@@ -141,28 +141,28 @@ int kad_setident(const char * ident)
 	return 0;
 }
 
-int kad_pingnode(const char * server)
+int kad_pingnode(const char *server)
 {
 	static char just_keep_it[20] = "just keep it";
 	kad_recursive(RC_TYPE_PING_NODE, just_keep_it, server);
 	return 0;
 }
 
-int kad_getpeers(const char * ident, const char * server)
+int kad_getpeers(const char *ident, const char *server)
 {
 	kad_recursive(RC_TYPE_GET_PEERS, ident, server);
 	return 0;
 }
 
-int kad_findnode(const char * ident, const char * server)
+int kad_findnode(const char *ident, const char *server)
 {
 	kad_recursive(RC_TYPE_FIND_NODE, ident, server);
 	return 0;
 }
 
-int kad_proto_out(int type, const char * target,
-		const struct sockaddr_in * soap, char * outp,
-	   	size_t size, struct waitcb * waitcbp)
+int kad_proto_out(int type, const char *target,
+		const struct sockaddr_in *soap, char *outp,
+	   	size_t size, struct waitcb *waitcbp)
 {
 	int len;
 	int error;
@@ -196,15 +196,15 @@ int kad_proto_out(int type, const char * target,
 
 	waitcbp->wt_data = outp;
    	waitcbp->wt_count = size;
-   	slot_insert(&_kad_slot, waitcbp);
+   	slot_record(&_kad_slot, waitcbp);
 
 	return 0;
 }
 
-static void udp_daemon_control(void * upp)
+static void udp_daemon_control(void *upp)
 {
 	int error;
-	struct sockaddr * so_addrp;
+	struct sockaddr *so_addrp;
 	struct sockaddr_in addr_in1;
 
 	if (upp == &_startcb) {

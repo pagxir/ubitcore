@@ -19,9 +19,9 @@ uint8_t __get_peers_template[] =  {
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
 
-int kad_set_ident(const uint8_t * ident)
+int kad_set_ident(const uint8_t *ident)
 {
-	uint8_t * template0;
+	uint8_t *template0;
 
 	template0 = __ping_node_template;
 	memcpy(template0 + 12, ident, 20);
@@ -34,10 +34,10 @@ int kad_set_ident(const uint8_t * ident)
 	return 0;
 }
 
-int kad_get_peers(void * buf, size_t len, uint32_t tid, const uint8_t *ident)
+int kad_get_peers(void *buf, size_t len, uint32_t tid, const uint8_t *ident)
 {
 	size_t count;
-	char * outp = (char *)buf;
+	char *outp = (char *)buf;
 	count = sizeof(__get_peers_template);
 	assert(len > count);
 
@@ -47,10 +47,10 @@ int kad_get_peers(void * buf, size_t len, uint32_t tid, const uint8_t *ident)
 	return (count - 1);
 }
 
-int kad_find_node(void * buf, size_t len, uint32_t tid, const uint8_t *ident)
+int kad_find_node(void *buf, size_t len, uint32_t tid, const uint8_t *ident)
 {
 	size_t count;
-	char * outp = (char *)buf;
+	char *outp = (char *)buf;
 	count = sizeof(__find_node_template);
 	assert(len > count);
 
@@ -60,10 +60,10 @@ int kad_find_node(void * buf, size_t len, uint32_t tid, const uint8_t *ident)
 	return (count - 1);
 }
 
-int kad_ping_node(void * buf, size_t len, uint32_t tid)
+int kad_ping_node(void *buf, size_t len, uint32_t tid)
 {
 	size_t count;
-	char * outp = (char *)buf;
+	char *outp = (char *)buf;
 	count = sizeof(__ping_node_template);
 	assert(len > count);
 

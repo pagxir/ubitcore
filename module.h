@@ -6,8 +6,8 @@ struct module_stub {
 	void (* clean)(void);
 };
 
-void initialize_modules(struct module_stub * list[]);
-void cleanup_modules(struct module_stub * list[]);
+void initialize_modules(struct module_stub *list[]);
+void cleanup_modules(struct module_stub *list[]);
 
 void init_stub(void);
 void clean_stub(void);

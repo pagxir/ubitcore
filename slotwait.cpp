@@ -6,12 +6,13 @@
 #include "slotwait.h"
 #include "slotsock.h"
 
+static int _non_block = 0;
 static int _wait_rescan = 0;
 static int _requst_quited = 0;
-static struct waitcb * _ready_header = 0;
-static struct waitcb ** _ready_tailer = &_ready_header;
+static struct waitcb *_ready_header = 0;
+static struct waitcb **_ready_tailer = &_ready_header;
 
-void waitcb_init(struct waitcb * waitcbp, wait_call * call, void * udata)
+void waitcb_init(struct waitcb *waitcbp, wait_call *call, void *udata)
 {
 	waitcbp->wt_udata = udata;
 	waitcbp->wt_callback = call;
@@ -21,7 +22,7 @@ void waitcb_init(struct waitcb * waitcbp, wait_call * call, void * udata)
 	waitcbp->wt_flags = (WT_INACTIVE| WT_EXTERNAL);
 }
 
-void waitcb_switch(struct waitcb * waitcbp)
+void waitcb_switch(struct waitcb *waitcbp)
 {
 	int flags;
 	assert(waitcbp->wt_magic == WT_MAGIC);
@@ -38,7 +39,7 @@ void waitcb_switch(struct waitcb * waitcbp)
 	_ready_tailer = &waitcbp->wt_next;
 }
 
-void waitcb_cancel(struct waitcb * waitcbp)
+void waitcb_cancel(struct waitcb *waitcbp)
 {
 	assert(waitcbp->wt_magic == WT_MAGIC);
 
@@ -56,7 +57,7 @@ void waitcb_cancel(struct waitcb * waitcbp)
 	}
 }
 
-void waitcb_clean(struct waitcb * waitcbp)
+void waitcb_clean(struct waitcb *waitcbp)
 {
 	waitcb_cancel(waitcbp);
 	waitcbp->wt_magic = 0;
@@ -65,7 +66,7 @@ void waitcb_clean(struct waitcb * waitcbp)
 	waitcbp->wt_callback  = 0;
 }
 
-int waitcb_completed(struct waitcb * waitcbp)
+int waitcb_completed(struct waitcb *waitcbp)
 {
 	int flags;
 	flags = waitcbp->wt_flags;
@@ -73,7 +74,7 @@ int waitcb_completed(struct waitcb * waitcbp)
    	return (flags & WT_COMPLETE);
 }
 
-int waitcb_active(struct waitcb * waitcbp)
+int waitcb_active(struct waitcb *waitcbp)
 {
 	int wait_flags;
 	wait_flags = waitcbp->wt_flags;
@@ -82,7 +83,7 @@ int waitcb_active(struct waitcb * waitcbp)
 	return (wait_flags == 0);
 }
 
-int waitcb_clear(struct waitcb * waitcbp)
+int waitcb_clear(struct waitcb *waitcbp)
 {
 	int flags;
 	flags = waitcbp->wt_flags;
@@ -91,7 +92,7 @@ int waitcb_clear(struct waitcb * waitcbp)
 	return (flags & WT_COMPLETE);
 }
 
-void slot_insert(slotcb * slotcbp, struct waitcb * waitcbp)
+void slot_record(slotcb *slotcbp, struct waitcb *waitcbp)
 {
 	assert(waitcbp->wt_magic == WT_MAGIC);
 	assert(waitcbp->wt_flags & WT_INACTIVE);
@@ -104,9 +105,9 @@ void slot_insert(slotcb * slotcbp, struct waitcb * waitcbp)
 	*slotcbp = waitcbp;
 }
 
-void slot_wakeup(slotcb * slotcbp)
+void slot_wakeup(slotcb *slotcbp)
 {
-	struct waitcb * waitcbp;
+	struct waitcb *waitcbp;
 
 	while (*slotcbp != NULL) {
 		waitcbp = *slotcbp;
@@ -117,10 +118,10 @@ void slot_wakeup(slotcb * slotcbp)
 	return;
 }
 
-int slot_wait(wait_call ** callbackp, void ** udatap)
+int slot_wait(wait_call **callbackp, void **udatap)
 {
 	struct waitcb mark;
-	struct waitcb * waitcbp;
+	struct waitcb *waitcbp;
 
 	waitcb_init(&mark, 0, 0);
 	mark.wt_flags &= ~WT_EXTERNAL;
@@ -132,7 +133,7 @@ int slot_wait(wait_call ** callbackp, void ** udatap)
 		waitcb_cancel(waitcbp);
 		if (waitcbp == &mark) {
 			DWORD timeout = 20;
-			if (_requst_quited) {
+			if (_requst_quited || _non_block) {
 			   	_wait_rescan = 0;
 				return 0;
 			}
@@ -164,7 +165,7 @@ int slot_wait(wait_call ** callbackp, void ** udatap)
 	return 1;
 }
 
-int slot_fire(wait_call * call, void * udata)
+int slot_fire(wait_call *call, void *udata)
 {
 	int error = 0;
 
@@ -178,14 +179,15 @@ int slotwait_held(int held)
 {
 	int error = 0;
 
+	_non_block = held;
 	return error;
 }
 
 int slotwait_step(void)
 {
 	int error;
-	void * udata;
-	wait_call * callback;
+	void *udata;
+	wait_call *callback;
 
 	error = slot_wait(&callback, &udata);
 	if (error == 1)
@@ -194,7 +196,7 @@ int slotwait_step(void)
 	return error;
 }
 
-static struct waitcb * _start_slot = 0;
+static struct waitcb *_start_slot = 0;
 void slotwait_start(void)
 {
 	slot_wakeup(&_start_slot);
@@ -202,13 +204,13 @@ void slotwait_start(void)
 	return;
 }
 
-void slotwait_atstart(struct waitcb * waitcbp)
+void slotwait_atstart(struct waitcb *waitcbp)
 {
-	slot_insert(&_start_slot, waitcbp);
+	slot_record(&_start_slot, waitcbp);
 	return;
 }
 
-static struct waitcb * _stop_slot = 0;
+static struct waitcb *_stop_slot = 0;
 void slotwait_stop(void)
 {
 	slot_wakeup(&_stop_slot);
@@ -216,9 +218,9 @@ void slotwait_stop(void)
 	return;
 }
 
-void slotwait_atstop(struct waitcb * waitcbp)
+void slotwait_atstop(struct waitcb *waitcbp)
 {
-	slot_insert(&_stop_slot, waitcbp);
+	slot_record(&_stop_slot, waitcbp);
 	return;
 }
 

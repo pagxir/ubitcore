@@ -6,7 +6,7 @@
 #define RC_TYPE_GET_PEERS 2
 
 const int MAX_SEND_OUT = 3;
-const int MAX_PEER_COUNT = 400;
+const int MAX_PEER_COUNT = 200;
 
 struct recursive_well {
    	int rn_flags;
@@ -43,7 +43,7 @@ struct recursive_context {
 	struct recursive_node rc_nodes[MAX_PEER_COUNT];
 };
 
-int kad_recursive(int type, const char * ident, const char * server);
+int kad_recursive(int type, const char *ident, const char *server);
 
 #endif
 

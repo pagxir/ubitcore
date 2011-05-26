@@ -20,7 +20,7 @@ class btcodec
         ~btcodec();
         bentity &bget();
         bentity *balloc(int off = 0);
-        int parse(const char * buf, int len);
+        int parse(const char *buf, int len);
         const char *b_str(int off, size_t *len);
 
     private:

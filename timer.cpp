@@ -17,7 +17,7 @@ static size_t _macro_tick;
 static size_t _macro_wheel;
 static slotcb _macro_timers[60];
 
-void callout_reset(struct waitcb * evt, size_t millisec)
+void callout_reset(struct waitcb *evt, size_t millisec)
 {
 	size_t wheel;
 	size_t micro_wheel, macro_wheel;
@@ -34,25 +34,25 @@ void callout_reset(struct waitcb * evt, size_t millisec)
 
 	if (micro_wheel < 50) {
 		wheel = (_micro_wheel + micro_wheel) % 50;
-		slot_insert(&_micro_timers[wheel], evt);
+		slot_record(&_micro_timers[wheel], evt);
 		return;
 	}
 
 	if (macro_wheel < 60) {
 		wheel = (_macro_wheel + macro_wheel) % 60;
-		slot_insert(&_macro_timers[wheel], evt);
+		slot_record(&_macro_timers[wheel], evt);
 		return;
 	}
 
-	slot_insert(&_still_timers, evt);
+	slot_record(&_still_timers, evt);
 	return;
 }
 
-void callout_invoke(void * upp)
+void callout_invoke(void *upp)
 {
 	size_t tick;
 	size_t wheel;
-	struct waitcb * event, * evt_next;
+	struct waitcb *event, *evt_next;
 
 	tick = GetTickCount();
 

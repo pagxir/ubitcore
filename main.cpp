@@ -8,12 +8,12 @@ extern struct module_stub ui_mod;
 extern struct module_stub timer_mod;
 extern struct module_stub slotsock_mod;
 extern struct module_stub udp_daemon_mod;
-static struct module_stub * module_stub_list[] = {
+static struct module_stub *module_stub_list[] = {
 	&timer_mod, &slotsock_mod, &udp_daemon_mod,
    	&ui_mod, 0
 };
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
 	WSADATA data;
 	WSAStartup(0x101, &data);

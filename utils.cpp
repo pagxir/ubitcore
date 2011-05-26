@@ -14,11 +14,11 @@ static int hex_code(int ch)
 	return 0;
 }
 
-size_t hex_decode(const char * hex, void * buf, size_t len)
+size_t hex_decode(const char *hex, void *buf, size_t len)
 {
 	int code;
-	unsigned char * p;
-	unsigned char * orig_buf;
+	unsigned char *p;
+	unsigned char *orig_buf;
 
    	p = (unsigned char *)buf;
    	orig_buf = (unsigned char *)buf;
@@ -35,7 +35,7 @@ size_t hex_decode(const char * hex, void * buf, size_t len)
 	return (p - orig_buf);
 }
 
-void hex_dump(const char * buf, size_t len)
+void hex_dump(const char *buf, size_t len)
 {
 	int i, j, c;
 
