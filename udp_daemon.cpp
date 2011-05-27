@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <winsock.h>
 
-#include "timer.h"
 #include "module.h"
+#include "callout.h"
 #include "btcodec.h"
 #include "slotwait.h"
 #include "slotsock.h"
@@ -15,6 +15,8 @@
 static FILE *_dmp_file;
 static FILE *_log_file;
 static int _udp_sockfd = 0;
+static struct sockcb *_udp_sockcbp = 0;
+
 static struct waitcb _sockcb;
 static struct waitcb _stopcb;
 static struct waitcb _startcb;
@@ -110,13 +112,14 @@ static void udp_routine(void *upp)
 	sockfd = _udp_sockfd;
 	waitcb_cancel(&_sockcb);
 	for ( ; ; ) {
-	   	count = recvfrom2(sockfd, sockbuf,
-			   	sizeof(sockbuf), &in_addr1, &_sockcb);
+		int in_len1 = sizeof(in_addr1);
+	   	count = recvfrom(sockfd, sockbuf, sizeof(sockbuf),
+			   	0, (struct sockaddr *)&in_addr1, &in_len1);
 		if (count >= 0) {
 			kad_proto_input(sockbuf, count);
 			fwrite(sockbuf, count, 1, _dmp_file);
-		} else if (waitcb_active(&_sockcb)) {
-			/* recv is blocking! */
+		} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
+			sock_read_wait(_udp_sockcbp, &_sockcb, 0);
 			break;
 		} else {
 			fprintf(stderr, "recv error %d\n", GetLastError());
@@ -211,7 +214,7 @@ static void udp_daemon_control(void *upp)
 		fprintf(stderr, "udp daemon start\n");
 		_udp_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 		assert(_udp_sockfd != -1);
-		sock_created(_udp_sockfd);
+		_udp_sockcbp = sock_attach(_udp_sockfd);
 
 		so_addrp = (struct sockaddr *)&addr_in1;
 		addr_in1.sin_family = AF_INET;
@@ -228,8 +231,8 @@ static void udp_daemon_control(void *upp)
 
 	if (upp == &_stopcb) {
 		fprintf(stderr, "udp daemon stop\n");
+		sock_detach(_udp_sockcbp);
 		closesocket(_udp_sockfd);
-		sock_closed(_udp_sockfd);
 		waitcb_clean(&_sockcb);
 		return;
 	}

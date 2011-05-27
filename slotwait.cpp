@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <winsock.h>
 
-#include "timer.h"
+#include "callout.h"
 #include "slotwait.h"
 #include "slotsock.h"
 

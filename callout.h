@@ -1,5 +1,5 @@
-#ifndef _TIMER_H_
-#define _TIMER_H_
+#ifndef _CALLOUT_H_
+#define _CALLOUT_H_
 struct waitcb;
 
 void callout_invoke(void *upp);

@@ -5,8 +5,8 @@
 
 #include "ui.h"
 #include "utils.h"
-#include "timer.h"
 #include "module.h"
+#include "callout.h"
 #include "slotwait.h"
 #include "slotsock.h"
 #include "udp_daemon.h"
@@ -58,7 +58,7 @@ static void input_routine(void *upp)
 }
 
 static uintptr_t h_input;
-static struct waitcb _wait_input;
+static struct waitcb _timer_input;
 static void parse_request(void *upp)
 {
 	int count;
@@ -67,7 +67,7 @@ static void parse_request(void *upp)
 	char ident0[60];
 
    	if (InterlockedExchange(&_cmd_lck, 1)) {
-	   	callout_reset(&_wait_input, 500);
+	   	callout_reset(&_timer_input, 500);
 		return;
 	}
 
@@ -99,14 +99,14 @@ static void parse_request(void *upp)
 	}
 
    	InterlockedExchange(&_cmd_lck, 0);
-	callout_reset(&_wait_input, 500);
+	callout_reset(&_timer_input, 500);
 } 
 
 static void module_init(void)
 {
 	h_input = _beginthread(input_routine, 0, 0);
-	waitcb_init(&_wait_input, parse_request, 0);
-	callout_reset(&_wait_input, 500);
+	waitcb_init(&_timer_input, parse_request, 0);
+	callout_reset(&_timer_input, 500);
 }
 
 static void module_clean(void)
@@ -115,6 +115,7 @@ static void module_clean(void)
 	handle = (HANDLE)h_input;
 	WaitForSingleObject(handle, INFINITE);
 	CloseHandle(handle);
+	waitcb_clean(&_timer_input);
 }
 
 struct module_stub ui_mod = {

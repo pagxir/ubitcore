@@ -2,8 +2,8 @@
 #include <assert.h>
 #include <windows.h>
 
-#include "timer.h"
 #include "module.h"
+#include "callout.h"
 #include "slotwait.h"
 
 static size_t _still_tick;
@@ -119,6 +119,7 @@ static void module_init(void)
 
 	waitcb_init(&_time_waitcb, callout_invoke, 0);
 	_time_waitcb.wt_flags &= ~WT_EXTERNAL;
+	_time_waitcb.wt_flags |= WT_WAITSCAN;
 	waitcb_switch(&_time_waitcb);
 }
 

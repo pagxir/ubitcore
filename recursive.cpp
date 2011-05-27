@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <winsock.h>
 
-#include "timer.h"
+#include "callout.h"
 #include "btcodec.h"
 #include "slotwait.h"
 #include "slotsock.h"
