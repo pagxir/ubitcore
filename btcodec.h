@@ -18,7 +18,7 @@ class btcodec
     public:
         btcodec();
         ~btcodec();
-        bentity &bget();
+        bentity &bget(const char * key);
         bentity *balloc(int off = 0);
         int parse(const char *buf, int len);
         const char *b_str(int off, size_t *len);

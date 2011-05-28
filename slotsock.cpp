@@ -22,12 +22,8 @@ struct sockcb {
 	int s_file;
 	int s_flags;
 	int s_magic;
-
-	int *s_rstat;
-	struct waitcb *s_rwait;
-
-	int *s_wstat;
-	struct waitcb *s_wwait;
+	slotcb s_rslot;
+	slotcb s_wslot;
 };
 
 static int _sock_ref = 0;
@@ -52,10 +48,8 @@ struct sockcb *sock_attach(int sockfd)
 
 	sockcbp->s_file = sockfd;
 	sockcbp->s_magic = SOCK_MAGIC;
-	sockcbp->s_rstat = 0;
-	sockcbp->s_rwait = 0;
-	sockcbp->s_wstat = 0;
-	sockcbp->s_wwait = 0;
+	sockcbp->s_rslot = 0;
+	sockcbp->s_wslot = 0;
 
 	do {
 		if (register_sockmsg) {
@@ -147,38 +141,6 @@ int getaddrbyname(const char *name, struct sockaddr_in *addr)
 	return 0;
 }
 
-static int sock_rwakeup(struct sockcb *sockcbp)
-{
-	if (sockcbp->s_rstat != NULL) {
-		*sockcbp->s_rstat = FD_READ;
-		sockcbp->s_rstat = NULL;
-	}
-
-	if (sockcbp->s_rwait != NULL) {
-		waitcb_switch(sockcbp->s_rwait);
-		sockcbp->s_flags &= ~SF_FIRST_IN;
-		sockcbp->s_rwait = NULL;
-	}
-
-	return 0;
-}
-
-static int sock_wwakeup(struct sockcb *sockcbp)
-{
-	if (sockcbp->s_wstat != NULL) {
-		*sockcbp->s_wstat = FD_READ;
-		sockcbp->s_wstat = NULL;
-	}
-
-	if (sockcbp->s_wwait != NULL) {
-		waitcb_switch(sockcbp->s_wwait);
-		sockcbp->s_flags &= ~SF_FIRST_OUT;
-		sockcbp->s_wwait = NULL;
-	}
-
-	return 0;
-}
-
 static void do_quick_scan(void *upp)
 {
 	int error;
@@ -198,86 +160,94 @@ static void do_quick_scan(void *upp)
 		if (FD_READ & events) {
 			io_error |= network_events.iErrorCode[FD_READ_BIT];
 			sockcbp->s_flags |= SF_READY_IN;
-			sock_rwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_rslot);
 		}
 
 		if (FD_WRITE & events) {
 			io_error |= network_events.iErrorCode[FD_WRITE_BIT];
 			sockcbp->s_flags |= SF_READY_OUT;
-		   	sock_wwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_wslot);
 		}
 
 		if (FD_CLOSE & events) {
 			io_error |= network_events.iErrorCode[FD_CLOSE_BIT];
 			sockcbp->s_flags |= SF_READY_IN;
 			sockcbp->s_flags |= SF_CLOSE_IN;
-		   	sock_rwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_rslot);
 		}
 
 		if (FD_ACCEPT & events) {
 			io_error |= network_events.iErrorCode[FD_ACCEPT_BIT];
 			sockcbp->s_flags |= SF_READY_IN;
-		   	sock_rwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_rslot);
 		}
 
 		if (FD_CONNECT & events) {
 			io_error |= network_events.iErrorCode[FD_CONNECT_BIT];
 			sockcbp->s_flags |= SF_READY_OUT;
-		   	sock_wwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_wslot);
 		}
 
 		if (io_error != 0) {
 			sockcbp->s_flags |= SF_CLOSE_IN;
 			sockcbp->s_flags |= SF_CLOSE_OUT;
-		   	sock_rwakeup(sockcbp);
-		   	sock_wwakeup(sockcbp);
+			slot_wakeup(&sockcbp->s_rslot);
+			slot_wakeup(&sockcbp->s_wslot);
 		}
 	}
 }
 
-int sock_read_wait(struct sockcb *sockcbp, struct waitcb *waitcbp, int *statp)
+int sock_read_wait(struct sockcb *sockcbp, struct waitcb *waitcbp)
 {
 	int flags;
 	assert(sockcbp->s_magic == SOCK_MAGIC);
-	assert(sockcbp->s_rwait == 0 || sockcbp->s_rwait == waitcbp);
 
-	sockcbp->s_rstat = statp;
-	sockcbp->s_rwait = waitcbp;
+	if (waitcb_active(waitcbp) &&
+		   	waitcbp->wt_data == &sockcbp->s_rslot)
+		return 0;
 
+	slot_record(&sockcbp->s_rslot, waitcbp);
 	flags = sockcbp->s_flags & (SF_READY_IN| SF_FIRST_IN);
+
+	sockcbp->s_flags &= ~SF_FIRST_IN;
 	if (flags == (SF_READY_IN| SF_FIRST_IN)) {
-		sock_rwakeup(sockcbp);
+		slot_wakeup(&sockcbp->s_rslot);
 		return 0;
 	}
 
 	if (sockcbp->s_flags & SF_CLOSE_IN) {
-		sock_rwakeup(sockcbp);
+		slot_wakeup(&sockcbp->s_rslot);
 		return 0;
 	}
 	
+	waitcbp->wt_data = &sockcbp->s_rslot;
 	return 0;
 }
 
-int sock_write_wait(struct sockcb *sockcbp, struct waitcb *waitcbp, int *statp)
+int sock_write_wait(struct sockcb *sockcbp, struct waitcb *waitcbp)
 {
 	int flags;
 	assert(sockcbp->s_magic == SOCK_MAGIC);
-	assert(sockcbp->s_wwait == 0 || sockcbp->s_wwait == waitcbp);
 
-	sockcbp->s_wstat = statp;
-	sockcbp->s_wwait = waitcbp;
+	if (waitcb_active(waitcbp) &&
+			waitcbp->wt_data == &sockcbp->s_wslot)
+		return 0;
 
+	slot_record(&sockcbp->s_wslot, waitcbp);
 	flags = sockcbp->s_flags & (SF_READY_OUT| SF_FIRST_OUT);
+
+	sockcbp->s_flags &= ~SF_FIRST_OUT;
 	if (flags == (SF_READY_OUT| SF_FIRST_OUT)) {
-		sock_wwakeup(sockcbp);
+		slot_wakeup(&sockcbp->s_wslot);
 		return 0;
 	}
 
 	if (sockcbp->s_flags & SF_CLOSE_OUT) {
-		sock_wwakeup(sockcbp);
+		slot_wakeup(&sockcbp->s_wslot);
 		return 0;
 	}
 	
+	waitcbp->wt_data = &sockcbp->s_wslot;
 	return 0;
 }
 
@@ -297,21 +267,21 @@ int sock_wakeup(int sockfd, int index, int type)
 			case FD_CLOSE:
 			case FD_ACCEPT:
 				sockcbp->s_flags |= SF_READY_IN;
-				sock_rwakeup(sockcbp);
+			   	slot_wakeup(&sockcbp->s_rslot);
 				break;
 
 			case FD_WRITE:
 			case FD_CONNECT:
 				sockcbp->s_flags |= SF_READY_OUT;
-				sock_wwakeup(sockcbp);
+			   	slot_wakeup(&sockcbp->s_wslot);
 				break;
 
 			case FD_OOB:
 			default:
 				sockcbp->s_flags |= SF_CLOSE_OUT;
 				sockcbp->s_flags |= SF_CLOSE_IN;
-				sock_rwakeup(sockcbp);
-				sock_wwakeup(sockcbp);
+			   	slot_wakeup(&sockcbp->s_wslot);
+			   	slot_wakeup(&sockcbp->s_rslot);
 				break;
 		}
 	}

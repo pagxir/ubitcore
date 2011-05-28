@@ -19,6 +19,10 @@ uint8_t __get_peers_template[] =  {
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
 
+uint8_t __find_node_answer[] = {
+   	"d1:rd2:id20:abcdefghij01234567895:nodes0:e1:t3:xxl1:y1:re"
+};
+
 int kad_set_ident(const uint8_t *ident)
 {
 	uint8_t *template0;
@@ -30,6 +34,9 @@ int kad_set_ident(const uint8_t *ident)
 	memcpy(template0 + 12, ident, 20);
 
 	template0 = __get_peers_template;
+	memcpy(template0 + 12, ident, 20);
+
+	template0 = __find_node_answer;
 	memcpy(template0 + 12, ident, 20);
 	return 0;
 }
@@ -70,5 +77,18 @@ int kad_ping_node(void *buf, size_t len, uint32_t tid)
 	memcpy(outp, __ping_node_template, count);
 	memcpy(outp + 47, &tid, sizeof(tid));
 	return (count - 1);
+}
+
+int kad_find_node_answer(void *buf, size_t len, const char *qid, size_t lid)
+{
+	char * outp;
+	assert (45 + lid + 7 <= len);
+
+	outp = (char *)buf;
+	memcpy(outp, __find_node_answer, 45);
+	memcpy(outp + 45, qid, lid);
+	memcpy(outp + 45 + lid, __find_node_answer + 50, 7);
+
+	return 45 + lid + 7;
 }
 

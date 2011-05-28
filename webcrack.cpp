@@ -108,14 +108,13 @@ get_url_path(const char *url, char *url_path, size_t len)
 struct webcrack_ctx {
 	int flags;
 	int sockfd;
-	int sock_rstat;
-	int sock_wstat;
 	int http_head_off;
 	int http_head_len;
 	char *http_head_buf;
 	struct sockcb *sockcbp;
-	struct waitcb crack_event;
 	struct waitcb crack_timer;
+	struct waitcb sock_rwait;
+	struct waitcb sock_wwait;
 };
 
 static int webcrack_invoke(struct webcrack_ctx *ctxp)
@@ -123,7 +122,7 @@ static int webcrack_invoke(struct webcrack_ctx *ctxp)
 	int len;
 	char buf[8192];
 
-	if (ctxp->sock_wstat != 0 &&
+	if (waitcb_completed(&ctxp->sock_wwait) &&
 			ctxp->http_head_off < ctxp->http_head_len) {
 		do {
 			len = send(ctxp->sockfd, 
@@ -133,14 +132,14 @@ static int webcrack_invoke(struct webcrack_ctx *ctxp)
 				ctxp->http_head_off += len;
 				_total_bytes_out += len;
 			} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
-				ctxp->sock_wstat = 0;
+				waitcb_clear(&ctxp->sock_wwait);
 			} else {
 				return 0;
 			}
 		} while (len > 0 && ctxp->http_head_off < ctxp->http_head_len);
 	}
 
-	if (ctxp->sock_rstat != 0) {
+	if (waitcb_completed(&ctxp->sock_rwait)) {
 		do {
 			len = recv(ctxp->sockfd, buf, sizeof(buf) - 1, 0);
 		   	if (len == 0) {
@@ -156,13 +155,14 @@ static int webcrack_invoke(struct webcrack_ctx *ctxp)
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
 			   	return 0;
 		} while ( 0 );
-		ctxp->sock_rstat = 0;
+
+		waitcb_clear(&ctxp->sock_rwait);
 	}
 
 	if (ctxp->http_head_off < ctxp->http_head_len)
-	   	sock_write_wait(ctxp->sockcbp, &ctxp->crack_event, &ctxp->sock_wstat);
+	   	sock_write_wait(ctxp->sockcbp, &ctxp->sock_wwait);
    
-	sock_read_wait(ctxp->sockcbp, &ctxp->crack_event, &ctxp->sock_rstat);
+	sock_read_wait(ctxp->sockcbp, &ctxp->sock_rwait);
 
 	if (waitcb_completed(&ctxp->crack_timer)) {
 		fprintf(stderr, "connect timeout!\n");
@@ -264,23 +264,22 @@ webcrack_create(const char *url, const char *user, const char *pass)
 	ctxp->flags = 0;
 	ctxp->sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	assert(ctxp->sockfd != -1);
-	ctxp->sock_wstat = 0;
-	ctxp->sock_rstat = 0;
 	ctxp->http_head_off = 0;
 	ctxp->http_head_len = strlen(http_head_buf);
 	ctxp->http_head_buf = strdup(http_head_buf);
 
+	waitcb_init(&ctxp->sock_rwait, webcrack_routine, ctxp);
+	waitcb_init(&ctxp->sock_wwait, webcrack_routine, ctxp);
 	waitcb_init(&ctxp->crack_timer, webcrack_routine, ctxp);
-	waitcb_init(&ctxp->crack_event, webcrack_routine, ctxp);
 
 	ctxp->sockcbp = sock_attach(ctxp->sockfd);
 	addr_inp = (struct sockaddr *)&addr_in1;
 	error = connect(ctxp->sockfd, addr_inp, sizeof(addr_in1));
 	if (error == 0) {
-		waitcb_switch(&ctxp->crack_event);
+		waitcb_switch(&ctxp->sock_wwait);
 		_webcrack_ref++;
 	} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
-	   	sock_write_wait(ctxp->sockcbp, &ctxp->crack_event, &ctxp->sock_wstat);
+	   	sock_write_wait(ctxp->sockcbp, &ctxp->sock_wwait);
 	   	callout_reset(&ctxp->crack_timer, 24000);
 		_webcrack_ref++;
 	} else {
@@ -296,7 +295,8 @@ webcrack_close(struct webcrack_ctx *ctxp)
 {
 	slot_wakeup(&_slot_finish);
 	sock_detach(ctxp->sockcbp);
-	waitcb_clean(&ctxp->crack_event);
+	waitcb_clean(&ctxp->sock_rwait);
+	waitcb_clean(&ctxp->sock_wwait);
 	waitcb_clean(&ctxp->crack_timer);
 	free(ctxp->http_head_buf);
 	closesocket(ctxp->sockfd);
@@ -337,8 +337,8 @@ void module_init(void)
 {
 	waitcb_init(&_auth_display, update_display, NULL);
 	waitcb_init(&_auth_finish, auth_callback, NULL);
-	callout_reset(&_auth_display, 1000);
-	waitcb_switch(&_auth_finish);
+	//callout_reset(&_auth_display, 1000);
+	//waitcb_switch(&_auth_finish);
 }
 
 void module_clean(void)

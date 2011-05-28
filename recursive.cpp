@@ -262,14 +262,14 @@ static void kad_recursive_input(void *upp)
 					rnp->rn_touch == rcp->rc_touch)
 				needouptut = 1;
 
-			nodes = codec.bget().bget("r").bget("id").c_str(&elen);
+			nodes = codec.bget("r").bget("id").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
 				continue;
 			}
 
 			kad_bound_update(rcp, nodes, in_addr1, in_port1);
-			nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
+			nodes = codec.bget("r").bget("nodes").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
 				continue;

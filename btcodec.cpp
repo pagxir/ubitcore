@@ -47,6 +47,7 @@ const char *btlist::b_str(size_t *len)
 {
     bentity *en = &__INFINITE;
     const char *p = b_codec->b_str(b_off, len);
+
     if (p != NULL) {
         size_t eln;
         int offset = 1;
@@ -271,6 +272,7 @@ const char *btstr::b_str(size_t *len)
     int off = 0;
 	int save = 0;
     const char *p = b_codec->b_str(b_off, len);
+
     if (p != NULL) {
         assert(*len > 3);
         while (off < *len &&
@@ -325,7 +327,7 @@ int btcodec::parse(const char *buf, int len)
     return 0;
 }
 
-bentity& btcodec::bget()
+bentity& btcodec::bget(const char *key)
 {
     if (b_entity != &__INFINITE) {
         delete b_entity;
@@ -333,7 +335,7 @@ bentity& btcodec::bget()
     }
 
     b_entity = balloc(0);
-    return *b_entity;
+    return b_entity->bget(key);
 }
 
 bentity* btcodec::balloc(int off)
@@ -357,8 +359,10 @@ bentity* btcodec::balloc(int off)
 
 const char *btcodec::b_str(int off, size_t *len)
 {
+	*len = 0;
     if (off >= b_len)
         return NULL;
+
     *len = (b_len - off);
     return b_text + off;
 }
@@ -386,11 +390,13 @@ bentity::~bentity()
 
 const char *bentity::b_str(size_t *len)
 {
+	*len = 0;
     return NULL;
 }
 
 const char *bentity::c_str(size_t *len)
 {
+	*len = 0;
     return NULL;
 }
 

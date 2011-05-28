@@ -35,6 +35,7 @@ void waitcb_switch(struct waitcb *waitcbp)
 	*_ready_tailer = waitcbp;
 	waitcbp->wt_next = 0;
 	waitcbp->wt_prev = _ready_tailer;
+	waitcbp->wt_flags |= WT_COMPLETE;
 	waitcbp->wt_flags &= ~WT_INACTIVE;
 	_ready_tailer = &waitcbp->wt_next;
 }
@@ -86,6 +87,7 @@ int waitcb_active(struct waitcb *waitcbp)
 int waitcb_clear(struct waitcb *waitcbp)
 {
 	int flags;
+	waitcb_cancel(waitcbp);
 	flags = waitcbp->wt_flags;
 	waitcbp->wt_flags &= ~WT_COMPLETE;
 	assert(waitcbp->wt_magic == WT_MAGIC);

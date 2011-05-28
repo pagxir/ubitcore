@@ -22,7 +22,7 @@ void callout_reset(struct waitcb *evt, size_t millisec)
 	size_t wheel;
 	size_t micro_wheel, macro_wheel;
 
-	waitcb_cancel(evt);
+	waitcb_clear(evt);
 	evt->wt_value = (millisec + GetTickCount());
    	micro_wheel = (evt->wt_value - _micro_tick) / 20;
    	macro_wheel = (evt->wt_value - _macro_tick) / 1000;

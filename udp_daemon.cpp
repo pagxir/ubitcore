@@ -22,84 +22,147 @@ static struct waitcb _stopcb;
 static struct waitcb _startcb;
 
 static slotcb _kad_slot = 0;
-static void kad_proto_input(char *buf, size_t len)
+static void dump_peer_values(btcodec & codec)
 {
-   	void *idp;
+	int i;
 	size_t elen;
-	btcodec codec;
 	u_short in_port1;
    	in_addr in_addr1;
-   	struct waitcb *waitcbp;
-	const char *node, *nodes;
-
-	codec.parse(buf, len);
-
-	nodes = codec.bget().bget("t").c_str(&elen);
-	if (nodes != NULL && elen == sizeof(void *)) {
-		memcpy(&idp, nodes, elen);
-		for (waitcbp = _kad_slot; waitcbp;
-			   	waitcbp = waitcbp->wt_next) {
-			if (waitcbp != idp)
-				continue;
-		   	assert(len < waitcbp->wt_count);
-		   	waitcbp->wt_count = len;
-		   	memcpy(waitcbp->wt_data, buf, len);
-		   	waitcb_cancel(waitcbp);
-		   	waitcb_switch(waitcbp);
-		   	break;
-		}
-	}
-
-#if 0
-	nodes = codec.bget().bget("r").bget("id").c_str(&elen);
-	if (nodes != NULL) {
-		fprintf(stderr, "id: ");
-		while (elen-- > 0)
-			fprintf(stderr, "%02X", 0xFF&*nodes++);
-		fprintf(stderr, "\n");
-	}
-
-	nodes = codec.bget().bget("r").bget("token").c_str(&elen);
-	if (nodes != NULL) {
-		fprintf(stderr, "token: ");
-		while (elen-- > 0)
-			fprintf(stderr, "%02X", 0xFF&*nodes++);
-		fprintf(stderr, "\n");
-	}
-#endif
-
-	int i = 0;
-   	nodes = codec.bget().bget("r").bget("values").bget(i++).c_str(&elen);
-	while (nodes != NULL) {
-	   	for (node = nodes; elen >= 6; node += 6, elen -= 6) {
-		   	memcpy(&in_addr1, node + 0, sizeof(in_addr1));
-		   	memcpy(&in_port1, node + 4, sizeof(in_port1));
+	const char *value, *values;
+   
+	i = 0;
+	values = codec.bget("r").bget("values").bget(i++).c_str(&elen);
+   	while (values != NULL) {
+	   	for (value = values; elen >= 6; value += 6, elen -= 6) {
+		   	memcpy(&in_addr1, value + 0, sizeof(in_addr1));
+		   	memcpy(&in_port1, value + 4, sizeof(in_port1));
 		   	fprintf(stderr, "value %s:%d\n",
 				   	inet_ntoa(in_addr1), ntohs(in_port1));
 		   	fprintf(_log_file, "value %s:%d\n",
 				   	inet_ntoa(in_addr1), ntohs(in_port1));
 	   	}
-	   	nodes = codec.bget().bget("r").bget("values").bget(i++).c_str(&elen);
+	   	values = codec.bget("r").bget("values").bget(i++).c_str(&elen);
+   	}
+
+	return;
+}
+
+static void dump_info_hash(const char *info_hash, size_t elen)
+{
+	uint8_t *u_info_hash;
+	u_info_hash = (uint8_t *)info_hash;
+
+	fprintf(stderr, "get_peers packet: ");
+	while (elen-- > 0)
+		fprintf(stderr, "%02X", *u_info_hash++);
+	fprintf(stderr, "\n");
+
+	return;
+}
+
+static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
+{
+	int i;
+	int err;
+   	void *idp;
+	size_t elen;
+	btcodec codec;
+	char out_buf[2048];
+   	struct waitcb *waitcbp;
+
+   	const char *info_hash;
+	const char *node, *nodes;
+	const char *value, *values;
+	const char *peer_ident = 0;
+	const char *query_type = 0;
+	const char *query_ident = 0;
+
+	codec.parse(buf, len);
+	const char *type = codec.bget("y").c_str(&elen);
+	if (type == NULL || elen != 1) {
+		fprintf(stderr, "packet missing query type\n");
+		return;
 	}
 
-#if 0
-	nodes = codec.bget().bget("r").bget("nodes").c_str(&elen);
-	if (nodes != NULL) {
-		int idlen;
-		const char * idstr;
-		fprintf(stderr, "nodes: \n");
-	   	for (node = nodes; elen >= 26; node += 26, elen -= 26) {
-		   	memcpy(&in_addr1, node + 20, sizeof(in_addr1));
-		   	memcpy(&in_port1, node + 24, sizeof(in_port1));
-			idlen = 20;
-			for (idstr = node; idlen > 0; idlen--, idstr++)
-			   	fprintf(stderr, "%02X", 0xFF & *idstr++);
-		   	fprintf(stderr, " %s:%d\n", inet_ntoa(in_addr1), ntohs(in_port1));
-	   	}
+	switch (*type) {
+		case 'r':
+		   	peer_ident = codec.bget("r").bget("id").c_str(&elen);
+			if (peer_ident == NULL || elen != 20) {
+			   	fprintf(stderr, "answer packet missing peer ident\n");
+				return;
+			}
+		   
+			query_ident = codec.bget("t").c_str(&elen);
+		   	if (query_ident == NULL || elen != sizeof(void *)) {
+			   	fprintf(stderr, "packet missing packet ident\n");
+				fwrite(buf, len, 1, _log_file);
+			   	return;
+		   	}
+
+			memcpy(&idp, query_ident, elen);
+		   	for (waitcbp = _kad_slot; waitcbp;
+				   	waitcbp = waitcbp->wt_next) {
+			   	if (waitcbp != idp)
+				   	continue;
+			   	assert(len < waitcbp->wt_count);
+			   	waitcbp->wt_count = len;
+			   	memcpy(waitcbp->wt_data, buf, len);
+			   	waitcb_cancel(waitcbp);
+			   	waitcb_switch(waitcbp);
+			   	break;
+		   	}
+		   
+			dump_peer_values(codec);
+			break;
+
+		case 'q':
+		   	peer_ident = codec.bget("a").bget("id").c_str(&elen);
+			if (peer_ident == NULL || elen != 20) {
+			   	fprintf(stderr, "query packet missing peer ident\n");
+				return;
+			}
+
+			query_type = codec.bget("q").c_str(&elen);
+			if (query_type == NULL) {
+			   	fprintf(stderr, "query packet missing query type\n");
+				return;
+			}
+
+			if (elen == 13 && !strncmp(query_type, "announce_peer", 13)) {
+			   	fprintf(stderr, "announce_peer packet\n");
+				break;
+			} else if (elen == 9 && !strncmp(query_type, "find_node", 9)) {
+				struct sockaddr *so_addrp;
+				peer_ident = codec.bget("t").b_str(&elen);
+				so_addrp = (struct sockaddr *)in_addrp;
+				len = kad_find_node_answer(out_buf,
+					   	sizeof(out_buf), peer_ident, elen);
+				err = sendto(_udp_sockfd, out_buf, len,
+					   	0, so_addrp, sizeof(*in_addrp));
+			   	fprintf(stderr, "find_node packet: %d\n", err);
+				break;
+			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
+				info_hash = codec.bget("a").bget("info_hash").c_str(&elen);
+				dump_info_hash(info_hash, elen);
+				break;
+			} else if (elen == 4 && !strncmp(query_type, "ping", 4)) {
+			   	fprintf(stderr, "ping packet\n");
+				break;
+			} else {
+				fprintf(stderr, "query packet have an unkown query type\n");
+				return;
+			}
+
+			break;
+
+		default:
+			if (*type == 'e') {
+			   	fprintf(stderr, "peer return error\n");
+				break;
+			}
+			break;
 	}
 
-	fprintf(stderr, "receive packet: %d\n", len);
-#endif
 	return;
 }
 
@@ -116,10 +179,10 @@ static void udp_routine(void *upp)
 	   	count = recvfrom(sockfd, sockbuf, sizeof(sockbuf),
 			   	0, (struct sockaddr *)&in_addr1, &in_len1);
 		if (count >= 0) {
-			kad_proto_input(sockbuf, count);
+			kad_proto_input(sockbuf, count, &in_addr1);
 			fwrite(sockbuf, count, 1, _dmp_file);
 		} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
-			sock_read_wait(_udp_sockcbp, &_sockcb, 0);
+			sock_read_wait(_udp_sockcbp, &_sockcb);
 			break;
 		} else {
 			fprintf(stderr, "recv error %d\n", GetLastError());
