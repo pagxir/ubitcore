@@ -15,6 +15,12 @@ static LONG _cmd_lck = 0;
 static LONG _cmd_yes = 0;
 static char _cmd_buf[1024];
 
+BOOL WINAPI console_closed(DWORD ctrl_type)
+{
+	CloseHandle(GetStdHandle(STD_INPUT_HANDLE));
+	return TRUE;
+}
+
 static void input_routine(void *upp)
 {
 	char buf[1024];
@@ -22,7 +28,8 @@ static void input_routine(void *upp)
 	char *carp = 0;
 	LONG oldval = 0;
 
-	for ( ; ; ) {
+	SetConsoleCtrlHandler(console_closed, TRUE);
+   	for ( ; ; ) {
 	   	retp = fgets(buf, sizeof(buf), stdin);
 		if (retp != NULL) {
 			carp = retp;
@@ -53,6 +60,7 @@ static void input_routine(void *upp)
 		if (retp == 0 || !strcmp(buf, "quit"))
 			break;
 	}
+	SetConsoleCtrlHandler(console_closed, FALSE);
 
 	_endthread();
 }
@@ -113,7 +121,9 @@ static void module_clean(void)
 {
 	HANDLE handle;
 	handle = (HANDLE)h_input;
+		fprintf(stderr, "do quited\n");
 	WaitForSingleObject(handle, INFINITE);
+		fprintf(stderr, "do quited1\n");
 	CloseHandle(handle);
 	waitcb_clean(&_timer_input);
 }
