@@ -47,15 +47,29 @@ static void dump_peer_values(btcodec & codec)
 	return;
 }
 
+static void dump_kad_peer_ident(const char *peer_ident,
+	   	struct sockaddr_in *inp)
+{
+	size_t elen;
+	uint8_t *u_peer_ident;
+	u_peer_ident = (uint8_t *)peer_ident;
+
+	fprintf(stderr, "peer_ident: ");
+	elen = 20;
+	while (elen-- > 0)
+		fprintf(stderr, "%02X", *u_peer_ident++);
+	fprintf(stderr, " %s:%d\n",
+		   	inet_ntoa(inp->sin_addr), htons(inp->sin_port));
+}
+
 static void dump_info_hash(const char *info_hash, size_t elen)
 {
 	uint8_t *u_info_hash;
 	u_info_hash = (uint8_t *)info_hash;
 
-	fprintf(stderr, "get_peers packet: ");
 	while (elen-- > 0)
 		fprintf(stderr, "%02X", *u_info_hash++);
-	fprintf(stderr, "\n");
+	fprintf(stderr, " get_peers packet\n");
 
 	return;
 }
@@ -112,6 +126,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			   	break;
 		   	}
 		   
+			dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
 
@@ -153,6 +168,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				return;
 			}
 
+			dump_kad_peer_ident(peer_ident, in_addrp);
 			break;
 
 		default:
