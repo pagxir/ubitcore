@@ -43,7 +43,8 @@ struct recursive_context {
 	struct recursive_node rc_nodes[MAX_PEER_COUNT];
 };
 
-int kad_recursive(int type, const char *ident, const char *server);
+int kad_recursive(int type, const char *ident);
+int kad_recursive2(int type, const char *peer, const char *peer);
 
 #endif
 

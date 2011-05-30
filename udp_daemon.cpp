@@ -231,22 +231,31 @@ int kad_setident(const char *ident)
 	return 0;
 }
 
+int kad_bootup(const char *server)
+{
+	char curr_ident[20];
+	kad_get_ident(curr_ident);
+	curr_ident[19] ^= 0x1;
+	kad_recursive2(RC_TYPE_FIND_NODE, curr_ident, server);
+	return 0;
+}
+
 int kad_pingnode(const char *server)
 {
 	static char just_keep_it[20] = "just keep it";
-	kad_recursive(RC_TYPE_PING_NODE, just_keep_it, server);
+	kad_recursive2(RC_TYPE_PING_NODE, just_keep_it, server);
 	return 0;
 }
 
-int kad_getpeers(const char *ident, const char *server)
+int kad_getpeers(const char *ident)
 {
-	kad_recursive(RC_TYPE_GET_PEERS, ident, server);
+	kad_recursive(RC_TYPE_GET_PEERS, ident);
 	return 0;
 }
 
-int kad_findnode(const char *ident, const char *server)
+int kad_findnode(const char *ident)
 {
-	kad_recursive(RC_TYPE_FIND_NODE, ident, server);
+	kad_recursive(RC_TYPE_FIND_NODE, ident);
 	return 0;
 }
 

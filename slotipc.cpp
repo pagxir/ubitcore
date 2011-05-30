@@ -29,10 +29,10 @@ int ipccb_switch(ipccb_t *ipccbp)
 	EnterCriticalSection(&_ipc_lock);
 	if (!waitcb_active(ipccbp)) {
 	   	slot_record(&_ipc_slot, ipccbp);
-	   	SetEvent(slotwait_handle());
 		error = 0;
 	}
 	LeaveCriticalSection(&_ipc_lock);
+   	SetEvent(slotwait_handle());
 
 	return error;
 }

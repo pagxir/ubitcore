@@ -5,21 +5,25 @@
 
 #include "kad_proto.h"
 
-uint8_t __ping_node_template[] = {
+static char _curr_ident[21] = {
+	"abcdefghij0123456789"
+};
+
+static uint8_t __ping_node_template[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"
 };
 
-uint8_t __find_node_template[] = {
+static uint8_t __find_node_template[] = {
     "d1:ad2:id20:abcdefghij01234567896:target"
         "20:abcdefghij0123456789e1:q9:find_node1:t4:FFFF1:y1:qe"
 };
 
-uint8_t __get_peers_template[] =  {
+static uint8_t __get_peers_template[] =  {
     "d1:ad2:id20:abcdefghij01234567899:info_hash"
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
 
-uint8_t __find_node_answer[] = {
+static uint8_t __find_node_answer[] = {
    	"d1:rd2:id20:abcdefghij01234567895:nodes0:e1:t3:xxl1:y1:re"
 };
 
@@ -38,6 +42,14 @@ int kad_set_ident(const uint8_t *ident)
 
 	template0 = __find_node_answer;
 	memcpy(template0 + 12, ident, 20);
+
+	memcpy(_curr_ident, ident, 20);
+	return 0;
+}
+
+int kad_get_ident(char *ident)
+{
+	memcpy(ident, _curr_ident, 20);
 	return 0;
 }
 
@@ -90,5 +102,28 @@ int kad_find_node_answer(void *buf, size_t len, const char *qid, size_t lid)
 	memcpy(outp + 45 + lid, __find_node_answer + 50, 7);
 
 	return 45 + lid + 7;
+}
+
+int kad_less_than(const char *sp, const char *lp, const char *rp)
+{
+	int i;
+	uint8_t l, r;
+
+	i = 0;
+	while (*lp == *rp) {
+		if (i++ < 20) {
+		   	lp++, rp++;
+			continue;
+		}
+		break;
+	}
+
+	if (i < 20) {
+	   	l = (*sp ^ *lp) & 0xFF;
+	   	r = (*sp ^ *rp) & 0xFF;
+	   	return (l < r);
+	}
+
+	return 0;
 }
 

@@ -127,24 +127,28 @@ static void parse_request(void *upp)
 
 	uip = (struct _user_input *)upp;
 
-	if (!strncmp(uip->ui_buf, "setident ", 9)) {
+	if (!strncmp(uip->ui_buf, "bootup ", 7)) {
+	   	count = sscanf(uip->ui_buf, "%*s %s", server);
+		fprintf(stderr, "bootup %s\n", server);
+		kad_bootup(server);
+	}else if (!strncmp(uip->ui_buf, "setident ", 9)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
 	   	kad_setident(ident1);
    	} else if (!strncmp(uip->ui_buf, "get_peers ", 9)) {
-	   	count = sscanf(uip->ui_buf, "%*s %s %s", ident0, server);
+	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
-	   	kad_getpeers(ident1, server);
 	   	fprintf(stderr, "kad_getpeers\n");
+	   	kad_getpeers(ident1);
    	} else if (!strncmp(uip->ui_buf, "find_node ", 9)) {
-	   	count = sscanf(uip->ui_buf, "%*s %s %s", ident0, server);
+	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
-	   	kad_findnode(ident1, server);
 	   	fprintf(stderr, "kad_findnode\n");
+	   	kad_findnode(ident1);
    	} else if (!strncmp(uip->ui_buf, "ping_node ", 9)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", server);
-	   	kad_pingnode(server);
 	   	fprintf(stderr, "kad_pingnode\n");
+	   	kad_pingnode(server);
    	}
    
 	SetEvent(uip->ui_event);

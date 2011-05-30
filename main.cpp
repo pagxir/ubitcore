@@ -10,9 +10,11 @@ extern struct module_stub slotipc_mod;
 extern struct module_stub slotsock_mod;
 extern struct module_stub udp_daemon_mod;
 extern struct module_stub webcrack_mod;
+extern struct module_stub kad_route_mod;
 static struct module_stub *module_stub_list[] = {
 	&timer_mod, &slotsock_mod, &udp_daemon_mod,
-	&webcrack_mod, &slotipc_mod, &ui_mod, 0
+	&webcrack_mod, &slotipc_mod, &kad_route_mod,
+   	&ui_mod, 0
 };
 
 int main(int argc, char *argv[])

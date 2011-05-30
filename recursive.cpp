@@ -12,29 +12,6 @@
 #include "kad_route.h"
 #include "udp_daemon.h"
 
-static int kad_less_than(const char *sp, const char *lp, const char *rp)
-{
-	int i;
-	uint8_t l, r;
-
-	i = 0;
-	while (*lp == *rp) {
-		if (i++ < 20) {
-		   	lp++, rp++;
-			continue;
-		}
-		break;
-	}
-
-	if (i < 20) {
-	   	l = (*sp ^ *lp) & 0xFF;
-	   	r = (*sp ^ *rp) & 0xFF;
-	   	return (l < r);
-	}
-
-	return 0;
-}
-
 static int kad_bound_check(struct recursive_context *rcp, const char *node)
 {
 	int i;
@@ -297,7 +274,7 @@ static void kad_recursive_input(void *upp)
 				continue;
 			}
 
-			kad_bound_update(rcp, nodes, in_addr1, in_port1);
+			kad_bound_update(rcp, nodes, rnp->rn_addr, rnp->rn_port);
 			nodes = codec.bget("r").bget("nodes").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
@@ -320,19 +297,11 @@ static void kad_recursive_input(void *upp)
 	return;
 }
 
-int kad_recursive(int type, const char *ident, const char *server)
+struct recursive_context *kad_recursivecb_new(int type, const char *ident)
 {
 	int i;
-	int error;
-	struct sockaddr_in so_addr;
-	struct recursive_node *rnp;
+	struct recursive_node * rnp;
 	struct recursive_context *rcp;
-
-	error = getaddrbyname(server, &so_addr);
-	if (error != 0) {
-		fprintf(stderr, "getaddrbyname faliure\n");
-		return 0;
-	}
 
 	rcp = new struct recursive_context;
 
@@ -354,12 +323,61 @@ int kad_recursive(int type, const char *ident, const char *server)
 		waitcb_init(&rnp->rn_wait, kad_recursive_input, rcp);
 	}
 
-	rnp = &rcp->rc_nodes[0];
-	rnp->rn_flags = 1;
-	rnp->rn_addr = so_addr.sin_addr;
-	rnp->rn_port = so_addr.sin_port;
+	return rcp;
+}
+
+int kad_recursive(int type, const char *ident)
+{
+	int i;
+	int error;
+	struct kad_node2 node2s[8];
+	struct recursive_node *rnp;
+	struct recursive_context *rcp;
+
+	rcp = kad_recursivecb_new(type, ident);
+	assert(rcp != NULL);
+
+	error = kad_node_closest(ident, node2s, 8);
+	for (i = 0; i < 8; i++) {
+		if (!node2s[i].kn_flag) 
+			continue;
+	   
+		rnp = &rcp->rc_nodes[i];
+	   	rnp->rn_flags = 1;
+	   	rnp->rn_addr = node2s[i].kn_addr;
+	   	rnp->rn_port = node2s[i].kn_port;
+		memcpy(rnp->rn_ident, node2s[i].kn_ident, 20);
+
+	}
 
 	kad_recursive_output(rcp);
 	return 0;
 }
+
+int kad_recursive2(int type, const char *ident, const char *peer)
+{
+	int i;
+	int error;
+	struct sockaddr_in so_addr;
+	struct recursive_node *rnp;
+	struct recursive_context *rcp;
+
+	error = getaddrbyname(peer, &so_addr);
+	if (error != 0) {
+		fprintf(stderr, "getaddrbyname failure\n");
+		return 0;
+	}
+
+	rcp = kad_recursivecb_new(type, ident);
+	assert(rcp != NULL);
+
+	rnp = &rcp->rc_nodes[0];
+   	rnp->rn_flags = 1;
+   	rnp->rn_addr = so_addr.sin_addr;
+   	rnp->rn_port = so_addr.sin_port;
+
+	kad_recursive_output(rcp);
+	return 0;
+}
+
 
