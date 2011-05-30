@@ -89,7 +89,6 @@ static void input_routine(void *upp)
 	}
 
    	for ( ; ; ) {
-	   	fprintf(stderr, "ui: ");
 	   	retp = fgets(buf, sizeof(buf), stdin);
 		if (retp == NULL) {
 			fprintf(stderr, "ui input return NULL\n");
@@ -98,7 +97,13 @@ static void input_routine(void *upp)
 	   
 		crlf_strip(retp);
 		if (!strcmp(buf, "quit")) {
+		   	fprintf(stderr, "ui request quit\n");
 			break;
+		}
+
+		if (*retp == 0) {
+		   	fprintf(stderr, "ui: ");
+			continue;
 		}
 
 		ipccb_switch(&ui.ui_ipccb);
@@ -182,7 +187,6 @@ static void module_init(void)
 
 static void module_clean(void)
 {
-	fprintf(stderr, "ui module clean1\n");
 	ipccb_clean(&_ipccb_console);
 	waitcb_clean(&_ui_start);
 	waitcb_clean(&_ui_stop);

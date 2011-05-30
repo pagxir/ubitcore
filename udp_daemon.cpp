@@ -330,13 +330,11 @@ static void udp_daemon_init(void)
 	waitcb_init(&_stopcb, udp_daemon_control, &_stopcb);
 	slotwait_atstop(&_stopcb);
 
-	fprintf(stderr, "Hello\n");
 	return;
 }
 
 static void udp_daemon_clean(void)
 {
-	fprintf(stderr, "World\n");
 	waitcb_clean(&_startcb);
 	waitcb_clean(&_stopcb);
 	fclose(_log_file);
