@@ -33,43 +33,79 @@ struct _user_input {
 	ipccb_t ui_ipccb;
 };
 
+static void crlf_strip(char *line)
+{
+	char *carp;
+
+   	carp = line;
+   	while (*carp) {
+	   	if (*carp == '\r') {
+		   	*carp = 0;
+		   	break;
+	   	}
+
+		if (*carp == '\n') {
+		   	*carp = 0;
+		   	break;
+	   	}
+	   
+		carp++;
+   	}
+
+	return;
+}
+
 static void input_routine(void *upp)
 {
 	char buf[1024];
 	char *retp = 0;
 	char *carp = 0;
 	LONG oldval = 0;
+	FILE *rc_fp = 0;
 	struct _user_input ui;
 
 	ui.ui_buf = buf;
 	ipccb_init(&ui.ui_ipccb, parse_request, &ui);
 	ui.ui_event = CreateEvent(NULL, FALSE, FALSE, NULL);
 
-   	for ( ; ; ) {
-	   	retp = fgets(buf, sizeof(buf), stdin);
-		if (retp != NULL) {
-			carp = retp;
-			while (*carp) {
-				if (*carp == '\r') {
-					*carp = 0;
-					break;
-				}
-
-				if (*carp == '\n') {
-					*carp = 0;
-					break;
-				}
-				carp++;
-			}
+	rc_fp = fopen("clientrc.txt", "r");
+	if (rc_fp != NULL) {
+		while (!feof(rc_fp)) {
+		   	retp = fgets(buf, sizeof(buf), rc_fp);
+		   	if (retp == NULL) {
+			   	break;
+		   	}
+		   
+			crlf_strip(retp);
+			if (!strcmp(buf, "quit")) {
+				fclose(rc_fp);
+				goto ui_quited;
+		   	}
+		   
+			ipccb_switch(&ui.ui_ipccb);
+		   	WaitForSingleObject(ui.ui_event, INFINITE);
 		}
+		fclose(rc_fp);
+	}
 
-		if (retp == 0 || !strcmp(buf, "quit"))
+   	for ( ; ; ) {
+	   	fprintf(stderr, "ui: ");
+	   	retp = fgets(buf, sizeof(buf), stdin);
+		if (retp == NULL) {
+			fprintf(stderr, "ui input return NULL\n");
 			break;
+		}
+	   
+		crlf_strip(retp);
+		if (!strcmp(buf, "quit")) {
+			break;
+		}
 
 		ipccb_switch(&ui.ui_ipccb);
 		WaitForSingleObject(ui.ui_event, INFINITE);
 	}
 
+ui_quited:
    	ipccb_switch(&_ipccb_console);
 	CloseHandle(ui.ui_event);
 	_endthread();

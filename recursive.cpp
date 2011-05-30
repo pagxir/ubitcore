@@ -98,7 +98,7 @@ static void kad_recursive_output(void *upp)
 				error = 0;
 			} else if (!kad_bound_check(rcp, rnp->rn_ident)) {
 				continue;
-			} else if (rnp->rn_count < 3 || rcp->rc_acked < 8) {
+			} else if (rnp->rn_count < 3) {
 				kad_node_perf(rnp->rn_ident, rnp, perf, MAX_SEND_OUT);
 			}
 		}
