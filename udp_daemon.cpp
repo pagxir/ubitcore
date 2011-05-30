@@ -10,6 +10,7 @@
 #include "slotsock.h"
 #include "kad_proto.h"
 #include "recursive.h"
+#include "kad_route.h"
 #include "udp_daemon.h"
 
 static FILE *_dmp_file;
@@ -78,6 +79,8 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 {
 	int i;
 	int err;
+	int found;
+
    	void *idp;
 	size_t elen;
 	btcodec codec;
@@ -113,6 +116,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			   	return;
 		   	}
 
+			found = 0;
 			memcpy(&idp, query_ident, elen);
 		   	for (waitcbp = _kad_slot; waitcbp;
 				   	waitcbp = waitcbp->wt_next) {
@@ -122,10 +126,17 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				   	memcpy(waitcbp->wt_data, buf, len);
 				   	waitcb_cancel(waitcbp);
 				   	waitcb_switch(waitcbp);
+					found = 1;
 				   	break;
 				}
 		   	}
 		   
+			if (found == 0) {
+				in_addr in_addr1 = in_addrp->sin_addr;
+				u_short in_port1 = in_addrp->sin_port;
+			   	kad_node_seen(peer_ident, in_addr1, in_port1);
+			}
+
 			dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
@@ -164,6 +175,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				return;
 			}
 
+			kad_node_seen(peer_ident, in_addrp->sin_addr, in_addrp->sin_port);
 			dump_kad_peer_ident(peer_ident, in_addrp);
 			break;
 

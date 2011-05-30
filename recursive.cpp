@@ -94,7 +94,7 @@ static void kad_recursive_output(void *upp)
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if (rnp->rn_flags == 1) {
-			if (rnp->rn_touch + 1000 > curtick) {
+			if (rnp->rn_touch + 2000 > curtick) {
 				error = 0;
 			} else if (!kad_bound_check(rcp, rnp->rn_ident)) {
 				continue;
@@ -120,6 +120,7 @@ static void kad_recursive_output(void *upp)
 			if (error == 1)
 				return;
 
+			kad_node_timed(rnp->rn_ident, rnp->rn_addr, rnp->rn_port);
 		   	rcp->rc_touch = curtick;
 			rnp->rn_touch = curtick;
 			rcp->rc_sentout++;
