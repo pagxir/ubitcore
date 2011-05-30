@@ -8,7 +8,7 @@
 #include "btcodec.h"
 #include "slotwait.h"
 #include "slotsock.h"
-#include "proto_kad.h"
+#include "kad_proto.h"
 #include "recursive.h"
 #include "udp_daemon.h"
 
@@ -107,7 +107,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			}
 		   
 			query_ident = codec.bget("t").c_str(&elen);
-		   	if (query_ident == NULL || elen != sizeof(void *)) {
+		   	if (query_ident == NULL || elen != sizeof(uint32_t)) {
 			   	fprintf(stderr, "packet missing packet ident\n");
 				fwrite(buf, len, 1, _log_file);
 			   	return;
@@ -116,14 +116,14 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			memcpy(&idp, query_ident, elen);
 		   	for (waitcbp = _kad_slot; waitcbp;
 				   	waitcbp = waitcbp->wt_next) {
-			   	if (waitcbp != idp)
-				   	continue;
-			   	assert(len < waitcbp->wt_count);
-			   	waitcbp->wt_count = len;
-			   	memcpy(waitcbp->wt_data, buf, len);
-			   	waitcb_cancel(waitcbp);
-			   	waitcb_switch(waitcbp);
-			   	break;
+			   	if (!memcmp(waitcbp->wt_data, query_ident, elen)) {
+				   	assert(len < waitcbp->wt_count);
+				   	waitcbp->wt_count = len;
+				   	memcpy(waitcbp->wt_data, buf, len);
+				   	waitcb_cancel(waitcbp);
+				   	waitcb_switch(waitcbp);
+				   	break;
+				}
 		   	}
 		   
 			dump_kad_peer_ident(peer_ident, in_addrp);
@@ -245,20 +245,21 @@ int kad_proto_out(int type, const char *target,
 	int len;
 	int error;
 	char sockbuf[2048];
+	static int _id_gen = 0;
 
 	switch (type) {
 		case RC_TYPE_FIND_NODE:
 			len = kad_find_node(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)waitcbp, (uint8_t *)target);
+				   	(uint32_t)++_id_gen, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_GET_PEERS:
 			len = kad_get_peers(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)waitcbp, (uint8_t *)target);
+				   	(uint32_t)++_id_gen, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_PING_NODE:
-			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)waitcbp);
+			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
 			break;
 
 		default:
@@ -271,6 +272,10 @@ int kad_proto_out(int type, const char *target,
 
 	if (error != len)
 		return -1;
+
+	assert(outp != NULL);
+	assert(sizeof(_id_gen) < size);
+	memcpy(outp, &_id_gen, sizeof(_id_gen));
 
 	waitcbp->wt_data = outp;
    	waitcbp->wt_count = size;

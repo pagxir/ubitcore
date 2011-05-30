@@ -8,7 +8,8 @@
 #include "slotwait.h"
 #include "slotsock.h"
 #include "recursive.h"
-#include "proto_kad.h"
+#include "kad_proto.h"
+#include "kad_route.h"
 #include "udp_daemon.h"
 
 static int kad_less_than(const char *sp, const char *lp, const char *rp)
@@ -149,6 +150,8 @@ static void kad_bound_update(struct recursive_context *rcp,
 	char bad_ident[20];
 	struct recursive_well *rwp;
 
+	kad_node_good(node, in_addr1, in_port1);
+
 	for (i = 0; i < 8; i++) {
 		rwp = &rcp->rc_well_nodes[i];
 		if (rwp->rn_flags == 1) {
@@ -196,7 +199,9 @@ static void kad_recursive_update(struct recursive_context *rcp,
 		const char *node, in_addr in_addr1, u_short in_port1)
 {
 	int i;
+	int index;
 	int less_count = 0;
+	char bad_ident[20];
 	struct recursive_node *rnp;
 
 	if (!kad_bound_check(rcp, node)) {
@@ -215,6 +220,7 @@ static void kad_recursive_update(struct recursive_context *rcp,
 		}
 	}
 
+	kad_node_insert(node, in_addr1, in_port1);
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if (rnp->rn_flags == 0 ||
@@ -231,7 +237,29 @@ static void kad_recursive_update(struct recursive_context *rcp,
 		}
 	}
 
-	fprintf(stderr, "warn: too small buffer!\n");
+	index = -1;
+	memcpy(bad_ident, node, 20);
+	for (i = 0; i < MAX_PEER_COUNT; i++) {
+		rnp = &rcp->rc_nodes[i];
+		if (kad_less_than(rcp->rc_target,
+				   	bad_ident, rnp->rn_ident)) {
+			memcpy(bad_ident, rnp->rn_ident, 20);
+			index = i;
+		}
+	}
+
+	if (index != -1) {
+		rnp = &rcp->rc_nodes[index];
+	   	rcp->rc_total++;
+	   	rnp->rn_flags = 1;
+	   	rnp->rn_count = 0;
+	   	rnp->rn_touch = 0;
+	   	rnp->rn_addr = in_addr1;
+	   	rnp->rn_port = in_port1;
+	   	memcpy(rnp->rn_ident, node, 20);
+	   	return;
+	}
+
 	return;
 }
 

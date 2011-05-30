@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "proto_kad.h"
+#include "kad_proto.h"
 
 uint8_t __ping_node_template[] = {
     "d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t4:PPPP1:y1:qe"

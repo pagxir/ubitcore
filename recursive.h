@@ -6,7 +6,7 @@
 #define RC_TYPE_GET_PEERS 2
 
 const int MAX_SEND_OUT = 3;
-const int MAX_PEER_COUNT = 300;
+const int MAX_PEER_COUNT = 16;
 
 struct recursive_well {
    	int rn_flags;
