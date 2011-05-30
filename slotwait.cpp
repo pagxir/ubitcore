@@ -135,18 +135,25 @@ int slot_wait(wait_call **callbackp, void **udatap)
 		waitcb_cancel(waitcbp);
 		if (waitcbp == &mark) {
 			DWORD timeout = 20;
-			if (_requst_quited || _non_block) {
-			   	_wait_rescan = 0;
-				return 0;
-			}
+			DWORD waitstat = 0;
 
-			while (!_wait_rescan) {
+			while (_wait_rescan == 0) {
+			   	if (_requst_quited || _non_block) {
+				   	_wait_rescan = 0;
+				   	return 0;
+			   	}
+
+				waitstat = WaitForSingleObject(slotwait_handle(), timeout);
+				if (waitstat == WAIT_OBJECT_0) {
+				   	ResetEvent(slotwait_handle());
+				   	break;
+				}
+
+				assert(waitstat == WAIT_TIMEOUT);
 				callout_invoke(&timeout);
-				sock_selscan(&timeout);
 			}
+		   
 			waitcb_switch(&mark);
-			_wait_rescan = 0;
-			continue;
 		}
 
 		if (waitcbp->wt_flags & WT_WAITSCAN) {
@@ -177,12 +184,24 @@ int slot_fire(wait_call *call, void *udata)
 	return error;
 }
 
+static HANDLE _wait_event = 0;
 int slotwait_held(int held)
 {
 	int error = 0;
 
 	_non_block = held;
+	if (held == 0) {
+		assert(_wait_event == 0);
+	   	_wait_event = CreateEvent(NULL, FALSE, FALSE, 0);
+	}
+
 	return error;
+}
+
+HANDLE slotwait_handle(void)
+{
+	assert(_wait_event);
+	return _wait_event;
 }
 
 int slotwait_step(void)

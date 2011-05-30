@@ -13,6 +13,7 @@
 #define SF_READY_OUT  8
 #define SF_CLOSE_IN   16
 #define SF_CLOSE_OUT  32
+#define SF_MESSAGE    64
 
 #define SOCK_MAGIC 0x19821133
 
@@ -27,7 +28,6 @@ struct sockcb {
 };
 
 static int _sock_ref = 0;
-static WSAEVENT _sock_wait = WSA_INVALID_EVENT;
 struct sockcb _sockcb_list[MAX_CONN] = {0};
 static int (* register_sockmsg)(int fd, int index, int flags) = 0;
 
@@ -39,7 +39,6 @@ struct sockcb *sock_attach(int sockfd)
 	DWORD all_events;
    	struct sockcb *sockcbp;
 
-	assert(_sock_wait != WSA_INVALID_EVENT);
 	all_events = FD_CONNECT| FD_ACCEPT| FD_READ| FD_WRITE| FD_CLOSE;
 
 	sockcbp = _sockcb_free;
@@ -50,25 +49,27 @@ struct sockcb *sock_attach(int sockfd)
 	sockcbp->s_magic = SOCK_MAGIC;
 	sockcbp->s_rslot = 0;
 	sockcbp->s_wslot = 0;
+	sockcbp->s_flags = SF_FIRST_IN| SF_FIRST_OUT;
 
 	do {
 		if (register_sockmsg) {
 			register_sockmsg(sockfd, sockcbp - _sockcb_list, all_events);
+			sockcbp->s_flags |= SF_MESSAGE;
 			break;
 		}
-		WSAEventSelect(sockfd, _sock_wait, all_events);
+		WSAEventSelect(sockfd, slotwait_handle(), all_events);
 	} while (0);
 
 	sockcbp->s_next = _sockcb_active;
 	_sockcb_active = sockcbp;
 	_sock_ref++;
 
-	sockcbp->s_flags = SF_FIRST_IN| SF_FIRST_OUT;
 	return sockcbp;
 }
 
 int sock_detach(struct sockcb *detachp)
 {
+	int s_flags;
 	int sockfd = -1;
 	struct sockcb *sockcbp;
 	struct sockcb **sockcbpp;
@@ -80,6 +81,7 @@ int sock_detach(struct sockcb *detachp)
 		if (detachp == sockcbp) {
 			*sockcbpp = sockcbp->s_next;
 			sockfd = sockcbp->s_file;
+			s_flags = sockcbp->s_flags;
 			sockcbp->s_file = -1;
 
 			sockcbp->s_next = _sockcb_free;
@@ -92,11 +94,12 @@ int sock_detach(struct sockcb *detachp)
 
 	do {
 		assert(sockfd != -1);
-		if (register_sockmsg) {
-			register_sockmsg(sockfd, 0, 0);
+		if (s_flags & SF_MESSAGE) {
+			if (register_sockmsg) 
+				register_sockmsg(sockfd, 0, 0);
 			break;
 		}
-		WSAEventSelect(sockfd, _sock_wait, 0);
+		WSAEventSelect(sockfd, slotwait_handle(), 0);
 	} while (0);
 	_sock_ref--;
 
@@ -289,32 +292,6 @@ int sock_wakeup(int sockfd, int index, int type)
 	return 0;
 }
 
-int sock_selscan(void *upp)
-{
-	DWORD state;
-	DWORD timeout = 20;
-
-	if (_sock_ref > 0) { 
-		state = WaitForSingleObject(_sock_wait, timeout);
-
-		switch (state) {
-			case WAIT_OBJECT_0:
-				ResetEvent(_sock_wait);
-				do_quick_scan(0);
-				break;
-
-			case WAIT_TIMEOUT:
-				break;
-
-			default:
-				assert(0);
-				break;
-		}
-	}
-
-	return 0;
-}
-
 int sock_set_reg_ptr(int (* reg_ptr)(int, int, int))
 {
 	register_sockmsg = reg_ptr;
@@ -335,7 +312,6 @@ static void module_init(void)
 		_sockcb_free = sockcbp;
 	}
    
-	_sock_wait = WSACreateEvent();
 	waitcb_init(&_sock_waitcb, do_quick_scan, 0);
 	_sock_waitcb.wt_flags &= ~WT_EXTERNAL;
 	_sock_waitcb.wt_flags |= WT_WAITSCAN;
@@ -344,8 +320,7 @@ static void module_init(void)
 
 static void module_clean(void)
 {
-   	_sock_wait = WSA_INVALID_EVENT;
-   	WSACloseEvent(_sock_wait);
+
 }
 
 struct module_stub slotsock_mod = {

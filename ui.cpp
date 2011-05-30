@@ -8,18 +8,30 @@
 #include "module.h"
 #include "callout.h"
 #include "slotwait.h"
+#include "slotipc.h"
 #include "slotsock.h"
 #include "udp_daemon.h"
 
-static LONG _cmd_lck = 0;
-static LONG _cmd_yes = 0;
-static char _cmd_buf[1024];
+static ipccb_t _ipccb_console;
+static void parse_request(void *upp);
 
-BOOL WINAPI console_closed(DWORD ctrl_type)
+static BOOL WINAPI console_closed(DWORD ctrl_type)
 {
-	CloseHandle(GetStdHandle(STD_INPUT_HANDLE));
+   	ipccb_switch(&_ipccb_console);
 	return TRUE;
 }
+
+static void stop_wrapper(void *upp)
+{
+	slotwait_stop();
+	return;
+}
+
+struct _user_input {
+	char *ui_buf;
+	HANDLE ui_event;
+	ipccb_t ui_ipccb;
+};
 
 static void input_routine(void *upp)
 {
@@ -27,8 +39,12 @@ static void input_routine(void *upp)
 	char *retp = 0;
 	char *carp = 0;
 	LONG oldval = 0;
+	struct _user_input ui;
 
-	SetConsoleCtrlHandler(console_closed, TRUE);
+	ui.ui_buf = buf;
+	ipccb_init(&ui.ui_ipccb, parse_request, &ui);
+	ui.ui_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+
    	for ( ; ; ) {
 	   	retp = fgets(buf, sizeof(buf), stdin);
 		if (retp != NULL) {
@@ -47,85 +63,93 @@ static void input_routine(void *upp)
 			}
 		}
 
-	   	oldval = InterlockedExchange(&_cmd_lck, 1);
-	   	while (oldval != 0) {
-		   	Sleep(100);
-		   	oldval = InterlockedExchange(&_cmd_lck, 1);
-	   	}
-	   
-		strcpy(_cmd_buf, retp? buf: "quit");
-	   	InterlockedExchange(&_cmd_yes, 1);
-	   	InterlockedExchange(&_cmd_lck, 0);
-
 		if (retp == 0 || !strcmp(buf, "quit"))
 			break;
-	}
-	SetConsoleCtrlHandler(console_closed, FALSE);
 
+		ipccb_switch(&ui.ui_ipccb);
+		WaitForSingleObject(ui.ui_event, INFINITE);
+	}
+
+   	ipccb_switch(&_ipccb_console);
+	CloseHandle(ui.ui_event);
 	_endthread();
 }
 
 static uintptr_t h_input;
-static struct waitcb _timer_input;
 static void parse_request(void *upp)
 {
 	int count;
 	char server[200];
 	char ident1[20];
 	char ident0[60];
+	struct _user_input *uip;
 
-   	if (InterlockedExchange(&_cmd_lck, 1)) {
-	   	callout_reset(&_timer_input, 500);
-		return;
-	}
+	uip = (struct _user_input *)upp;
 
-	if (!strcmp(_cmd_buf, "quit")) {
-	   	slotwait_stop();
-		return;
-	}
-
-	if (InterlockedExchange(&_cmd_yes, 0)) {
-		if (!strncmp(_cmd_buf, "setident ", 9)) {
-			count = sscanf(_cmd_buf, "%*s %s", ident0);
-			hex_decode(ident0, ident1, sizeof(ident1));
-			kad_setident(ident1);
-		} else if (!strncmp(_cmd_buf, "get_peers ", 9)) {
-			count = sscanf(_cmd_buf, "%*s %s %s", ident0, server);
-			hex_decode(ident0, ident1, sizeof(ident1));
-			kad_getpeers(ident1, server);
-			fprintf(stderr, "kad_getpeers\n");
-		} else if (!strncmp(_cmd_buf, "find_node ", 9)) {
-			count = sscanf(_cmd_buf, "%*s %s %s", ident0, server);
-			hex_decode(ident0, ident1, sizeof(ident1));
-			kad_findnode(ident1, server);
-			fprintf(stderr, "kad_findnode\n");
-		} else if (!strncmp(_cmd_buf, "ping_node ", 9)) {
-			count = sscanf(_cmd_buf, "%*s %s", server);
-			kad_pingnode(server);
-			fprintf(stderr, "kad_pingnode\n");
-		}
-	}
-
-   	InterlockedExchange(&_cmd_lck, 0);
-	callout_reset(&_timer_input, 500);
+	if (!strncmp(uip->ui_buf, "setident ", 9)) {
+	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
+	   	hex_decode(ident0, ident1, sizeof(ident1));
+	   	kad_setident(ident1);
+   	} else if (!strncmp(uip->ui_buf, "get_peers ", 9)) {
+	   	count = sscanf(uip->ui_buf, "%*s %s %s", ident0, server);
+	   	hex_decode(ident0, ident1, sizeof(ident1));
+	   	kad_getpeers(ident1, server);
+	   	fprintf(stderr, "kad_getpeers\n");
+   	} else if (!strncmp(uip->ui_buf, "find_node ", 9)) {
+	   	count = sscanf(uip->ui_buf, "%*s %s %s", ident0, server);
+	   	hex_decode(ident0, ident1, sizeof(ident1));
+	   	kad_findnode(ident1, server);
+	   	fprintf(stderr, "kad_findnode\n");
+   	} else if (!strncmp(uip->ui_buf, "ping_node ", 9)) {
+	   	count = sscanf(uip->ui_buf, "%*s %s", server);
+	   	kad_pingnode(server);
+	   	fprintf(stderr, "kad_pingnode\n");
+   	}
+   
+	SetEvent(uip->ui_event);
+	return;
 } 
+
+static struct waitcb _ui_stop;
+static struct waitcb _ui_start;
+
+static void ui_stat_routine(void *upp)
+{
+	HANDLE handle;
+
+	if (upp == &_ui_start) {
+	   	h_input = _beginthread(input_routine, 0, 0);
+	   	SetConsoleCtrlHandler(console_closed, TRUE);
+		return;
+	}
+	
+	if (upp == &_ui_stop) {
+	   	handle = (HANDLE)h_input;
+	   	SetConsoleCtrlHandler(console_closed, FALSE);
+	   	CloseHandle(GetStdHandle(STD_INPUT_HANDLE));
+	   	WaitForSingleObject(handle, INFINITE);
+	   	CloseHandle(handle);
+	}
+
+	return;
+}
 
 static void module_init(void)
 {
-	h_input = _beginthread(input_routine, 0, 0);
-	waitcb_init(&_timer_input, parse_request, 0);
-	callout_reset(&_timer_input, 500);
+	waitcb_init(&_ui_start, ui_stat_routine, &_ui_start);
+	waitcb_init(&_ui_stop, ui_stat_routine, &_ui_stop);
+	ipccb_init(&_ipccb_console, stop_wrapper, 0);
+
+	slotwait_atstart(&_ui_start);
+	slotwait_atstop(&_ui_stop);
 }
 
 static void module_clean(void)
 {
-	HANDLE handle;
-	handle = (HANDLE)h_input;
-		fprintf(stderr, "do quited\n");
-	WaitForSingleObject(handle, INFINITE);
-		fprintf(stderr, "do quited1\n");
-	CloseHandle(handle);
-	waitcb_clean(&_timer_input);
+	fprintf(stderr, "ui module clean1\n");
+	ipccb_clean(&_ipccb_console);
+	waitcb_clean(&_ui_start);
+	waitcb_clean(&_ui_stop);
 }
 
 struct module_stub ui_mod = {

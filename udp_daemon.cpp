@@ -145,7 +145,6 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 
 			if (elen == 13 && !strncmp(query_type, "announce_peer", 13)) {
 			   	fprintf(stderr, "announce_peer packet\n");
-				break;
 			} else if (elen == 9 && !strncmp(query_type, "find_node", 9)) {
 				struct sockaddr *so_addrp;
 				peer_ident = codec.bget("t").b_str(&elen);
@@ -155,14 +154,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
 			   	fprintf(stderr, "find_node packet: %d\n", err);
-				break;
 			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
 				info_hash = codec.bget("a").bget("info_hash").c_str(&elen);
 				dump_info_hash(info_hash, elen);
-				break;
 			} else if (elen == 4 && !strncmp(query_type, "ping", 4)) {
 			   	fprintf(stderr, "ping packet\n");
-				break;
 			} else {
 				fprintf(stderr, "query packet have an unkown query type\n");
 				return;

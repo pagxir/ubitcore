@@ -300,7 +300,10 @@ int kad_recursive(int type, const char *ident, const char *server)
 	struct recursive_context *rcp;
 
 	error = getaddrbyname(server, &so_addr);
-	assert(error == 0);
+	if (error != 0) {
+		fprintf(stderr, "getaddrbyname faliure\n");
+		return 0;
+	}
 
 	rcp = new struct recursive_context;
 

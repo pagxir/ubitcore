@@ -41,6 +41,8 @@ void slotwait_atstop(struct waitcb *waitcbp);
 void slotwait_start(void);
 void slotwait_stop(void);
 
+HANDLE slotwait_handle(void);
+
 #define WT_MAGIC    0x19821130
 #define WT_EXTERNAL 0x00000001
 #define WT_INACTIVE 0x00000002
