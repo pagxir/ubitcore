@@ -129,7 +129,7 @@ static int closest_update(const char *ident,
 	for (i = 0; i < count; i++) {
 		knp2 = &closest[i];
 		if (knp2->kn_flag == 0) {
-			memcpy(knp2->kn_ident, ident, 20);
+		   	memcpy(knp2->kn_ident, knp->kn_ident, 20);
 			knp2->kn_port = knp->kn_port;
 			knp2->kn_addr = knp->kn_addr;
 			knp2->kn_flag = knp->kn_flag;
@@ -156,7 +156,7 @@ static int closest_update(const char *ident,
 
 	if (index != -1) {
 		knp2 = &closest[index];
-		memcpy(knp2->kn_ident, ident, 20);
+		memcpy(knp2->kn_ident, knp->kn_ident, 20);
 		knp2->kn_port = knp->kn_port;
 		knp2->kn_addr = knp->kn_addr;
 		knp2->kn_flag = knp->kn_flag;
@@ -181,6 +181,7 @@ int kad_node_closest(const char *ident, struct kad_node2 *closest, size_t count)
 		knp = &_route_nodes[i];
 		if (knp->kn_flag == 0)
 			continue;
+
 		if ((knp->kn_flag & NF_GOOD) &&
 				(knp->kn_seen + min15) < GetTickCount())
 			knp->kn_flag |= NF_DOUBT;

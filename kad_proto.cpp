@@ -112,7 +112,7 @@ int kad_less_than(const char *sp, const char *lp, const char *rp)
 	i = 0;
 	while (*lp == *rp) {
 		if (i++ < 20) {
-		   	lp++, rp++;
+		   	lp++, rp++, sp++;
 			continue;
 		}
 		break;
