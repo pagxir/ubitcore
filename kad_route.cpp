@@ -41,6 +41,11 @@ static int do_node_scan(struct kad_node *knps[3],
 	for (int i = 0; i < MAX_NODE_COUNT; i++) {
 		knp = &_route_nodes[i];
 
+		if (knp->kn_flag == 0) {
+			knps[2] = knp; // KNP_DEAD;
+			continue;
+		}
+
 		if (knp->kn_port == in_port1 &&
 				knp->kn_addr.s_addr == in_addr1.s_addr) {
 			knps[0] = knp; // KNP_ROUTE;
@@ -50,8 +55,7 @@ static int do_node_scan(struct kad_node *knps[3],
 			knps[1] = knp; // KNP_IDENT;
 		}
 
-		if (knp->kn_flag == 0 ||
-				(knp->kn_flag & NF_DEAD)) {
+		if (knp->kn_flag & NF_DEAD) {
 			knps[2] = knp; // KNP_DEAD;
 		}
 
@@ -96,6 +100,7 @@ static int do_node_insert(int type, const char *ident,
 	   	knp->kn_seen = GetTickCount();
 		knp->kn_flag = KN_GOOD;
 	   	knp->kn_fail = 0;
+		fprintf(stderr, "good %p\n", knp);
    	}
 
 	if (knp_route != knp) {
@@ -212,8 +217,11 @@ int kad_node_timed(const char *ident, in_addr in_addr1, u_short in_port1)
 	do_node_scan(knps, ident, in_addr1, in_port1);
 
 	knp = NULL;
-	if (knps[0] == knps[1])
+	if (knps[0] == knps[1]) {
 		knp = knps[0];
+	}
+   
+	fprintf(stderr, "kad_node_timed: %p %p\n", knps[0], knps[1]);
 
 	if (knps[0] != knp)
 		callout_reset(&knps[0]->kn_timeout, 2000);
@@ -232,8 +240,10 @@ static void kad_node_failure(void *upp)
 	struct kad_node *knp;
 
 	knp = (struct kad_node *)upp;
-	if (++knp->kn_fail > 3)
-		knp->kn_flag = NF_DEAD;
+	if (++knp->kn_fail > 3) {
+		fprintf(stderr, "node is dead %p\n", knp);
+		knp->kn_flag |= NF_DEAD;
+	}
 }
 
 static void module_init(void)
