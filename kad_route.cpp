@@ -100,7 +100,6 @@ static int do_node_insert(int type, const char *ident,
 	   	knp->kn_seen = GetTickCount();
 		knp->kn_flag = KN_GOOD;
 	   	knp->kn_fail = 0;
-		fprintf(stderr, "good %p\n", knp);
    	}
 
 	if (knp_route != knp) {
@@ -221,8 +220,6 @@ int kad_node_timed(const char *ident, in_addr in_addr1, u_short in_port1)
 		knp = knps[0];
 	}
    
-	fprintf(stderr, "kad_node_timed: %p %p\n", knps[0], knps[1]);
-
 	if (knps[0] != knp)
 		callout_reset(&knps[0]->kn_timeout, 2000);
 

@@ -284,7 +284,8 @@ static void kad_recursive_input(void *upp)
 			for (node = nodes; elen >= 26; node += 26, elen -= 26) {
 				memcpy(&in_addr1, node + 20, sizeof(in_addr1));
 				memcpy(&in_port1, node + 24, sizeof(in_port1));
-				kad_recursive_update(rcp, node, in_addr1, in_port1);
+			   	if (in_addr1.s_addr != 0 && in_port1 != 0)
+				   	kad_recursive_update(rcp, node, in_addr1, in_port1);
 			}
 
 			waitcb_clear(&rnp->rn_wait);

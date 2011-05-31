@@ -209,7 +209,8 @@ static void udp_routine(void *upp)
 			sock_read_wait(_udp_sockcbp, &_sockcb);
 			break;
 		} else {
-			fprintf(stderr, "recv error %d\n", GetLastError());
+			fprintf(stderr, "recv error %d from %s:%d\n",
+				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), htons(in_addr1.sin_port));
 			continue;
 		}
 	}
