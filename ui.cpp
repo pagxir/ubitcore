@@ -77,6 +77,10 @@ static void input_routine(void *upp)
 		   	}
 		   
 			crlf_strip(retp);
+			if (!memcmp(buf, "quit:", 5)) {
+				continue;
+		   	}
+
 			if (!strcmp(buf, "quit")) {
 				fclose(rc_fp);
 				goto ui_quited;
@@ -111,6 +115,25 @@ static void input_routine(void *upp)
 	}
 
 ui_quited:
+	rc_fp = fopen("clientrc.txt", "r");
+	if (rc_fp != NULL) {
+		while (!feof(rc_fp)) {
+		   	retp = fgets(buf, sizeof(buf), rc_fp);
+		   	if (retp == NULL) {
+			   	break;
+		   	}
+		   
+			crlf_strip(retp);
+			if (memcmp(buf, "quit:", 5)) {
+				continue;
+		   	}
+		   
+			ipccb_switch(&ui.ui_ipccb);
+		   	WaitForSingleObject(ui.ui_event, INFINITE);
+		}
+		fclose(rc_fp);
+	}
+
    	ipccb_switch(&_ipccb_console);
 	CloseHandle(ui.ui_event);
 	_endthread();
