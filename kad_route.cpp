@@ -224,8 +224,10 @@ int kad_node_timed(const char *ident, in_addr in_addr1, u_short in_port1)
 	if (knps[0] != knp)
 		callout_reset(&knps[0]->kn_timeout, 2000);
 
+#if 0
 	if (knps[1] != knp)
 		callout_reset(&knps[1]->kn_timeout, 2000);
+#endif
 
 	if (knp != NULL)
 		callout_reset(&knp->kn_timeout, 2000);
