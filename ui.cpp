@@ -143,9 +143,9 @@ static uintptr_t h_input;
 static void parse_request(void *upp)
 {
 	int count;
-	char server[200];
-	char ident1[20];
-	char ident0[60];
+	char server[300];
+	char ident1[120];
+	char ident0[160];
 	struct _user_input *uip;
 
 	uip = (struct _user_input *)upp;

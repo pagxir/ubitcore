@@ -191,6 +191,33 @@ int kad_node_closest(const char *ident, struct kad_node2 *closest, size_t count)
 	return 0;
 }
 
+int kad_compat_closest(const char *ident, void *buf, size_t len)
+{
+	int i;
+	char *bufp = 0;
+	size_t count = 0;
+	struct kad_node2 *knp2;
+	struct kad_node2 nodes[8];
+
+	kad_node_closest(ident, nodes, 8);
+
+	bufp = (char *)buf;
+	for (i = 0; i < 8; i++) {
+		knp2 = (nodes + i);
+		if (len >= 26 &&
+				(knp2->kn_flag != 0)) {
+			memcpy(bufp, knp2->kn_ident, 20);
+			memcpy(bufp + 20, &knp2->kn_addr, 4);
+			memcpy(bufp + 24, &knp2->kn_port, 2);
+			count += 26;
+			bufp += 26;
+			len -= 26;
+		}
+	}
+
+	return count;
+}
+
 int kad_node_good(const char *ident, in_addr in_addr1, u_short in_port1)
 {
 	do_node_insert(KN_GOOD, ident, in_addr1, in_port1);

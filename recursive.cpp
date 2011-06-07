@@ -187,23 +187,39 @@ static void kad_recursive_update(struct recursive_context *rcp,
 	   	return;
 	}
 
+	index = -1;
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
-		if (rnp->rn_flags != 0) {
-			if (rnp->rn_port == in_port1 &&
-					rnp->rn_addr.s_addr == in_addr1.s_addr)
-				return;
-			if (!memcmp(rnp->rn_ident, node, 20))
-				return;
+		if (rnp->rn_flags == 0) {
+			index = i;
+			continue;
 		}
+
+	   	if (rnp->rn_port == in_port1 &&
+			   	rnp->rn_addr.s_addr == in_addr1.s_addr)
+		   	return;
+
+	   	if (!memcmp(rnp->rn_ident, node, 20))
+		   	return;
 	}
 
 	kad_node_insert(node, in_addr1, in_port1);
+	if (index != -1) {
+		rnp = &rcp->rc_nodes[index];
+	   	rcp->rc_total++;
+	   	rnp->rn_flags = 1;
+	   	rnp->rn_count = 0;
+	   	rnp->rn_touch = 0;
+	   	rnp->rn_addr = in_addr1;
+		rnp->rn_port = in_port1;
+	   	memcpy(rnp->rn_ident, node, 20);
+	   	return;
+	}
+
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
-		if (rnp->rn_flags == 0 ||
-				(rnp->rn_count == 1 && rnp->rn_flags == 2) ||
-				(rnp->rn_flags == 2 && rnp->rn_touch + 2000 < GetTickCount())) {
+		if ((rnp->rn_count == 1 && rnp->rn_flags == 2) ||
+			   	(rnp->rn_flags == 2 && rnp->rn_touch + 2000 < GetTickCount())) {
 			rcp->rc_total++;
 			rnp->rn_flags = 1;
 			rnp->rn_count = 0;
@@ -250,6 +266,7 @@ static void kad_recursive_input(void *upp)
 	btcodec codec;
 	in_addr in_addr1;
 	u_short in_port1;
+	btfastvisit btfv;
 	const char *node, *nodes;
 	struct recursive_node * rnp;
 	struct recursive_context * rcp;
@@ -262,20 +279,20 @@ static void kad_recursive_input(void *upp)
 		if (waitcb_completed(&rnp->rn_wait)) {
 			rcp->rc_acked++;
 			rnp->rn_flags = 2;
-			codec.parse(rnp->rn_response, rnp->rn_wait.wt_count);
+			codec.load(rnp->rn_response, rnp->rn_wait.wt_count);
 
 			if (rnp->rn_count == 1 &&
 					rnp->rn_touch == rcp->rc_touch)
 				needouptut = 1;
 
-			nodes = codec.bget("r").bget("id").c_str(&elen);
+			nodes = btfv(&codec).bget("r").bget("id").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
 				continue;
 			}
 
 			kad_bound_update(rcp, nodes, rnp->rn_addr, rnp->rn_port);
-			nodes = codec.bget("r").bget("nodes").c_str(&elen);
+			nodes = btfv(&codec).bget("r").bget("nodes").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
 				continue;

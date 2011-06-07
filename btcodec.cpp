@@ -10,397 +10,607 @@
 #include <string>
 #include "btcodec.h"
 
-#define TRY_KILL(en) \
-    if (en != &__INFINITE){ \
-        delete en; \
-        en = &__INFINITE; \
-    }
-
-bentity __INFINITE;
-
-class btlist: public bentity
+class btoctal_in
 {
-    public:
-        btlist(btcodec *codec, int off);
-        const char *b_str(size_t *len);
-        virtual bentity& bget(int index);
-        ~btlist();
+	public:
+		btoctal_in(const char *octalp, size_t count);
+		~btoctal_in();
 
-    private:
-        bentity *b_entity;
-        btcodec *b_codec;
-        int b_off;
+	public:
+		int get_one();
+		int get_cur();
+
+	private:
+		size_t m_count;
+		unsigned char *m_octalp;
 };
 
-btlist::btlist(btcodec *codec, int off):
-    b_codec(codec), b_off(off), b_entity(&__INFINITE)
+btoctal_in::btoctal_in(const char *octalp, size_t count)
 {
-
+	m_count = count;
+	m_octalp = (unsigned char *)octalp;
 }
 
-btlist::~btlist()
+btoctal_in::~btoctal_in()
 {
-    TRY_KILL(b_entity);
 }
 
-const char *btlist::b_str(size_t *len)
+int btoctal_in::get_cur()
 {
-    bentity *en = &__INFINITE;
-    const char *p = b_codec->b_str(b_off, len);
+	if (m_count <= 0) {
+		return -1;
+	}
 
-    if (p != NULL) {
-        size_t eln;
-        int offset = 1;
-        assert(p[0] == 'l');
-        while (offset < *len && p[offset] != 'e') {
-            TRY_KILL(en);
-            en = b_codec->balloc(b_off + offset);
-            if (!en->b_str(&eln))
-                break;
-            offset += eln;
-        }
-        assert(p[offset] == 'e');
-        *len = offset + 1;
-    }
-    TRY_KILL(en);
-    return p;
+	return *m_octalp;
 }
 
-bentity& btlist::bget(int index)
+int btoctal_in::get_one()
 {
-    int i;
-    int off = 1;
-    size_t len;
-    bentity *en = &__INFINITE;
-    for (i = 0; i < index; i++) {
-        en = b_codec->balloc(b_off + off);
-        if (!en->b_str(&len)) {
-            TRY_KILL(en);
-            return __INFINITE;
-        }
-        off += len;
-    }
-    TRY_KILL(b_entity);
-    b_entity = b_codec->balloc(off + b_off);
-    return *b_entity;
+	if (m_count <= 0) {
+		return -1;
+	}
+
+	m_count--;
+	return *m_octalp++;
 }
 
-class btdict: public bentity
-{
-    public:
-        btdict(btcodec *codec, int off);
-        virtual const char *b_str(size_t *len);
-        virtual bentity& bget(const char *name);
-        ~btdict();
+class btoctal_out {
+	public:
+		btoctal_out(char *octalp, size_t count);
+		~btoctal_out();
 
-    private:
-        bentity *b_entity;
-        btcodec *b_codec;
-        int b_off;
+	public:
+		int put_one(int one);
+		int put_octal(const char *buf, size_t len);
+
+	public:
+		size_t size(void);
+
+	private:
+		size_t m_len;
+		size_t m_count;
+		char *m_octalp;
 };
 
-btdict::btdict(btcodec *codec, int off):
-    b_codec(codec), b_off(off), b_entity(&__INFINITE)
+btoctal_out::btoctal_out(char *octalp, size_t count)
 {
-
+	m_octalp = octalp;
+	m_count = count;
+	m_len = 0;
 }
 
-btdict::~btdict()
+btoctal_out::~btoctal_out()
 {
-    TRY_KILL(b_entity);
 }
 
-const char *btdict::b_str(size_t *len)
+int btoctal_out::put_one(int one)
 {
-    bentity *en = &__INFINITE;
-    const char *p = b_codec->b_str(b_off, len);
+	if (m_count > 0) {
+	   	*m_octalp++ = one;
+		m_count--;
+		m_len++;
+	}
 
-    if (p != NULL) {
-        size_t eln;
-        int offset = 1;
-        assert(p[0] == 'd');
-        while (offset < *len &&
-			   	p[offset] != 'e') {
-            TRY_KILL(en);
-            en = b_codec->balloc(b_off+offset);
-            if (!en->b_str(&eln))
-                break;
-            offset += eln;
-        }
-        assert(p[offset] == 'e');
-        *len = offset + 1;
-    }
-    TRY_KILL(en);
-    return p;
+	return 0;
 }
 
-bentity& btdict::bget(const char *name)
+int btoctal_out::put_octal(const char *buf, size_t count)
 {
-    int i;
-    int off = 1;
-    size_t len = 0;
-    size_t eln = 0;
-    bentity *en =  b_codec->balloc(b_off+off);
+	if (m_count > count) {
+		memcpy(m_octalp, buf, count);
+		m_octalp += count;
+		m_count -= count;
+		m_len += count;
+	}
 
-    while (en->b_str(&eln) != NULL) {
-        off += eln;
-        const char *p = en->c_str(&len);
-        if (strlen(name) == len &&
-			   	0 == memcmp(name, p, len)) {
-            TRY_KILL(en);
-            en = b_codec->balloc(b_off+off);
-            break;
-        }
-        TRY_KILL(en);
-        en = b_codec->balloc(b_off + off);
-        if (en->b_str(&eln) == NULL) {
-            TRY_KILL(en);
-            break;
-        }
-        off += eln;
-        TRY_KILL(en);
-        en = b_codec->balloc(b_off + off);
-    }
-    TRY_KILL(b_entity);
-    b_entity = en;
-    return *b_entity;
+	return 0;
 }
 
-class btint: public bentity
+size_t btoctal_out::size(void)
 {
-    public:
-        btint(btcodec *codec, int off);
-        virtual int bget(int *ival);
-        virtual const char *b_str(size_t *len);
-        virtual int b_val(int *val, int *rest, int base);
+	return m_len;
+}
 
-    private:
-        btcodec *b_codec;
-        int b_off;
+class btentity
+{
+	public:
+		btentity(btentity **entity);
+		virtual ~btentity();
+
+	private:
+		btentity *m_next;
+
+	public:
+		int m_type;
+		btentity *m_sibling;
+		btentity *m_children;
 };
 
-const char *btint::b_str(size_t *len)
+btentity::btentity(btentity **head)
 {
-    int off = 0;
-    const char *p = b_codec->b_str(b_off, len);
-
-    if (p != NULL) {
-        assert(p[off] == 'i');
-        while(off < *len &&
-			   	p[off] != 'e')
-            off++;
-        assert(p[off] == 'e');
-        *len = off + 1;
-    }
-
-    return p;
+	m_type = BTT_NONE;
+	m_next = *head;
+	*head = this;
+	m_sibling = 0;
+	m_children = 0;
 }
 
-int btint::b_val(int *ival, int *rest, int bits)
+btentity::~btentity()
 {
-    size_t len;
-	int a, b, c, hlen;
-    int re = 0, val = 0;
-	unsigned int mask = 0;
-    const char *ibuf = b_str(&len);
+	btentity *next;
 
-    if (ibuf == NULL)
-        return -1;
+	next = m_next;
+	m_next = NULL;
 
-    assert(len > 2);
-    ibuf++;
-    len -= 2;
-    hlen = (len >> 1);
-    mask = (1 << bits) - 1;
-
-    std::string s1(ibuf, hlen),
-	   	s2(ibuf + hlen, len - hlen);
-    a = atoi(s1.c_str());
-    c = atoi(s2.c_str());
-
-    b = (int)std::pow((float)10, (int)s2.size());
-    re = (c & mask) + (a & mask) * (b & mask);
-
-    val = (a >> bits) * (b & ~mask)
-        + (a >> bits) * (b & mask)
-        + (b >> bits) * (a & mask)
-        + (c >> bits);
-
-    *ival = val + (re >> bits);
-    *rest = re & mask;
-    return 0;
+	if (next != NULL)
+		delete next;
 }
-
-int btint::bget(int *ival)
-{
-    size_t len;
-    const char *ibuf = 
-        b_codec->b_str(b_off + 1, &len);
-
-    if (ival != NULL)
-        *ival = ibuf? 0: -1;
-
-    return atoi(ibuf);
-}
-
-btint::btint(btcodec *codec, int off):
-    b_codec(codec), b_off(off)
-{
-
-}
-
-class btstr: public bentity
-{
-    public:
-        btstr(btcodec *codec, int off);
-        virtual const char *b_str(size_t *len);
-        virtual const char *c_str(size_t *len);
-
-    private:
-        btcodec *b_codec;
-        int b_off;
-};
-
-btstr::btstr(btcodec *codec, int off):
-    b_codec(codec), b_off(off)
-{
-
-}
-
-const char *btstr::b_str(size_t *len)
-{
-    int off = 0;
-	int save = 0;
-    const char *p = b_codec->b_str(b_off, len);
-
-    if (p != NULL) {
-        assert(*len > 3);
-        while (off < *len &&
-			   	p[off] != ':')
-            off++;
-        assert(off < *len && p[off] == ':');
-        save = *len;
-        *len = atoi(p) + off + 1;
-        assert(*len <= save);
-    }
-    return p;
-}
-
-const char *btstr::c_str(size_t *len)
-{
-    int off = 0;
-    const char *p = b_str(len);
-
-    if (p != NULL) {
-        while(p[off] != ':')
-            off++;
-        p += (off + 1);
-        *len -= (off + 1);
-    }
-    return p;
-}
-
 
 btcodec::btcodec()
 {
-    b_len = 0;
-    b_text = NULL;
-    b_entity = &__INFINITE;
+	m_elink = 0;
+	m_header = 0;
+	m_tailer = &m_header;
+}
+
+class btdict: public btentity
+{
+	public:
+		btdict(btentity **head);
+};
+
+btdict::btdict(btentity **head)
+:btentity(head)
+{
+	m_type = BTT_DICT;
+}
+
+class btlist: public btentity
+{
+	public:
+		btlist(btentity **head);
+};
+
+btlist::btlist(btentity **head)
+:btentity(head)
+{
+	m_type = BTT_LIST;
+}
+
+class btint: public btentity
+{
+	public:
+		btint(btentity **head, int val);
+
+	public:
+		int get(int *ivalp);
+
+	private:
+		int m_val;
+};
+
+btint::btint(btentity **head, int val)
+:btentity(head), m_val(val)
+{
+	m_type = BTT_INT;
+}
+
+int btint::get(int *ivalp)
+{
+	*ivalp = m_val;
+	return 0;
+}
+
+class btstr: public btentity
+{
+	public:
+		btstr(btentity **head, btoctal_in &octal, size_t size);
+		btstr(btentity **head, const char *str, size_t len);
+		~btstr();
+
+	public:
+		int match(const char *key);
+		const char *get(size_t *elenp);
+
+	private:
+		char *m_buf;
+		size_t m_len;
+};
+
+btstr::btstr(btentity **head, const char *str, size_t len)
+:btentity(head)
+{
+	char *bufp = new char[len + 1];
+	assert(bufp != NULL);
+
+	m_len = len;
+	m_buf = bufp;
+	m_type = BTT_STR;
+	memcpy(bufp, str, len);
+	bufp[len] = 0;
+}
+
+btstr::btstr(btentity **head, btoctal_in &octal, size_t size)
+:btentity(head)
+{
+	int dot;
+	char *bufp = new char[size + 1];
+	assert(bufp != NULL);
+
+	m_len = 0;
+	m_buf = bufp;
+	while (size-- > 0) {
+		dot = octal.get_one();
+		if (dot == -1)
+			break;
+		*bufp++ = dot;
+		m_len++;
+	}
+
+	m_type = BTT_STR;
+	*bufp++ = 0;
+}
+
+int btstr::match(const char *key)
+{
+	if (!strncmp(key, m_buf, m_len))
+		return key[m_len] == 0;
+	return 0;
+}
+
+const char *btstr::get(size_t *elenp)
+{
+	if (elenp != 0)
+	   	*elenp = m_len;
+	return m_buf;
+}
+
+btstr::~btstr()
+{
+	delete[] m_buf;
 }
 
 btcodec::~btcodec()
 {
-    if (b_entity != &__INFINITE)
-        delete b_entity;
-    delete[] b_text;
+	delete m_elink;
+	m_elink = 0;
+	m_header = 0;
+	m_tailer = 0;
 }
 
-int btcodec::parse(const char *buf, int len)
+int btcodec::parse(btoctal_in &octal)
 {
-    if (b_len < len) {
-        delete[] b_text;
-        b_text = new char[len];
-    }
-    b_len = len;
-    assert(b_text != NULL);
-    memcpy(b_text, buf, len);
-    return 0;
+	int dot, val;
+	int kt, et, type;
+	btentity *entity, **tailer;
+
+	switch (dot = octal.get_one()) {
+		case 'd':
+			tailer = m_tailer;
+			entity = new btdict(&m_elink);
+			assert(entity->m_type == BTT_DICT);
+			m_tailer = &entity->m_children;
+			do {
+				kt = parse(octal);
+				if (kt != 's')
+					break;
+				et = parse(octal);
+				if (et & 0x80)
+					break;
+			} while (true);
+			m_tailer = &entity->m_sibling;
+			*tailer = entity;
+			type = (kt & 0x7F)? 0x81: 'd';
+			break;
+
+		case 'l':
+			tailer = m_tailer;
+			entity = new btlist(&m_elink);
+			m_tailer = &entity->m_children;
+			do {
+				et = parse(octal);
+				if (et & 0x80)
+					break;
+			} while (true);
+			m_tailer = &entity->m_sibling;
+			*tailer = entity;
+			type = (et & 0x7F)? 0x82: 'l';
+			break;
+
+		case 'i':
+			val = 0x0;
+			dot = octal.get_cur();
+			while (isdigit(dot)) {
+				val = val * 10 + (dot - '0');
+				dot = octal.get_one();
+			}
+			tailer = m_tailer;
+			entity = new btint(&m_elink, val);
+			m_tailer = &entity->m_sibling;
+			*tailer = entity;
+			et = parse(octal);
+			type = (et & 0x7F)? 0x83: 'l';
+			break;
+
+		case 'e':
+			type = 0x80;
+			break;
+
+		case '0': case '1': case '2':
+		case '3': case '4': case '5':
+		case '6': case '7': case '8':
+		case '9': /* 0 ~ 9 pass througth */
+			val = 0;
+			do {
+				val = val * 10 + (dot - '0');
+				dot = octal.get_one();
+			} while (isdigit(dot));
+
+			if (dot != ':') {
+				type = 0x84;
+				break;
+			}
+			tailer = m_tailer;
+			entity = new btstr(&m_elink, octal, val);
+			m_tailer = &entity->m_sibling;
+			*tailer = entity;
+			type = 's';
+			break;
+
+		default:
+			type = 0x85;
+			break;
+	}
+
+	return type;
 }
 
-bentity& btcodec::bget(const char *key)
+int btcodec::load(const char *buf, size_t len)
 {
-    if (b_entity != &__INFINITE) {
-        delete b_entity;
-        b_entity = &__INFINITE;
-    }
+	int type;
+	btoctal_in octal0(buf, len);
 
-    b_entity = balloc(0);
-    return b_entity->bget(key);
+	type = parse(octal0);
+	return (type & 0x80)? -1: 0;
 }
 
-bentity* btcodec::balloc(int off)
+btentity *btcodec::str(const char *str, size_t len)
 {
-    bentity *entity = &__INFINITE;
-
-    if (off < b_len)
-        entity = &__INFINITE;
-
-	if (b_text[off] == 'l')
-        entity = new btlist(this, off);
-    else if (b_text[off] == 'd')
-        entity = new btdict(this, off);
-    else if (b_text[off] == 'i')
-        entity = new btint(this, off);
-    else if (isdigit(b_text[off]))
-        entity = new btstr(this, off);
-
-    return entity;
+	btstr *strp;
+	strp = new btstr(&m_elink, str, len);
+	return strp;
 }
 
-const char *btcodec::b_str(int off, size_t *len)
+int btcodec::output(btoctal_out &octal, btentity *entity)
 {
-	*len = 0;
-    if (off >= b_len)
-        return NULL;
+	int ival;
+	size_t elen;
+	char buf[256];
+	const char *valp;
+	btentity *sibling;
 
-    *len = (b_len - off);
-    return b_text + off;
+	switch (entity->m_type) {
+		case BTT_DICT:
+			octal.put_one('d');
+			sibling = entity->m_children;
+			while (sibling) {
+				output(octal, sibling);
+				sibling = sibling->m_sibling;
+			}
+			octal.put_one('e');
+			break;
+
+		case BTT_LIST:
+			octal.put_one('l');
+			sibling = entity->m_children;
+			while (sibling) {
+				output(octal, sibling);
+				sibling = sibling->m_sibling;
+			}
+			octal.put_one('e');
+			break;
+
+		case BTT_INT:
+			octal.put_one('i');
+			((btint *)entity)->get(&ival);
+			sprintf(buf, "%u", ival);
+			octal.put_octal(buf, strlen(buf));
+			octal.put_one('e');
+			break;
+
+		case BTT_STR:
+			valp = ((btstr *)entity)->get(&elen);
+			sprintf(buf, "%u:", elen);
+			octal.put_octal(buf, strlen(buf));
+			octal.put_octal(valp, elen);
+			break;
+
+		case BTT_WRAP:
+		   	output(octal, entity->m_children);
+			break;
+	}
+
+	return 0;
 }
 
-int bentity::bget(int *ival)
+int btcodec::encode(void *buf, size_t size)
 {
-    if (ival != NULL)
-        *ival = -1;
-    return -1;
+	btoctal_out octal((char *)buf, size);
+
+	if (m_header != NULL)
+	   	output(octal, m_header);
+
+	return octal.size();
 }
 
-bentity& bentity::bget(int index)
+btentity *btcodec::root(void)
 {
-    return __INFINITE;
+	return m_header;
 }
 
-bentity& bentity::bget(const char *name)
-{
-    return __INFINITE;
-}
-
-bentity::~bentity()
+btfastvisit::btfastvisit()
 {
 }
 
-const char *bentity::b_str(size_t *len)
+btfastvisit::~btfastvisit()
 {
-	*len = 0;
-    return NULL;
 }
 
-const char *bentity::c_str(size_t *len)
+int btfastvisit::bget(int *ivalp)
 {
-	*len = 0;
-    return NULL;
+	if (m_type == BTT_INT)
+		return m_intp->get(ivalp);
+	return -1;
 }
 
-int bentity::b_val(int *ival, int *rest, int base)
+btfastvisit &btfastvisit::bget(int index)
 {
-    return -1;
+	int type = BTT_NONE;
+	btentity *entity;
+
+	if (m_type == BTT_LIST) {
+		entity = m_listp->m_children;
+		while (entity && index-- > 0)
+			entity = entity->m_sibling;
+		type = set_entity(entity);
+	}
+
+	m_type = type;
+	return *this;
 }
+
+int btfastvisit::set_entity(btentity *entity)
+{
+	int type = BTT_NONE;
+
+	if (entity != NULL) {
+		switch (entity->m_type) {
+			case BTT_DICT:
+				m_dictp = (btdict *)entity;
+				type = BTT_DICT;
+				break;
+
+			case BTT_LIST:
+				m_listp = (btlist *)entity;
+				type = BTT_LIST;
+				break;
+
+			case BTT_INT:
+				m_intp = (btint *)entity;
+				type = BTT_INT;
+				break;
+
+			case BTT_STR:
+				m_strp = (btstr *)entity;
+				type = BTT_STR;
+				break;
+
+			default:
+				assert(0);
+		}
+	}
+
+	return type;
+}
+
+btfastvisit &btfastvisit::bget(const char *name)
+{
+	int type;
+	btstr *kep;
+	btentity *entity;
+
+	kep = 0;
+	type = BTT_NONE;
+	if (m_type == BTT_DICT) {
+		kep = (btstr *)m_dictp->m_children;
+		while (kep != NULL) {
+			entity = kep->m_sibling;
+			if (entity == NULL) {
+				fprintf(stderr, "bad dict table: %s\n", name);
+				break;
+			}
+
+			if (kep->match(name)) {
+				type = set_entity(entity);
+				break;
+			}
+
+			kep = (btstr *)entity->m_sibling;
+		}
+	}
+
+	m_type = type;
+	return *this;
+}
+
+const char *btfastvisit::c_str(size_t *len)
+{
+	if (m_type == BTT_STR)
+		return m_strp->get(len);
+	return NULL;
+}
+
+btfastvisit &btfastvisit::operator() (btcodec *codecp)
+{
+	int type;
+	btentity *entity;
+
+	type = BTT_NONE;
+	entity = codecp->root();
+	if (entity != NULL)
+		type = set_entity(entity);
+
+	m_type = type;
+	return *this;
+}
+
+btentity *btfastvisit::bget(void)
+{
+	btentity *entity = 0;
+
+	switch (m_type) {
+		case BTT_DICT:
+			entity = m_dictp;
+			break;
+
+		case BTT_LIST:
+			entity = m_listp;
+			break;
+
+		case BTT_STR:
+			entity = m_strp;
+			break;
+
+		case BTT_INT:
+			entity = m_intp;
+			break;
+	}
+
+	return entity;
+}
+
+void btfastvisit::replace(btentity *entity)
+{
+	switch (m_type) {
+		case BTT_DICT:
+			m_dictp->m_type = BTT_WRAP;
+			m_dictp->m_children = entity;
+			break;
+
+		case BTT_LIST:
+			m_listp->m_type = BTT_WRAP;
+			m_listp->m_children = entity;
+			break;
+
+		case BTT_STR:
+			m_strp->m_type = BTT_WRAP;
+			m_strp->m_children = entity;
+			break;
+
+		case BTT_INT:
+			m_intp->m_type = BTT_WRAP;
+			m_intp->m_children = entity;
+			break;
+	}
+}
+

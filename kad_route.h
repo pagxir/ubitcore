@@ -18,6 +18,7 @@ int kad_node_good(const char *ident, in_addr in_addr1, u_short in_port1);
 int kad_node_timed(const char *ident, in_addr in_addr1, u_short in_port1);
 int kad_node_insert(const char *ident, in_addr in_addr1, u_short in_port1);
 int kad_node_closest(const char *ident, struct kad_node2 *closest, size_t count);
+int kad_compat_closest(const char *ident, void *buf, size_t len);
 
 #endif
 

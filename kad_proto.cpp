@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "btcodec.h"
 #include "kad_proto.h"
 
 static char _curr_ident[21] = {
@@ -25,6 +26,10 @@ static uint8_t __get_peers_template[] =  {
 
 static uint8_t __find_node_answer[] = {
    	"d1:rd2:id20:abcdefghij01234567895:nodes0:e1:t3:xxl1:y1:re"
+};
+
+static uint8_t __ping_node_answer[] = {
+   	"d1:rd2:id20:abcdefghij0123456789e1:t3:xxl1:y1:re"
 };
 
 int kad_set_ident(const uint8_t *ident)
@@ -91,17 +96,27 @@ int kad_ping_node(void *buf, size_t len, uint32_t tid)
 	return (count - 1);
 }
 
-int kad_find_node_answer(void *buf, size_t len, const char *qid, size_t lid)
+int kad_ping_node_answer(void *buf, size_t len, btentity *tid)
 {
-	char * outp;
-	assert (45 + lid + 7 <= len);
+	btcodec codec;
+	btfastvisit btfv;
 
-	outp = (char *)buf;
-	memcpy(outp, __find_node_answer, 45);
-	memcpy(outp + 45, qid, lid);
-	memcpy(outp + 45 + lid, __find_node_answer + 50, 7);
+	codec.load((char *)__ping_node_answer, sizeof(__ping_node_answer));
+	btfv(&codec).bget("t").replace(tid);
+	return codec.encode(buf, len);
+}
 
-	return 45 + lid + 7;
+int kad_find_node_answer(void *buf, size_t len, btentity *tid, const char *inp, size_t inl)
+{
+	btcodec codec;
+	btentity *entity;
+	btfastvisit btfv;
+
+	codec.load((char *)__find_node_answer, sizeof(__find_node_answer));
+	btfv(&codec).bget("t").replace(tid);
+	entity = codec.str(inp, inl);
+	btfv(&codec).bget("r").bget("nodes").replace(entity);
+	return codec.encode(buf, len);
 }
 
 int kad_less_than(const char *sp, const char *lp, const char *rp)
