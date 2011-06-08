@@ -319,7 +319,7 @@ int btcodec::parse(btoctal_in &octal)
 
 		case 'i':
 			val = 0x0;
-			dot = octal.get_cur();
+			dot = octal.get_one();
 			while (isdigit(dot)) {
 				val = val * 10 + (dot - '0');
 				dot = octal.get_one();
@@ -328,8 +328,7 @@ int btcodec::parse(btoctal_in &octal)
 			entity = new btint(&m_elink, val);
 			m_tailer = &entity->m_sibling;
 			*tailer = entity;
-			et = parse(octal);
-			type = (et & 0x7F)? 0x83: 'l';
+			type = (dot == 'e')? 'i': 0x83;
 			break;
 
 		case 'e':
