@@ -100,7 +100,6 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	const char *type = btfv(&codec).bget("y").c_str(&elen);
 	if (type == NULL || elen != 1) {
 		fprintf(stderr, "[packet missing query type] %d\n", elen);
-	   	fwrite(buf, len, 1, _log_file);
 		return;
 	}
 
@@ -113,12 +112,13 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			}
 		   
 			query_ident = btfv(&codec).bget("t").c_str(&elen);
-		   	if (query_ident == NULL || elen != sizeof(uint32_t)) {
+		   	if (query_ident == NULL || elen > sizeof(uint32_t)) {
 			   	fprintf(stderr, "packet missing packet ident\n");
 				fwrite(buf, len, 1, _log_file);
 			   	return;
 		   	}
 
+			idp = 0;
 			found = 0;
 			memcpy(&idp, query_ident, elen);
 		   	for (waitcbp = _kad_slot; waitcbp;
