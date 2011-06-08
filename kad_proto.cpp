@@ -24,6 +24,10 @@ static uint8_t __get_peers_template[] =  {
         "20:mnopqrstuvwxyz123456e1:q9:get_peers1:t4:GGGG1:y1:qe"
 };
 
+static uint8_t __get_peers_answer[] = {
+   	"d1:rd2:id20:abcdefghij01234567895:token0:5:nodes0:e1:t3:xxl1:y1:re"
+};
+
 static uint8_t __find_node_answer[] = {
    	"d1:rd2:id20:abcdefghij01234567895:nodes0:e1:t3:xxl1:y1:re"
 };
@@ -115,6 +119,22 @@ int kad_find_node_answer(void *buf, size_t len, btentity *tid, const char *inp, 
 	codec.load((char *)__find_node_answer, sizeof(__find_node_answer));
 	btfv(&codec).bget("t").replace(tid);
 	entity = codec.str(inp, inl);
+	btfv(&codec).bget("r").bget("nodes").replace(entity);
+	return codec.encode(buf, len);
+}
+
+int kad_get_peers_answer(void *buf, size_t len, btentity *tid, const char *inp, size_t inl)
+{
+	btcodec codec;
+	btentity *etoken;
+	btentity *entity;
+	btfastvisit btfv;
+
+	codec.load((char *)__get_peers_answer, sizeof(__get_peers_answer));
+	btfv(&codec).bget("t").replace(tid);
+	entity = codec.str(inp, inl);
+	etoken = codec.str(_curr_ident, 20);
+	btfv(&codec).bget("r").bget("token").replace(etoken);
 	btfv(&codec).bget("r").bget("nodes").replace(entity);
 	return codec.encode(buf, len);
 }

@@ -99,7 +99,8 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	codec.load(buf, len);
 	const char *type = btfv(&codec).bget("y").c_str(&elen);
 	if (type == NULL || elen != 1) {
-		fprintf(stderr, "packet missing query type\n");
+		fprintf(stderr, "[packet missing query type] %d\n", elen);
+	   	fwrite(buf, len, 1, _log_file);
 		return;
 	}
 
@@ -139,7 +140,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			   	kad_node_seen(peer_ident, in_addr1, in_port1);
 			}
 
-			dump_kad_peer_ident(peer_ident, in_addrp);
+			//dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
 
@@ -169,7 +170,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	fprintf(stderr, "find_node packet: %d\n", err);
+			   	//fprintf(stderr, "find_node packet: %d\n", err);
 			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
 				int siz;
 				char buf[1024];
@@ -178,10 +179,10 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				so_addrp = (struct sockaddr *)in_addrp;
 				info_hash = btfv(&codec).bget("a").bget("info_hash").c_str(&elen);
 				siz = kad_compat_closest(info_hash, buf, sizeof(buf));
-				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
+				len = kad_get_peers_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	fprintf(stderr, "find_node packet: %d\n", err);
+				dump_info_hash(info_hash, elen);
 			} else if (elen == 4 && !strncmp(query_type, "ping", 4)) {
 				struct sockaddr *so_addrp;
 				btentity *entity = btfv(&codec).bget("t").bget();
@@ -189,14 +190,14 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	fprintf(stderr, "ping packet\n");
+			   	//fprintf(stderr, "ping packet\n");
 			} else {
 				fprintf(stderr, "query packet have an unkown query type\n");
 				return;
 			}
 
 			kad_node_seen(peer_ident, in_addrp->sin_addr, in_addrp->sin_port);
-			dump_kad_peer_ident(peer_ident, in_addrp);
+			//dump_kad_peer_ident(peer_ident, in_addrp);
 			break;
 
 		default:
@@ -287,7 +288,7 @@ int kad_proto_out(int type, const char *target,
 	int len;
 	int error;
 	char sockbuf[2048];
-	static int _id_gen = 0;
+	static int _id_gen = 0x1982;
 
 	switch (type) {
 		case RC_TYPE_FIND_NODE:
