@@ -373,10 +373,10 @@ int btcodec::load(const char *buf, size_t len)
 	return (type & 0x80)? -1: 0;
 }
 
-btentity *btcodec::str(const char *str, size_t len)
+btentity *btcodec::str(const void *str, size_t len)
 {
 	btstr *strp;
-	strp = new btstr(&m_elink, str, len);
+	strp = new btstr(&m_elink, (const char *)str, len);
 	return strp;
 }
 

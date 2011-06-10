@@ -66,13 +66,12 @@ static void dump_kad_peer_ident(const char *peer_ident,
 
 static void dump_info_hash(const char *info_hash, size_t elen)
 {
-	uint8_t *u_info_hash;
-	u_info_hash = (uint8_t *)info_hash;
-
-	while (elen-- > 0)
-		fprintf(stderr, "%02X", *u_info_hash++);
-	fprintf(stderr, " get_peers packet\n");
-
+	struct sockaddr_in in_addr0;
+	in_addr0.sin_family = AF_INET;
+	in_addr0.sin_port   = htons(8866);
+	in_addr0.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	sendto(_udp_sockfd, info_hash, elen, 0, 
+			(struct sockaddr *)&in_addr0, sizeof(in_addr0));
 	return;
 }
 
@@ -140,7 +139,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			   	kad_node_seen(peer_ident, in_addr1, in_port1);
 			}
 
-			//dump_kad_peer_ident(peer_ident, in_addrp);
+			dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
 
@@ -170,7 +169,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	//fprintf(stderr, "find_node packet: %d\n", err);
+			   	fprintf(stderr, "find_node packet: %d\n", err);
 			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
 				int siz;
 				char buf[1024];
@@ -190,7 +189,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	//fprintf(stderr, "ping packet\n");
+			   	fprintf(stderr, "ping packet\n");
 			} else {
 				fprintf(stderr, "query packet have an unkown query type\n");
 				return;

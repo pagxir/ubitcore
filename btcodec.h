@@ -47,7 +47,7 @@ class btcodec
         ~btcodec();
 
 	public:
-		btentity *str(const char *str, size_t len);
+		btentity *str(const void *str, size_t len);
         btentity *root(void);
 
 	public:
