@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <assert.h>
 #include <winsock.h>
 
 #include "module.h"
@@ -12,7 +13,7 @@
 #define KN_SEEN       0x01
 #define KN_GOOD       0x02
 
-#define MAX_NODE_COUNT    (20 * 8 * 8)
+#define MAX_BUCKET_COUNT    (20 * 8)
 
 struct kad_node {
 	int kn_flag;
@@ -24,7 +25,18 @@ struct kad_node {
 	struct waitcb kn_timeout;
 };
 
-static struct kad_node _route_nodes[MAX_NODE_COUNT];
+struct kad_bucket {
+	int kb_flag;
+	int kb_seen;
+	char kb_mask[20];
+	char kb_ident[20];
+	struct waitcb kb_timeout;
+	struct kad_node kb_swap[8];
+	struct kad_node kb_nodes[8];
+};
+
+struct kad_bucket _route_bucket[20 * 8];
+
 static int do_next_insert(int type, const char *ident,
 	   	in_addr in_addr1, u_short in_port1)
 {
@@ -35,33 +47,49 @@ static int do_next_insert(int type, const char *ident,
 static int do_node_scan(struct kad_node *knps[3],
 	   	const char *ident, in_addr in_addr1, u_short in_port1)
 {
+   	int i, j;
+	int index;
 	struct kad_node *knp;
+	struct kad_bucket *kbp, *kbp1;
 
 	knps[0] = knps[1] = knps[2] = 0;
-	for (int i = 0; i < MAX_NODE_COUNT; i++) {
-		knp = &_route_nodes[i];
 
-		if (knp->kn_flag == 0) {
-			knps[2] = knp; // KNP_DEAD;
+	index = kad_get_bucket(ident);
+	for (i = 0; i <= index; i++) {
+		kbp = &_route_bucket[i];
+		if (kbp->kb_flag & NF_GOOD) {
+			kbp1 = kbp;
 			continue;
 		}
 
+		assert(index <= 120);
+	   	break;
+	}
+
+	for (j = 0; j < 8; j++) {
+	   	knp = &kbp1->kb_nodes[j];
+
+		if (knp->kn_flag == 0) {
+		   	knps[2] = knp; // KNP_DEAD;
+		   	continue;
+	   	}
+
 		if (knp->kn_port == in_port1 &&
-				knp->kn_addr.s_addr == in_addr1.s_addr) {
-			knps[0] = knp; // KNP_ROUTE;
-		}
+			   	knp->kn_addr.s_addr == in_addr1.s_addr) {
+		   	knps[0] = knp; // KNP_ROUTE;
+	   	}
 
 		if (!memcmp(ident, knp->kn_ident, 20)) {
-			knps[1] = knp; // KNP_IDENT;
-		}
+		   	knps[1] = knp; // KNP_IDENT;
+	   	}
 
 		if (knp->kn_flag & NF_DEAD) {
-			knps[2] = knp; // KNP_DEAD;
-		}
+		   	knps[2] = knp; // KNP_DEAD;
+	   	}
 
 		if (knps[1] && knps[0]) {
-			break;
-		}
+		   	break;
+	   	}
 	}
 
 	return 0;
@@ -168,24 +196,28 @@ static int closest_update(const char *ident,
 
 int kad_node_closest(const char *ident, struct kad_node2 *closest, size_t count)
 {
-	int i;
+	int i, j;
 	int min15;
 	struct kad_node *knp;
 	struct kad_node2 *knp2;
+	struct kad_bucket *kbp;
 
 	min15 = 1000 * 15 * 60;
 	for (i = 0; i < count; i++)
 		closest[i].kn_flag = 0;
 
-	for (i = 0; i < MAX_NODE_COUNT; i++) {
-		knp = &_route_nodes[i];
-		if (knp->kn_flag == 0)
-			continue;
+	for (i = 0; i < MAX_BUCKET_COUNT; i++) {
+		kbp = &_route_bucket[i];
+		for (j = 0; j < 8; j++) {
+		   	knp = &kbp->kb_nodes[j];
+		   	if (knp->kn_flag == 0)
+			   	continue;
 
-		if ((knp->kn_flag & NF_GOOD) &&
-				(knp->kn_seen + min15) < GetTickCount())
-			knp->kn_flag |= NF_DOUBT;
-	   	closest_update(ident, closest, count, knp);
+			if ((knp->kn_flag & NF_GOOD) &&
+				   	(knp->kn_seen + min15) < GetTickCount())
+			   	knp->kn_flag |= NF_DOUBT;
+		   	closest_update(ident, closest, count, knp);
+		}
 	}
 
 	return 0;
@@ -273,25 +305,49 @@ static void kad_node_failure(void *upp)
 	}
 }
 
+static void kad_bucket_failure(void *upp)
+{
+	struct kad_bucket *kbp;
+
+	kbp = (struct kad_bucket *)upp;
+
+}
+
 static void module_init(void)
 {
-	int i;
+	int i, j;
 	struct kad_node *knp;
+	struct kad_bucket *kbp;
 
-	for (i = 0; i < MAX_NODE_COUNT; i++) {
-		knp = &_route_nodes[i];
-		waitcb_init(&knp->kn_timeout, kad_node_failure, knp);
+	for (i = 0; i < MAX_BUCKET_COUNT; i++) {
+		kbp = &_route_bucket[i];
+		waitcb_init(&kbp->kb_timeout, kad_bucket_failure, kbp);
+		for (j = 0; j < 8; j++) {
+		   	knp = &kbp->kb_swap[j];
+		   	waitcb_init(&knp->kn_timeout, kad_node_failure, knp);
+		   	knp = &kbp->kb_nodes[j];
+		   	waitcb_init(&knp->kn_timeout, kad_node_failure, knp);
+		}
 	}
+
+	_route_bucket[0].kb_flag = NF_GOOD;
 }
 
 static void module_clean(void)
 {
-	int i;
+	int i, j;
 	struct kad_node *knp;
+	struct kad_bucket *kbp;
 
-	for (i = 0; i < MAX_NODE_COUNT; i++) {
-		knp = &_route_nodes[i];
-		waitcb_clean(&knp->kn_timeout);
+	for (i = 0; i < MAX_BUCKET_COUNT; i++) {
+		kbp = &_route_bucket[i];
+		waitcb_clean(&kbp->kb_timeout);
+		for (j = 0; j < 8; j++) {
+		   	knp = &kbp->kb_swap[j];
+		   	waitcb_clean(&knp->kn_timeout);
+		   	knp = &kbp->kb_nodes[j];
+		   	waitcb_clean(&knp->kn_timeout);
+		}
 	}
 }
 

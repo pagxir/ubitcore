@@ -2,27 +2,19 @@
 #include <assert.h>
 #include <winsock.h>
 
+#include "btcodec.h"
+
 int main(int argc, char *argv[])
 {
-	int error;
-	int sockfd;
-	WSADATA data;
-	struct sockaddr_in so_addr;
-	WSAStartup(0x101, &data);
+#if 0
+	FILE *fp = fopen("C:\\2kad_log.log", "rb");
+	char buf[8192];
+	int count = fread(buf, 1, sizeof(buf),  fp);
+	fclose(fp);
 
-	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	assert(sockfd != -1);
-
-	so_addr.sin_family = AF_INET;
-	so_addr.sin_port   = htons(8080);
-	so_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-	sendto(sockfd, "HELLO", 5, 0,
-			(struct sockaddr *)&so_addr, sizeof(so_addr));
-
-	closesocket(sockfd);
-
-	WSACleanup();
+	btcodec codec;
+	codec.load(buf, count);
+#endif
 	return 0;
 }
 

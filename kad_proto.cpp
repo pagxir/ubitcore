@@ -102,7 +102,8 @@ int kad_ping_node_answer(void *buf, size_t len, btentity *tid)
 	return codec.encode(buf, len);
 }
 
-int kad_find_node_answer(void *buf, size_t len, btentity *tid, const char *inp, size_t inl)
+int kad_find_node_answer(void *buf, size_t len,
+	   	btentity *tid, const char *inp, size_t inl)
 {
 	btcodec codec;
 	btentity *entity;
@@ -121,7 +122,8 @@ int kad_find_node_answer(void *buf, size_t len, btentity *tid, const char *inp, 
 	return codec.encode(buf, len);
 }
 
-int kad_get_peers_answer(void *buf, size_t len, btentity *tid, const char *inp, size_t inl)
+int kad_get_peers_answer(void *buf, size_t len,
+	   	btentity *tid, const char *inp, size_t inl)
 {
 	btcodec codec;
 	btentity *entity;
@@ -140,6 +142,53 @@ int kad_get_peers_answer(void *buf, size_t len, btentity *tid, const char *inp, 
 	btfv(&codec).bget("r").bget("id").replace(entity);
 
 	return codec.encode(buf, len);
+}
+
+int kad_get_bucket(const void *ident)
+{
+   	int i;
+	const char *ip;
+
+	ip = (const char *)ident;
+	for (i = 0; i < 20; i++) {
+		if (ip[i] != _curr_ident[i]) {
+			int of = (ip[i] ^ _curr_ident[i]);
+
+			of &= 0xFF;
+			of |= (of >> 1);
+			of |= (of >> 2);
+			of |= (of >> 4);
+
+			i *= 8;
+			switch (of + 1) {
+				case 0x2:
+				   	i++;
+				case 0x4:
+				   	i++;
+				case 0x8:
+				   	i++;
+				case 0x10:
+				   	i++;
+				case 0x20:
+				   	i++;
+				case 0x40:
+				   	i++;
+				case 0x80:
+				   	i++;
+				case 0x100:
+				   	i++;
+				   	break;
+
+				default:
+				   	assert(0);
+				   	break;
+			}
+
+			return i;
+		}
+	}
+
+	return 120;
 }
 
 int kad_less_than(const char *sp, const char *lp, const char *rp)

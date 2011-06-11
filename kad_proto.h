@@ -9,6 +9,7 @@ int kad_get_peers(void *buf, size_t len, uint32_t tid, const uint8_t *ident);
 
 int kad_get_ident(void *ident);
 int kad_set_ident(const void *ident);
+int kad_get_bucket(const void *ident);
 
 int kad_less_than(const char *sp, const char *lp, const char *rp);
 int kad_ping_node_answer(void *buf, size_t len, btentity *tp);
