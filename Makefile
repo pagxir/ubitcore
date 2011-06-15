@@ -1,9 +1,10 @@
 CC = gcc
 CFLAGS = -g
 CXXFLAGS = -g
-LDLIBS = -lws2_32 -lstdc++
+LDFLAGS = -L.
+LDLIBS = -lws2_32 -lstdc++ -llibmpg123-0 -lwinmm
 OBJECTS = module.o slotwait.o main.o kad_proto.o kad_route.o \
-		  btcodec.o utils.o ui.o recursive.o base64.o \
+		  btcodec.o utils.o ui.o recursive.o base64.o player.o \
 		  udp_daemon.o slotsock.o callout.o webcrack.o slotipc.o
 
 all: client.exe test.exe

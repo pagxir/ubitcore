@@ -365,7 +365,7 @@ static void auth_callback(void *upp)
 	}
 }
 
-void module_init(void)
+static void module_init(void)
 {
 	waitcb_init(&_auth_display, update_display, NULL);
 	waitcb_init(&_auth_finish, auth_callback, NULL);
@@ -373,7 +373,7 @@ void module_init(void)
 	//waitcb_switch(&_auth_finish);
 }
 
-void module_clean(void)
+static void module_clean(void)
 {
 	waitcb_clean(&_auth_display);
 	waitcb_clean(&_auth_finish);
