@@ -73,7 +73,8 @@ static int play_clean(mpg123_handle *codecp)
 
 static void waveout_scan(void *upp)
 {
-	int err;
+	int i;
+	int err1, err2;
 	size_t done;
 	LPWAVEHDR pWaveHdr;
 	mpg123_handle *codecp;
@@ -81,25 +82,38 @@ static void waveout_scan(void *upp)
 	codecp = (mpg123_handle *)upp;
 	assert(codecp != NULL);
 
-	for (int i = 0; i < 2; i++) {
+	for (i = 0; i < 2; i++) {
 	   	pWaveHdr = &WaveHdr[i];
 	   	if (pWaveHdr->dwFlags == 0x12)
 			continue;
 	   
-		err = mpg123_decode(codecp, NULL, 0,
+		err1 = mpg123_decode(codecp, NULL, 0,
 			   	(unsigned char *)_outbuf[i], sizeof(_outbuf[i]), &done);
-
-		if (err == MPG123_ERR)
+		if (err1 != MPG123_OK)
 			break;
-
+	   
 		pWaveHdr->lpData          = (LPTSTR)_outbuf[i];
 	   	pWaveHdr->dwBufferLength  = done;
 
-		err = waveOutWrite(_ghWaveOut, pWaveHdr, sizeof (WAVEHDR));
+		err2 = waveOutWrite(_ghWaveOut, pWaveHdr, sizeof (WAVEHDR));
+	   	if (MMSYSERR_NOERROR != err2)
+		   	break;
 	}
 
-	if (err == MPG123_ERR)
-		printf("err = %s\n", mpg123_strerror(codecp));
+	if (i < 2) {
+	   	switch(err1) {
+		   	case MPG123_ERR:
+			   	fprintf(stderr, "err = %s\n", mpg123_strerror(codecp));
+			   	break;
+
+			case MPG123_DONE:
+				break;
+
+			default:
+			   	fprintf(stderr, "err1 = %d, err2 = %d\n", err1, err2);
+			   	break;
+	   	}
+	}
 
 	return;
 }
