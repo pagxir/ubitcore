@@ -44,7 +44,7 @@ struct recursive_context {
 };
 
 int kad_recursive(int type, const char *ident);
-int kad_recursive2(int type, const char *peer, const char *peer);
+int kad_recursive2(int type, const char *ident, const char *peer);
 
 #endif
 

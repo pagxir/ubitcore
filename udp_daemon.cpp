@@ -23,6 +23,7 @@ static struct waitcb _stopcb;
 static struct waitcb _startcb;
 
 static slotcb _kad_slot = 0;
+static int _id_gen = 0x1982;
 static void dump_peer_values(btcodec & codec)
 {
 	int i;
@@ -64,14 +65,33 @@ static void dump_kad_peer_ident(const char *peer_ident,
 		   	inet_ntoa(inp->sin_addr), htons(inp->sin_port));
 }
 
+void do_send_ping(in_addr addr1, u_short port1)
+{
+	int err, len;
+	char sockbuf[1024];
+   	struct sockaddr *so_addrp;
+   	struct sockaddr_in in_addr1;
+
+	so_addrp = (struct sockaddr *)&in_addr1;
+	in_addr1.sin_family = AF_INET;
+	in_addr1.sin_port = port1;
+	in_addr1.sin_addr = addr1;
+
+	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
+   	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
+	return;
+}
+
 static void dump_info_hash(const char *info_hash, size_t elen)
 {
+#if 0
 	struct sockaddr_in in_addr0;
 	in_addr0.sin_family = AF_INET;
 	in_addr0.sin_port   = htons(8866);
 	in_addr0.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	sendto(_udp_sockfd, info_hash, elen, 0, 
 			(struct sockaddr *)&in_addr0, sizeof(in_addr0));
+#endif
 	return;
 }
 
@@ -133,7 +153,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				}
 		   	}
 		   
-			if (found == 0) {
+			{
 				in_addr in_addr1 = in_addrp->sin_addr;
 				u_short in_port1 = in_addrp->sin_port;
 			   	kad_node_seen(peer_ident, in_addr1, in_port1);
@@ -228,9 +248,9 @@ static void udp_routine(void *upp)
 		} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
 			sock_read_wait(_udp_sockcbp, &_sockcb);
 			break;
-		} else {
+		} else (count == -1) {
 			fprintf(stderr, "recv error %d from %s:%d\n",
-				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), htons(in_addr1.sin_port));
+				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), ntohs(in_addr1.sin_port));
 			continue;
 		}
 	}
@@ -287,7 +307,6 @@ int kad_proto_out(int type, const char *target,
 	int len;
 	int error;
 	char sockbuf[2048];
-	static int _id_gen = 0x1982;
 
 	switch (type) {
 		case RC_TYPE_FIND_NODE:
@@ -301,6 +320,8 @@ int kad_proto_out(int type, const char *target,
 			break;
 
 		case RC_TYPE_PING_NODE:
+			printf("ping_node: %s:%d\n",
+				   	inet_ntoa(soap->sin_addr), htons(soap->sin_port));
 			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
 			break;
 
