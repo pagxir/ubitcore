@@ -1,4 +1,7 @@
+#CC = wine /media/application/Applications/MinGW/bin/gcc.exe
+#CXX = wine /media/application/Applications/MinGW/bin/g++.exe
 CC = gcc
+CXX = g++
 CFLAGS = -g
 CXXFLAGS = -g
 LDFLAGS = -L.

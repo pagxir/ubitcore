@@ -140,6 +140,7 @@ ui_quited:
 }
 
 static uintptr_t h_input;
+int kad_route_dump(void);
 static void parse_request(void *upp)
 {
 	int count;
@@ -168,6 +169,9 @@ static void parse_request(void *upp)
 	   	hex_decode(ident0, ident1, sizeof(ident1));
 	   	fprintf(stderr, "kad_findnode\n");
 	   	kad_findnode(ident1);
+   	} else if (!strncmp(uip->ui_buf, "dump", 4)) {
+	   	fprintf(stderr, "kad_route_dump\n");
+		kad_route_dump();
    	} else if (!strncmp(uip->ui_buf, "ping_node ", 9)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", server);
 	   	fprintf(stderr, "kad_pingnode\n");

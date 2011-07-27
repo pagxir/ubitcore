@@ -15,7 +15,7 @@ extern struct module_stub kad_route_mod;
 static struct module_stub *module_stub_list[] = {
 	&timer_mod, &slotsock_mod, &udp_daemon_mod,
 	&webcrack_mod, &slotipc_mod, &kad_route_mod,
-   	&player_mod, &ui_mod, 0
+   	&ui_mod, 0
 };
 
 int main(int argc, char *argv[])

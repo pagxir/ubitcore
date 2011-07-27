@@ -156,7 +156,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			{
 				in_addr in_addr1 = in_addrp->sin_addr;
 				u_short in_port1 = in_addrp->sin_port;
-			   	kad_node_seen(peer_ident, in_addr1, in_port1);
+			   	kad_node_good(peer_ident, in_addr1, in_port1);
 			}
 
 			dump_kad_peer_ident(peer_ident, in_addrp);
@@ -248,7 +248,7 @@ static void udp_routine(void *upp)
 		} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
 			sock_read_wait(_udp_sockcbp, &_sockcb);
 			break;
-		} else (count == -1) {
+		} else if (count == -1) {
 			fprintf(stderr, "recv error %d from %s:%d\n",
 				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), ntohs(in_addr1.sin_port));
 			continue;
