@@ -1,24 +1,37 @@
 #ifndef _KAD_ROUTE_H_
 #define _KAD_ROUTE_H_
 
-#define NF_GOOD       0x01
-#define NF_UNKOWN     0x02
-#define NF_DOUBT      0x04
-#define NF_DEAD       0x08
+#define NF_HELO       0x01
+#define NF_NODE       0x02
+#define NF_ITEM       0x04
 
-struct kad_node2 {
-	int kn_flag;
-	char kn_ident[20];
-	in_addr kn_addr;
-	u_short kn_port;
+#define HASH_LEN 20
+#define IDENT_LEN 20
+#define TOKEN_LEN 20
+
+struct KAC {
+	in_addr kc_addr;
+	u_short kc_port;
 };
 
-int kad_node_seen(const char *ident, in_addr in_addr1, u_short in_port1);
-int kad_node_good(const char *ident, in_addr in_addr1, u_short in_port1);
-int kad_node_timed(const char *ident, in_addr in_addr1, u_short in_port1);
-int kad_node_insert(const char *ident, in_addr in_addr1, u_short in_port1);
-int kad_node_closest(const char *ident, struct kad_node2 *closest, size_t count);
-int kad_compat_closest(const char *ident, void *buf, size_t len);
+struct kad_node {
+	int kn_type;
+	KAC kn_addr;
+	char kn_ident[IDENT_LEN];
+};
+
+int kad_node_seen(struct kad_node *knp);
+int kad_node_good(struct kad_node *knp);
+int kad_node_timed(struct kad_node *knp);
+int kad_node_insert(struct kad_node *knp);
+
+int kad_set_ident(const char *ident);
+int kad_get_ident(const char **ident);
+int kad_set_token(const char *token);
+int kad_get_token(const char **token);
+
+int kad_krpc_closest(const char *target, char *buf, size_t len);
+int kad_krpc_closest(const char *target, kad_node *nodes, size_t count);
 
 #endif
 

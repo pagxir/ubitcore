@@ -7,22 +7,29 @@
 #include "btcodec.h"
 #include "slotwait.h"
 #include "slotsock.h"
+#include "kad_route.h"
 #include "recursive.h"
 #include "kad_proto.h"
-#include "kad_route.h"
 #include "udp_daemon.h"
 
-static int kad_bound_check(struct recursive_context *rcp, const char *node)
+static void knode_copy(struct kad_node *dp, const struct kad_node *src)
+{
+	dp->kn_type = src->kn_type;
+	dp->kn_addr = src->kn_addr;
+	memcpy(dp->kn_ident, src->kn_ident, IDENT_LEN);
+}
+
+static int kad_bound_check(struct recursive_context *rcp, const struct kad_node *knp)
 {
 	int i;
-	struct recursive_well *rwp;
+	kad_node *rwp;
 
 	for (i = 0; i < 8; i++) {
-		if (rcp->rc_well_nodes[i].rn_flags == 0)
+		if (rcp->rc_well_nodes[i].kn_type == 0)
 			return 1;
 
 		rwp = &rcp->rc_well_nodes[i];
-		if (kad_less_than(rcp->rc_target, node, rwp->rn_ident))
+		if (kad_less_than(rcp->rc_target, knp->kn_ident, rwp->kn_ident))
 			return 1;
 	}
 
@@ -30,7 +37,7 @@ static int kad_bound_check(struct recursive_context *rcp, const char *node)
 }
 
 static void kad_node_perf(const char *ident,
-	   	struct recursive_node *rnp, struct recursive_node *perf[], size_t count)
+		struct recursive_node *rnp, struct recursive_node *perf[], size_t count)
 {
 	int i;
 
@@ -44,7 +51,7 @@ static void kad_node_perf(const char *ident,
 	for (i = 0; i < count; i++) {
 		if (rnp->rn_count < perf[i]->rn_count ||
 				(rnp->rn_count == perf[i]->rn_count &&
-				 kad_less_than(ident, rnp->rn_ident, perf[i]->rn_ident))) {
+				 kad_less_than(ident, rnp->kn_ident, perf[i]->kn_ident))) {
 			perf[i] = rnp;
 			return;
 		}
@@ -60,7 +67,7 @@ static void kad_recursive_output(void *upp)
 	struct recursive_node *rnp;
 	struct recursive_node *perf[8];
 	struct recursive_context *rcp;
-	
+
 	rcp = (struct recursive_context *)upp;
 
 	assert(MAX_SEND_OUT < 8);
@@ -73,10 +80,10 @@ static void kad_recursive_output(void *upp)
 		if (rnp->rn_flags == 1) {
 			if (rnp->rn_touch + 2000 > curtick) {
 				error = 0;
-			} else if (!kad_bound_check(rcp, rnp->rn_ident)) {
+			} else if (!kad_bound_check(rcp, rnp)) {
 				continue;
 			} else if (rnp->rn_count < 3) {
-				kad_node_perf(rnp->rn_ident, rnp, perf, MAX_SEND_OUT);
+				kad_node_perf(rnp->kn_ident, rnp, perf, MAX_SEND_OUT);
 			}
 		}
 	}
@@ -86,8 +93,8 @@ static void kad_recursive_output(void *upp)
 		if (perf[i] != NULL) {
 			waitcb_cancel(&rnp->rn_wait);
 			so_addr.sin_family = AF_INET;
-			so_addr.sin_port   = rnp->rn_port;
-			so_addr.sin_addr   = rnp->rn_addr;
+			so_addr.sin_port   = rnp->kn_addr.kc_port;
+			so_addr.sin_addr   = rnp->kn_addr.kc_addr;
 			error = kad_proto_out(rcp->rc_type, rcp->rc_target, &so_addr,
 					rnp->rn_response, sizeof(rnp->rn_response), &rnp->rn_wait);
 
@@ -97,8 +104,8 @@ static void kad_recursive_output(void *upp)
 			if (error == 1)
 				return;
 
-			kad_node_timed(rnp->rn_ident, rnp->rn_addr, rnp->rn_port);
-		   	rcp->rc_touch = curtick;
+			kad_node_timed(rnp);
+			rcp->rc_touch = curtick;
 			rnp->rn_touch = curtick;
 			rcp->rc_sentout++;
 			rnp->rn_count++;
@@ -120,35 +127,25 @@ static void kad_recursive_output(void *upp)
 	return;
 }
 
-static void kad_bound_update(struct recursive_context *rcp,
-		const char *node, in_addr in_addr1, u_short in_port1)
+static void kad_bound_update(struct recursive_context *rcp, const char *node)
 {
 	int i;
 	int index = -1;
+	kad_node *rwp;
 	char bad_ident[20];
-	struct recursive_well *rwp;
-
-	kad_node_good(node, in_addr1, in_port1);
 
 	for (i = 0; i < 8; i++) {
 		rwp = &rcp->rc_well_nodes[i];
-		if (rwp->rn_flags == 1) {
-			if (!memcmp(rwp->rn_ident, node, 20))
-				return;
-
-			if (rwp->rn_port == in_port1 &&
-				   	rwp->rn_addr.s_addr == in_addr1.s_addr)
-				return;
-		}
+		if (rwp->kn_type == 1 && 
+				!memcmp(rwp->kn_ident, node, IDENT_LEN))
+			return;
 	}
 
 	for (i = 0; i < 8; i++) {
 		rwp = &rcp->rc_well_nodes[i];
-		if (rwp->rn_flags == 0) {
-			memcpy(rwp->rn_ident, node, 20);
-			rwp->rn_port = in_port1;
-			rwp->rn_addr = in_addr1;
-			rwp->rn_flags = 1;
+		if (rwp->kn_type == 0) {
+			memcpy(rwp->kn_ident, node, IDENT_LEN);
+			rwp->kn_type = 1;
 			return;
 		}
 	}
@@ -157,24 +154,21 @@ static void kad_bound_update(struct recursive_context *rcp,
 	for (i = 0; i < 8; i++) {
 		rwp = &rcp->rc_well_nodes[i];
 		if (kad_less_than(rcp->rc_target,
-				   	bad_ident, rwp->rn_ident)) {
-			memcpy(bad_ident, rwp->rn_ident, 20);
+					bad_ident, rwp->kn_ident)) {
+			memcpy(bad_ident, rwp->kn_ident, 20);
 			index = i;
 		}
 	}
 
 	if (index != -1) {
 		rwp = &rcp->rc_well_nodes[index];
-		memcpy(rwp->rn_ident, node, 20);
-		rwp->rn_port = in_port1;
-		rwp->rn_addr = in_addr1;
-		rwp->rn_flags = 1;
+		memcpy(rwp->kn_ident, node, 20);
+		rwp->kn_type = 1;
 		return;
 	}
 }
 
-static void kad_recursive_update(struct recursive_context *rcp,
-		const char *node, in_addr in_addr1, u_short in_port1)
+static void kad_recursive_update(struct recursive_context *rcp, struct kad_node *knp)
 {
 	int i;
 	int index;
@@ -182,9 +176,9 @@ static void kad_recursive_update(struct recursive_context *rcp,
 	char bad_ident[20];
 	struct recursive_node *rnp;
 
-	if (!kad_bound_check(rcp, node)) {
+	if (!kad_bound_check(rcp, knp)) {
 		/* this node is bound out. */
-	   	return;
+		return;
 	}
 
 	index = -1;
@@ -195,63 +189,52 @@ static void kad_recursive_update(struct recursive_context *rcp,
 			continue;
 		}
 
-	   	if (rnp->rn_port == in_port1 &&
-			   	rnp->rn_addr.s_addr == in_addr1.s_addr)
-		   	return;
-
-	   	if (!memcmp(rnp->rn_ident, node, 20))
-		   	return;
+		if (!memcmp(rnp->kn_ident, knp->kn_ident, IDENT_LEN))
+			return;
 	}
 
-	kad_node_insert(node, in_addr1, in_port1);
 	if (index != -1) {
 		rnp = &rcp->rc_nodes[index];
-	   	rcp->rc_total++;
-	   	rnp->rn_flags = 1;
-	   	rnp->rn_count = 0;
-	   	rnp->rn_touch = 0;
-	   	rnp->rn_addr = in_addr1;
-		rnp->rn_port = in_port1;
-	   	memcpy(rnp->rn_ident, node, 20);
-	   	return;
+		rcp->rc_total++;
+		knode_copy(rnp, knp);
+		rnp->rn_flags = 1;
+		rnp->rn_count = 0;
+		rnp->rn_touch = 0;
+		return;
 	}
 
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if ((rnp->rn_count == 1 && rnp->rn_flags == 2) ||
-			   	(rnp->rn_flags == 2 && rnp->rn_touch + 2000 < GetTickCount())) {
+				(rnp->rn_flags == 2 && rnp->rn_touch + 2000 < GetTickCount())) {
 			rcp->rc_total++;
+			knode_copy(rnp, knp);
 			rnp->rn_flags = 1;
 			rnp->rn_count = 0;
 			rnp->rn_touch = 0;
-			rnp->rn_addr = in_addr1;
-			rnp->rn_port = in_port1;
-			memcpy(rnp->rn_ident, node, 20);
 			return;
 		}
 	}
 
 	index = -1;
-	memcpy(bad_ident, node, 20);
+	memcpy(bad_ident, knp->kn_ident, IDENT_LEN);
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if (kad_less_than(rcp->rc_target,
-				   	bad_ident, rnp->rn_ident)) {
-			memcpy(bad_ident, rnp->rn_ident, 20);
+					bad_ident, rnp->kn_ident)) {
+		   	memcpy(bad_ident, rnp->kn_ident, IDENT_LEN);
 			index = i;
 		}
 	}
 
 	if (index != -1) {
 		rnp = &rcp->rc_nodes[index];
-	   	rcp->rc_total++;
-	   	rnp->rn_flags = 1;
-	   	rnp->rn_count = 0;
-	   	rnp->rn_touch = 0;
-	   	rnp->rn_addr = in_addr1;
-	   	rnp->rn_port = in_port1;
-	   	memcpy(rnp->rn_ident, node, 20);
-	   	return;
+		rcp->rc_total++;
+		knode_copy(rnp, knp);
+		rnp->rn_flags = 1;
+		rnp->rn_count = 0;
+		rnp->rn_touch = 0;
+		return;
 	}
 
 	return;
@@ -268,6 +251,7 @@ static void kad_recursive_input(void *upp)
 	u_short in_port1;
 	btfastvisit btfv;
 	const char *node, *nodes;
+	struct kad_node knode;
 	struct recursive_node * rnp;
 	struct recursive_context * rcp;
 
@@ -291,7 +275,7 @@ static void kad_recursive_input(void *upp)
 				continue;
 			}
 
-			kad_bound_update(rcp, nodes, rnp->rn_addr, rnp->rn_port);
+			kad_bound_update(rcp, nodes);
 			nodes = btfv(&codec).bget("r").bget("nodes").c_str(&elen);
 			if (nodes == NULL) {
 				waitcb_clear(&rnp->rn_wait);
@@ -301,8 +285,14 @@ static void kad_recursive_input(void *upp)
 			for (node = nodes; elen >= 26; node += 26, elen -= 26) {
 				memcpy(&in_addr1, node + 20, sizeof(in_addr1));
 				memcpy(&in_port1, node + 24, sizeof(in_port1));
-			   	if (in_addr1.s_addr != 0 && in_port1 != 0)
-				   	kad_recursive_update(rcp, node, in_addr1, in_port1);
+				if (in_addr1.s_addr != 0 && in_port1 != 0) {
+					knode.kn_type = 1;
+					knode.kn_addr.kc_addr = in_addr1;
+					knode.kn_addr.kc_port = in_port1;
+					memcpy(knode.kn_ident, node, IDENT_LEN);
+					kad_recursive_update(rcp, &knode);
+				   	kad_node_insert(&knode);
+				}
 			}
 
 			waitcb_clear(&rnp->rn_wait);
@@ -331,7 +321,7 @@ struct recursive_context *kad_recursivecb_new(int type, const char *ident)
 	waitcb_init(&rcp->rc_timeout, kad_recursive_output, rcp);
 
 	for (i = 1; i < 8; i++)
-		rcp->rc_well_nodes[i].rn_flags = 0;
+		rcp->rc_well_nodes[i].kn_type = 0;
 
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
@@ -348,24 +338,21 @@ int kad_recursive(int type, const char *ident)
 {
 	int i;
 	int error;
-	struct kad_node2 node2s[8];
+	struct kad_node node2s[8];
 	struct recursive_node *rnp;
 	struct recursive_context *rcp;
 
 	rcp = kad_recursivecb_new(type, ident);
 	assert(rcp != NULL);
 
-	error = kad_node_closest(ident, node2s, 8);
+	error = kad_krpc_closest(ident, node2s, 8);
 	for (i = 0; i < 8; i++) {
-		if (!node2s[i].kn_flag) 
+		if (!node2s[i].kn_type) 
 			continue;
-	   
-		rnp = &rcp->rc_nodes[i];
-	   	rnp->rn_flags = 1;
-	   	rnp->rn_addr = node2s[i].kn_addr;
-	   	rnp->rn_port = node2s[i].kn_port;
-		memcpy(rnp->rn_ident, node2s[i].kn_ident, 20);
 
+		rnp = &rcp->rc_nodes[i];
+		rnp->rn_flags = 1;
+		knode_copy(rnp, &node2s[i]);
 	}
 
 	kad_recursive_output(rcp);
@@ -390,9 +377,9 @@ int kad_recursive2(int type, const char *ident, const char *peer)
 	assert(rcp != NULL);
 
 	rnp = &rcp->rc_nodes[0];
-   	rnp->rn_flags = 1;
-   	rnp->rn_addr = so_addr.sin_addr;
-   	rnp->rn_port = so_addr.sin_port;
+	rnp->rn_flags = 1;
+	rnp->kn_addr.kc_addr = so_addr.sin_addr;
+	rnp->kn_addr.kc_port = so_addr.sin_port;
 
 	kad_recursive_output(rcp);
 	return 0;

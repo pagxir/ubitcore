@@ -9,8 +9,8 @@
 #include "slotwait.h"
 #include "slotsock.h"
 #include "kad_proto.h"
-#include "recursive.h"
 #include "kad_route.h"
+#include "recursive.h"
 #include "udp_daemon.h"
 
 static FILE *_dmp_file;
@@ -65,7 +65,7 @@ static void dump_kad_peer_ident(const char *peer_ident,
 		   	inet_ntoa(inp->sin_addr), htons(inp->sin_port));
 }
 
-void do_send_ping(in_addr addr1, u_short port1)
+int send_node_ping(struct kad_node *knp)
 {
 	int err, len;
 	char sockbuf[1024];
@@ -74,12 +74,12 @@ void do_send_ping(in_addr addr1, u_short port1)
 
 	so_addrp = (struct sockaddr *)&in_addr1;
 	in_addr1.sin_family = AF_INET;
-	in_addr1.sin_port = port1;
-	in_addr1.sin_addr = addr1;
+	in_addr1.sin_port = knp->kn_addr.kc_port;
+	in_addr1.sin_addr = knp->kn_addr.kc_addr;
 
 	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
    	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
-	return;
+	return 0;
 }
 
 static void dump_info_hash(const char *info_hash, size_t elen)
@@ -106,6 +106,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	btcodec codec;
 	btfastvisit btfv;
 	char out_buf[2048];
+	struct kad_node knode;
    	struct waitcb *waitcbp;
 
    	const char *info_hash;
@@ -153,11 +154,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				}
 		   	}
 		   
-			{
-				in_addr in_addr1 = in_addrp->sin_addr;
-				u_short in_port1 = in_addrp->sin_port;
-			   	kad_node_good(peer_ident, in_addr1, in_port1);
-			}
+			knode.kn_type = 1; 
+			knode.kn_addr.kc_addr = in_addrp->sin_addr;
+			knode.kn_addr.kc_port = in_addrp->sin_port;
+			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
+			kad_node_good(&knode);
 
 			dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
@@ -185,7 +186,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				btentity *entity = btfv(&codec).bget("t").bget();
 				so_addrp = (struct sockaddr *)in_addrp;
 				info_hash = btfv(&codec).bget("a").bget("target").c_str(&elen);
-				siz = kad_compat_closest(info_hash, buf, sizeof(buf));
+				siz = kad_krpc_closest(info_hash, buf, sizeof(buf));
 				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
@@ -197,7 +198,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				btentity *entity = btfv(&codec).bget("t").bget();
 				so_addrp = (struct sockaddr *)in_addrp;
 				info_hash = btfv(&codec).bget("a").bget("info_hash").c_str(&elen);
-				siz = kad_compat_closest(info_hash, buf, sizeof(buf));
+				siz = kad_krpc_closest(info_hash, buf, sizeof(buf));
 				len = kad_get_peers_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
@@ -215,7 +216,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				return;
 			}
 
-			kad_node_seen(peer_ident, in_addrp->sin_addr, in_addrp->sin_port);
+			knode.kn_type = 1; 
+			knode.kn_addr.kc_addr = in_addrp->sin_addr;
+			knode.kn_addr.kc_port = in_addrp->sin_port;
+			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
+			kad_node_seen(&knode);
 			//dump_kad_peer_ident(peer_ident, in_addrp);
 			break;
 
@@ -264,18 +269,16 @@ static void udp_routine(void *upp)
  */
 int kad_setident(const char *ident)
 {
-	uint8_t *uident;
-
-	uident = (uint8_t *)ident;
-	kad_set_ident(uident);
-
+	kad_set_ident(ident);
 	return 0;
 }
 
 int kad_bootup(const char *server)
 {
+	const char *ident;
 	char curr_ident[20];
-	kad_get_ident(curr_ident);
+	kad_get_ident(&ident);
+	memcpy(curr_ident, ident, IDENT_LEN);
 	curr_ident[19] ^= 0x1;
 	kad_recursive2(RC_TYPE_FIND_NODE, curr_ident, server);
 	return 0;

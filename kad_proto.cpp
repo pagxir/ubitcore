@@ -8,6 +8,20 @@
 #include "kad_proto.h"
 #include "kad_route.h"
 
+static char _swptoken[21] = {
+	"abcdefghij0123456789"
+};
+
+static char _curtoken[21] = {
+	"abcdefghij0123456789"
+};
+
+int kad_get_token(const char **token)
+{
+	*token = _curtoken;
+	return 0;
+}
+
 int kad_get_peers(void *buf, size_t len, uint32_t pid, const uint8_t *info_hash)
 {
 	btcodec codec;
@@ -131,7 +145,7 @@ int kad_get_peers_answer(void *buf, size_t len,
 	};
 
 	kad_get_ident(&ident);
-	kad_get_token(&ident);
+	kad_get_token(&token);
 	codec.load(answer, sizeof(answer));
 	btfv(&codec).bget("t").replace(pid);
 	entity = codec.str(inp, inl);
