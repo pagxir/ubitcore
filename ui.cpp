@@ -55,7 +55,7 @@ static void crlf_strip(char *line)
 	return;
 }
 
-static void input_routine(void *upp)
+static unsigned __stdcall input_routine(void *upp)
 {
 	char buf[1024];
 	char *retp = 0;
@@ -136,7 +136,8 @@ ui_quited:
 
    	ipccb_switch(&_ipccb_console);
 	CloseHandle(ui.ui_event);
-	_endthread();
+	_endthreadex( 0 );
+    return 0;
 }
 
 static uintptr_t h_input;
@@ -187,10 +188,11 @@ static struct waitcb _ui_start;
 
 static void ui_stat_routine(void *upp)
 {
+	unsigned id;
 	HANDLE handle;
 
 	if (upp == &_ui_start) {
-	   	h_input = _beginthread(input_routine, 0, 0);
+	   	h_input = _beginthreadex( NULL, 0, &input_routine, NULL, 0, &id);
 	   	SetConsoleCtrlHandler(console_closed, TRUE);
 		return;
 	}
