@@ -48,3 +48,17 @@ void hex_dump(const char *buf, size_t len)
 	}
 }
 
+char *hex_encode(char *out, const void *dat, size_t len)
+{
+	char *outp = (char *)out;
+	const char *datp = (const char *)dat;
+
+	while (len-- > 0) {
+		sprintf(outp, "%02X", 0xFF & *datp);
+		outp += 2;
+		datp++;
+	}
+
+	return out;
+}
+

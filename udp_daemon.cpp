@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <winsock.h>
 
+#include "utils.h"
 #include "module.h"
 #include "callout.h"
 #include "btcodec.h"
@@ -82,9 +83,18 @@ int send_node_ping(struct kad_node *knp)
 	return 0;
 }
 
+int send_bucket_update(const char *node)
+{
+	char identstr[41];
+	printf("send_bucket_update: %s\n",
+		   hex_encode(identstr, node, IDENT_LEN));	
+	kad_findnode(node);
+	return 0;
+}
+
 static void dump_info_hash(const char *info_hash, size_t elen)
 {
-#if 0
+#if 1
 	struct sockaddr_in in_addr0;
 	in_addr0.sin_family = AF_INET;
 	in_addr0.sin_port   = htons(8866);
@@ -178,7 +188,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			}
 
 			if (elen == 13 && !strncmp(query_type, "announce_peer", 13)) {
-			   	fprintf(stderr, "announce_peer packet\n");
+			   	//fprintf(stderr, "announce_peer packet\n");
 			} else if (elen == 9 && !strncmp(query_type, "find_node", 9)) {
 				int siz;
 				char buf[1024];
@@ -190,7 +200,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	fprintf(stderr, "find_node packet: %d\n", err);
+			   	//fprintf(stderr, "find_node packet: %d\n", err);
 			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
 				int siz;
 				char buf[1024];
@@ -210,9 +220,9 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
-			   	fprintf(stderr, "ping packet\n");
+			   	//fprintf(stderr, "ping packet\n");
 			} else {
-				fprintf(stderr, "query packet have an unkown query type\n");
+				fprintf(stderr, "query packet have an unkown query type: %.8s\n", query_type);
 				return;
 			}
 
