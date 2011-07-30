@@ -170,7 +170,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
 			kad_node_good(&knode);
 
-			dump_kad_peer_ident(peer_ident, in_addrp);
+			//dump_kad_peer_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
 
@@ -220,10 +220,12 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
 				err = sendto(_udp_sockfd, out_buf, len,
 					   	0, so_addrp, sizeof(*in_addrp));
+#if 0
 			   	//fprintf(stderr, "ping packet\n");
 			} else {
-				fprintf(stderr, "query packet have an unkown query type: %.8s\n", query_type);
+				//fprintf(stderr, "query packet have an unkown query type: %.8s\n", query_type);
 				return;
+#endif
 			}
 
 			knode.kn_type = 1; 
@@ -264,8 +266,10 @@ static void udp_routine(void *upp)
 			sock_read_wait(_udp_sockcbp, &_sockcb);
 			break;
 		} else if (count == -1) {
+#if 0
 			fprintf(stderr, "recv error %d from %s:%d\n",
 				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), ntohs(in_addr1.sin_port));
+#endif
 			continue;
 		}
 	}
