@@ -169,8 +169,17 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 	if (nitem >= 8) {
 		if (good < 8 && unkownp) {
 			do_node_ping(unkownp);
+			return 0;
 		} else if (good >= 8 && doubtp) {
 			do_node_ping(doubtp);
+			return 0;
+		}
+
+		for (i = 0; i < 16; i++) {
+			kip = &kbp->kb_nodes[i];
+			if (kip->kn_flag & NF_ITEM)
+				continue;
+		   	kip->kn_flag = 0;
 		}
 		return 0;
 	}
