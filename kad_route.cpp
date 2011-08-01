@@ -11,9 +11,9 @@
 #include "kad_route.h"
 #include "udp_daemon.h"
 
-#define KN_SEEN       0x01
-#define KN_GOOD       0x02
-#define KN_UNKOWN     0x03
+#define KN_UNKOWN     0x01
+#define KN_SEEN       0x02
+#define KN_GOOD       0x03
 
 #define MAX_BUCKET_COUNT    (20 * 8)
 
@@ -21,8 +21,7 @@ struct kad_item:
 	public kad_node
 {
 	int kn_flag;
-	int kn_seen;
-	int kn_fail;
+	int kn_seen, kn_fail;
 	struct waitcb kn_timeout;
 };
 
@@ -32,8 +31,10 @@ struct kad_bucket {
 };
 
 static int _r_count = 0;
-const unsigned MIN15 = 1000 * 60 * 5;
-struct kad_bucket _r_bucket[MAX_BUCKET_COUNT];
+static int _r_failure = 0;
+static struct waitcb _r_bootup;
+static const unsigned MIN15 = 1000 * 60 * 15;
+static struct kad_bucket _r_bucket[MAX_BUCKET_COUNT];
 
 static char _curid[21] = {
 	"abcdefghij0123456789"
@@ -104,6 +105,7 @@ static int knode_copy(struct kad_node *dp, const struct kad_node *src)
 	memcpy(dp->kn_ident, src->kn_ident, IDENT_LEN);
 	if (dp->kn_type == KN_GOOD)
 		return (NF_HELO| NF_NODE);
+
 	return NF_NODE;
 }
 
@@ -124,13 +126,127 @@ static kad_item *kad_node_find(struct kad_node *knp)
 	return 0;
 }
 
-static int do_node_ping(struct kad_item *kip)
+static int kad_rand(int base, int adjust)
 {
-	if (kip != NULL) {
-	   	callout_reset(&kip->kn_timeout, 2000);
-	   	send_node_ping(kip);
+	int update = rand();
+	if (base > adjust)
+		base -= adjust;
+	if (adjust > 0)
+		update %= adjust;
+	return base + update;
+}
+
+static kad_item *kad_node_perf(struct kad_bucket *kbp)
+{
+	unsigned now;
+	kad_item *kip;
+	kad_item *newkip = NULL;
+
+	now = 0;
+	for (int i = 0; i < 16; i++) {
+		kip = &kbp->kb_nodes[i];
+		if ((kip->kn_flag & NF_ITEM) == 0 &&
+				(kip->kn_flag & NF_NODE) && (kip->kn_fail == 0)) {
+			if (newkip == NULL) {
+				newkip = kip;
+				continue;
+			}
+
+			if ((kip->kn_flag & NF_HELO) >
+					(newkip->kn_flag & NF_HELO)) {
+				newkip = kip;
+				continue;
+			}
+
+			if (kip->kn_seen > kip->kn_seen) {
+				newkip = kip;
+				continue;
+			}
+		}
 	}
+
+	return newkip;
+}
+
+static int do_node_ping(struct kad_item *kip)
+{ 
+	unsigned now = GetTickCount();
+
+	if (kip->kn_seen + MIN15 < now ||
+		   	(kip->kn_flag & NF_HELO) == 0) {
+	   	if (!waitcb_active(&kip->kn_timeout)) {
+		   	callout_reset(&kip->kn_timeout, 2000);
+		   	send_node_ping(kip);
+	   	}
+	   	return 1;
+   	}
+
 	return 0;
+}
+
+static kad_item *kad_find_replace(kad_bucket *kbp, kad_node *knp)
+{
+   	int oldflag = 0;
+	kad_item *kip, *oldkip = NULL;
+
+	for (int i = 0; i < 16; i++) {
+		kip = &kbp->kb_nodes[i];
+		if (oldkip == NULL) {
+			oldflag = kip->kn_flag;
+			oldkip = kip;
+			continue;
+		}
+
+		if (knp != NULL &&
+				!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
+			oldflag = kip->kn_flag;
+			return kip;
+		}
+
+		if ((oldflag & NF_ITEM) !=
+			(kip->kn_flag & NF_ITEM)) {
+				if ((oldflag & NF_ITEM) >
+					(kip->kn_flag & NF_ITEM)) {
+						oldflag = kip->kn_flag;
+						oldkip = kip;
+				}
+				continue;
+		}
+
+		if ((oldflag & NF_HELO) !=
+			(kip->kn_flag & NF_HELO)) {
+				if ((oldflag & NF_HELO) >
+					(kip->kn_flag & NF_HELO)) {
+						oldflag = kip->kn_flag;
+						oldkip = kip;
+				}
+				continue;
+		}
+
+		if ((oldflag & NF_NODE) !=
+			(kip->kn_flag & NF_NODE)) {
+				if ((oldflag & NF_NODE) >
+					(kip->kn_flag & NF_NODE)) {
+						oldflag = kip->kn_flag;
+						oldkip = kip;
+				}
+				continue;
+		}
+
+		if (oldkip->kn_fail < kip->kn_fail) {
+			oldflag = kip->kn_flag;
+			oldkip = kip;
+			continue;
+		}
+
+		if (oldkip->kn_seen > kip->kn_seen) {
+			oldflag = kip->kn_flag;
+			oldkip = kip;
+			continue;
+		}
+	}
+
+	return oldkip;
 }
 
 static int kad_bucket_adjust(struct kad_bucket *kbp)
@@ -139,223 +255,204 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 	int now;
 	int good = 0;
 	int nitem = 0;
-	kad_item *kip, *doubtp, *unkownp;
+	kad_item *kip;
+	kad_item *kip1;
+   	kad_item *kip2;
+	kad_bucket *lastkbp;
 
 	now = GetTickCount();
-	doubtp = unkownp = 0;
 	for (i = 0; i < 16; i++) {
 		kip = &kbp->kb_nodes[i];
-		if (kip->kn_flag == 0 || kip->kn_fail >= 3) {
-			kip->kn_flag = 0;
+		if (kip->kn_flag == 0) {
 			continue;
 		}
 
 		if (kip->kn_flag & NF_ITEM) {
+			if (kip->kn_fail >= 3) { 
+				kip1 = kad_node_perf(kbp);
+				if (kip1 != NULL) {
+				   	callout_reset(&kbp->kb_timeout, MIN15);
+				   	kip1->kn_flag |= NF_ITEM;
+					kip->kn_flag = 0;
+				}
+			}
 			nitem++;
 		}
 
 		if ((kip->kn_flag & NF_HELO) &&
-			(kip->kn_flag & NF_ITEM) == 0 &&
 				(kip->kn_seen + MIN15 > now)) {
-			/* node is good. */
 			good++;
-		} else if (!waitcb_active(&kip->kn_timeout)) {
-			if (kip->kn_flag & NF_ITEM) {
-				if (doubtp == NULL ||
-						kip->kn_seen < doubtp->kn_seen)
-				   	doubtp = kip;
-			} else if (unkownp == NULL ||
-					kip->kn_seen < unkownp->kn_seen) {
-				unkownp = kip;
-			}
 		}
 	}
 
-	if (nitem >= 8) {
-		if (good < 8 && unkownp) {
-			printf("do_node_ping doubtp\n");
-			do_node_ping(unkownp);
-			return 0;
-		} else if (good > 0 && doubtp) {
-			printf("do_node_ping doubtp\n");
-			do_node_ping(doubtp);
-			return 0;
-		}
-
-		for (i = 0; i < 16; i++) {
+	lastkbp = &_r_bucket[_r_count];
+	if (good > 8 && kbp + 1 == lastkbp) {
+		kad_item *kip1 = _r_bucket[_r_count++].kb_nodes;
+		for (int i = 0; i < 16; i++) {
 			kip = &kbp->kb_nodes[i];
-			if ((kip->kn_flag & NF_ITEM) == 0)
-				continue;
-
-			if ((kip->kn_flag & NF_HELO) == 0 || 
-					(kip->kn_seen + MIN15) < now) {
-				return 0;
-			}
-		}
-
-		kip = &kbp->kb_nodes[0];
-		for (i = 0; i < 16; i++, kip++) {
-			if (kip->kn_flag & NF_ITEM)
-				continue;
-			kip->kn_flag = 0;
-		}
-
-		printf("all node is good now: %d\n", kbp - _r_bucket);
-		return 0;
-	}
-
-	for (i = 0; i < 16 && nitem < 8; i++) {
-		kip = &kbp->kb_nodes[i];
-		if (kip->kn_flag == 0 || kip->kn_fail >= 3) {
-			kip->kn_flag = 0;
-			continue;
-		}
-
-		if ((kip->kn_flag & NF_HELO) &&
-			(kip->kn_flag & NF_ITEM) == 0) {
-		   	callout_reset(&kbp->kb_timeout, MIN15);
-			kip->kn_flag |= NF_ITEM;
-			nitem++;
-			continue;
-		}
-
-		if (good < 8 &&
-			(kip->kn_flag & NF_ITEM) == 0) {
-		   	callout_reset(&kbp->kb_timeout, MIN15);
-			kip->kn_flag |= NF_ITEM;
-			nitem++, good++;
-			continue;
-		}
-	}
-
-	return 0;
-}
-
-static int do_node_insert(struct kad_node *knp)
-{
-	int i;
-	int good = 0;
-	int doublt = 0;
-	int unkown = 0;
-	unsigned now = 0;
-	kad_bucket *kbp;
-	kad_item *kip, *deadp, *unstablep;
-
-	now = GetTickCount();
-	deadp = unstablep = 0;
-	kbp = kad_get_bucket(knp);
-	for (i = 0; i < 16; i++) {
-		kip = &kbp->kb_nodes[i];
-		if (kip->kn_flag == 0 || kip->kn_fail >= 3) {
-			kip->kn_flag = 0;
-			deadp = kip;
-			continue;
-		}
-
-		if (!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
-			switch (knp->kn_type) {
-				case KN_SEEN:
-					if (kip->kn_flag & NF_HELO) {
-						if (kip->kn_flag & NF_ITEM)
-						   	callout_reset(&kbp->kb_timeout, MIN15);
-						kip->kn_seen = now;
-						kip->kn_fail = 0;
-					}
-					break;
-
-				case KN_GOOD:
-					kip->kn_seen = now;
-					kip->kn_fail = 0;
-					if (kip->kn_flag & NF_ITEM)
-					   	callout_reset(&kbp->kb_timeout, MIN15);
-					if (kip->kn_flag & NF_HELO)
-						break;
-					kip->kn_flag |= NF_HELO;
-					kad_bucket_adjust(kbp);
-					break;
-			}
-
-			waitcb_cancel(&kip->kn_timeout);
-			return 0;
-		}
-
-		if (kip->kn_seen + MIN15 > now &&
-				(kip->kn_flag & NF_HELO) == NF_HELO) {
-			good++;
-			continue;
-		}
-
-		if ((kip->kn_flag & NF_ITEM) &&
-				(kip->kn_flag & NF_HELO)) {
-			doublt++;
-			continue;
-		}
-
-		if (unstablep == NULL ||
-			   	unstablep->kn_seen < kip->kn_seen)
-		   	unstablep = kip;
-		unkown++;
-		continue;
-	}
-
-	kip = deadp? deadp: unstablep;
-	if (good < 8 && kip != NULL) {
-		if (knp->kn_type == KN_GOOD) { 
-			kip->kn_flag = knode_copy(kip, knp);
-			kip->kn_fail = 0;
-			kip->kn_seen = now;
-			waitcb_cancel(&kip->kn_timeout);
-			kad_bucket_adjust(kbp);
-			return 0;
-		}
-
-		if (deadp == NULL) {
-			kip->kn_flag = knode_copy(kip, knp);
-			kip->kn_fail = 0;
-			kip->kn_seen = now;
-			waitcb_cancel(&kip->kn_timeout);
-			kad_bucket_adjust(kbp);
-			return 0;
-		}
-
-		struct kad_item kb_kitty;
-		kip = &kb_kitty;
-		kip->kn_flag = knode_copy(kip, knp);
-		kip->kn_fail = 0;
-		kip->kn_seen = now;
-		waitcb_init(&kip->kn_timeout, 0, 0);
-		do_node_ping(kip);
-		waitcb_clean(&kip->kn_timeout);
-	}
-
-	if (good >= 8 && kbp == _r_bucket + _r_count - 1) {
-		int ind = 0;
-		struct kad_item *kip1;
-		struct kad_bucket *kbp1;
-
-		ind = _r_count++;
-		kbp1 = _r_bucket + ind;
-		kip1 = &kbp1->kb_nodes[0];
-		for (i = 0; i < 16; i++) {
-			kip = &kbp->kb_nodes[i];
-			if (kad_xor_dist(kip->kn_ident) >= ind &&
-				kip->kn_fail < 3 &&	kip->kn_flag != 0) {
-				knode_copy(kip1, kip);
+			if ((kip->kn_flag & NF_NODE) &&
+					lastkbp == kad_get_bucket(kip)) {
 				kip1->kn_fail = kip->kn_fail;
 				kip1->kn_seen = kip->kn_seen;
 				kip1->kn_flag = kip->kn_flag;
 				waitcb_cancel(&kip->kn_timeout);
+				knode_copy(kip1, kip);
 				kip->kn_flag = 0;
 				kip1++;
 			}
 		}
 
-		int update = rand() % MIN15;
-		kad_bucket_adjust(kbp1);
-		callout_reset(&kbp1->kb_timeout, MIN15 / 2 - update / 3);
-
+		callout_reset(&lastkbp->kb_timeout, kad_rand(MIN15, MIN15/3));
+		callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
+		kad_bucket_adjust(lastkbp);
 		kad_bucket_adjust(kbp);
-		do_node_insert(knp);
+		return 0;
+	}
+
+	while (nitem < 8) {
+		kip = kad_node_perf(kbp);
+		if (kip == NULL)
+			break;
+		printf("replace node: %d\n", kbp - _r_bucket);
+		callout_reset(&kbp->kb_timeout, MIN15);
+		kip->kn_flag |= NF_ITEM;
+	}
+
+	/* find a node need to ping. */
+
+	good = 0;
+	kip1 = kip2 = 0;
+	for (i = 0; i < 16; i++) {
+		kip = &kbp->kb_nodes[i];
+		const int want = NF_NODE| NF_HELO;
+		const int mask = NF_NODE| NF_HELO| NF_ITEM;
+
+		if ((kip->kn_fail == 0) &&
+			   	(kip->kn_seen + MIN15 > now) &&
+				((kip->kn_flag & mask) == want)) {
+		   	good++;
+		}
+
+		while (kip->kn_flag & NF_ITEM) {
+			if (kip1 == NULL) {
+			   	kip1 = kip;
+				break;
+			}
+
+			if ((kip1->kn_flag & NF_HELO) !=
+				(kip->kn_flag & NF_HELO)) {
+					if ((kip1->kn_flag & NF_HELO) >
+						(kip->kn_flag & NF_HELO))
+						kip1 = kip;
+					break;
+			}
+
+			if (kip1->kn_seen > kip->kn_seen) {
+			   	kip1 = kip;
+				break;
+			}
+
+			break;
+		}
+
+		const int want1 = NF_NODE;
+		const int mask1 = NF_NODE| NF_ITEM;
+		while ((kip->kn_flag & mask1) == want1) {
+			if (kip2 == NULL) {
+			   	kip2 = kip;
+				break;
+			}
+			if ((kip2->kn_flag & NF_HELO) !=
+				(kip->kn_flag & NF_HELO)) {
+					if ((kip2->kn_flag & NF_HELO) >
+						(kip->kn_flag & NF_HELO))
+						kip1 = kip;
+					break;
+			}
+
+			if (kip2->kn_seen > kip->kn_seen) {
+			   	kip2 = kip;
+				break;
+			}
+
+			break;
+		}
+	}
+
+	if (good == 0) {
+		if (kip2 != NULL)
+			do_node_ping(kip2);
+		return 0;
+	}
+
+	if (kip1 == NULL ||
+			((kip1->kn_flag & NF_HELO) &&
+			 (kip1->kn_seen + MIN15 > now))) {
+		for (int i = 0; i < 16; i++) {
+		   	kip = &kbp->kb_nodes[i];
+			if (kip->kn_flag & NF_ITEM)
+				continue;
+			kip->kn_flag = 0;
+		}
+		return 0;
+	}
+
+	do_node_ping(kip1);
+	return 0;
+}
+
+static int do_node_insert(struct kad_node *knp)
+{
+	kad_item *kip;
+	kad_bucket *kbp;
+	unsigned now = 0;
+
+	now = GetTickCount();
+	kbp = kad_get_bucket(knp);
+
+	kip = kad_find_replace(kbp, knp);
+	if ((kip != NULL) &&
+		   	(kip->kn_flag & NF_NODE) &&
+		   	!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
+	   	int oldflag = kip->kn_flag;
+
+		switch (knp->kn_type) {
+		   	case KN_SEEN:
+			   	if (oldflag & NF_HELO) {
+				   	kip->kn_seen = now;
+				   	kip->kn_fail = 0;
+			   	}
+			   	break;
+
+			case KN_GOOD:
+			   	waitcb_cancel(&kip->kn_timeout);
+			   	kip->kn_flag |= NF_HELO;
+			   	kip->kn_seen = now;
+			   	kip->kn_fail = 0;
+			   	break;
+			}
+
+		if ((now == kip->kn_seen) &&
+				(kip->kn_flag & NF_ITEM))
+		   	callout_reset(&kbp->kb_timeout, MIN15);
+	   	kad_bucket_adjust(kbp);
+	   	return 0;
+	}
+
+	if (kip != NULL && !(kip->kn_flag & NF_ITEM)) {
+		if ((kip->kn_flag & NF_NODE) &&
+			   	knp->kn_type != KN_GOOD) {
+			if (NF_HELO & ~kip->kn_flag)
+				send_node_ping(knp);
+			return 0;
+		}
+
+		waitcb_cancel(&kip->kn_timeout);
+		kip->kn_flag = knode_copy(kip, knp);
+		kip->kn_seen = now;
+		kip->kn_fail = 0;
+		kad_bucket_adjust(kbp);
+		return 0;
 	}
 
 	return 0;
@@ -404,15 +501,44 @@ static int closest_update(const char *ident,
 
 int kad_krpc_closest(const char *ident, struct kad_node *closest, size_t count)
 {
-	int i, j;
+	int i, j, ind, total;
 	struct kad_item *knp;
 	struct kad_bucket *kbp;
 
+	ind = kad_xor_dist(ident);
 	for (i = 0; i < count; i++)
 		closest[i].kn_type = 0;
 
-	for (i = 0; i < _r_count; i++) {
-		kbp = &_r_bucket[i];
+	total = 0;
+	if (ind < _r_count) {
+		kbp = _r_bucket + ind;
+		for (j = 0; j < 16; j++) {
+			knp = &kbp->kb_nodes[j];
+			if ((knp->kn_flag & NF_ITEM) && knp->kn_fail < 3) {
+				knp->kn_type = KN_GOOD;
+				if ((knp->kn_flag & NF_HELO) &&
+						(knp->kn_seen + MIN15) < GetTickCount())
+					knp->kn_type = KN_UNKOWN;
+				closest_update(ident, closest, count, knp);
+				total++;
+			}
+		}
+
+		if (total >= count) {
+			return 0;
+		}
+	}
+
+	for (i = _r_count; i > 0; i--) {
+		if (ind >= i - 1 && total >= count) {
+			return 0;
+		}
+
+		if (ind == i - 1) {
+			continue;
+		}
+
+		kbp = &_r_bucket[i - 1];
 		for (j = 0; j < 16; j++) {
 			knp = &kbp->kb_nodes[j];
 			if ((knp->kn_flag & NF_ITEM) && knp->kn_fail < 3){
@@ -421,6 +547,7 @@ int kad_krpc_closest(const char *ident, struct kad_node *closest, size_t count)
 						(knp->kn_seen + MIN15) < GetTickCount())
 					knp->kn_type = KN_UNKOWN;
 				closest_update(ident, closest, count, knp);
+				total++;
 			}
 		}
 	}
@@ -455,6 +582,7 @@ int kad_node_good(struct kad_node *knp)
 {
 	knp->kn_type = KN_GOOD;
 	do_node_insert(knp);
+	_r_failure = 0;
 	return 0;
 }
 
@@ -462,6 +590,7 @@ int kad_node_seen(struct kad_node *knp)
 {
 	knp->kn_type = KN_SEEN;
 	do_node_insert(knp);
+	_r_failure = 0;
 	return 0;
 }
 
@@ -491,6 +620,11 @@ static void kad_node_failure(void *upp)
 
 	knp = (struct kad_item *)upp;
 	knp->kn_fail++;
+
+	if (++_r_failure > 480) {
+		// TODO: do failure rollback;
+		printf("network down!\n");
+	}
 
 	kbp = kad_get_bucket(knp);
 	kad_bucket_adjust(kbp);
@@ -534,9 +668,23 @@ static int rnd_set_array(char *node)
 	return 0;
 }
 
+static void kad_bootup_update(void *upp)
+{
+	char node[20];
+	const char *ident;
+
+	kad_get_ident(&ident);
+	memcpy(node, ident, IDENT_LEN);
+	node[IDENT_LEN - 1] ^= 0x1;
+	send_bucket_update(node);
+
+	callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
+}
+
 static void kad_bucket_failure(void *upp)
 {
 	int ind;
+	int mask;
 	char node[20];
 	const char *ident;
 	struct kad_bucket *kbp;
@@ -544,24 +692,18 @@ static void kad_bucket_failure(void *upp)
 	kbp = (struct kad_bucket *)upp;
 
 	ind = kbp - _r_bucket;
-	printf("kad_bucket_failure: %d\n", ind);
 	rnd_set_array(node);
 	kad_get_ident(&ident);
-	int update = rand() % MIN15;
-	callout_reset(&kbp->kb_timeout, (15 * 1000));
-	for (int i = 0; i < ind / 8; i++)
-		node[i] = ident[i];
 
-	int mask = 1 << (7 - (ind % 8));
+	memcpy(node, ident, ind / 8);
+	mask = 1 << (7 - (ind % 8));
 	node[ind / 8] &= (mask - 1);
 	node[ind / 8] |= (ident[ind / 8] & ~(mask - 1));
 	node[ind / 8] ^= mask;
 
-	char buf[41];
-	printf("%d %d %s\n", ind, kad_xor_dist(node),
-		   	hex_encode(buf, node, IDENT_LEN));
-	assert(ind == kad_xor_dist(node));
 	send_bucket_update(node);
+	printf("kad_bucket_failure: %d\n", ind);
+	callout_reset(&kbp->kb_timeout, kad_rand(MIN15/2, MIN15/3));
 }
 
 int kad_route_dump(void)
@@ -577,16 +719,17 @@ int kad_route_dump(void)
 		kbp = _r_bucket + i;
 
 		printf("route: %d/%d %d@%d\n", i,
-			   	_r_count, (kbp->kb_timeout.wt_value - now) / 1000, 
+				_r_count, (kbp->kb_timeout.wt_value - now) / 1000, 
 				waitcb_active(&kbp->kb_timeout));
+
 		for (j = 0; j < 16; j++) {
 			knp = kbp->kb_nodes + j;
 			if (knp->kn_flag & NF_ITEM) {
 				kacp = &knp->kn_addr;
-				printf("%s %4d %s:%d\n",
-					   	hex_encode(identstr, knp->kn_ident, IDENT_LEN),
+				printf(" %s  %4d %s:%d\n",
+						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
 						(GetTickCount() - knp->kn_seen) / 1000,
-					   	inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
+						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
 			}
 		}
 	}
@@ -603,17 +746,19 @@ static void module_init(void)
 	for (i = 0; i < MAX_BUCKET_COUNT; i++) {
 		kbp = _r_bucket + i;
 
+		waitcb_init(&kbp->kb_timeout, kad_bucket_failure, kbp);
 		for (j = 0; j < 16; j++) {
 			knp = kbp->kb_nodes + j;
 			waitcb_init(&knp->kn_timeout, kad_node_failure, knp);
 		}
-
-		waitcb_init(&kbp->kb_timeout, kad_bucket_failure, kbp);
 	}
 
 	_r_count = 1;
 	kbp = &_r_bucket[0];
 	callout_reset(&kbp->kb_timeout, MIN15);
+
+	waitcb_init(&_r_bootup, kad_bootup_update, NULL);
+	callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
 }
 
 static void module_clean(void)
@@ -622,15 +767,15 @@ static void module_clean(void)
 	struct kad_item *knp;
 	struct kad_bucket *kbp;
 
+	waitcb_clean(&_r_bootup);
 	for (i = 0; i < MAX_BUCKET_COUNT; i++) {
 		kbp = _r_bucket + i;
+		waitcb_clean(&kbp->kb_timeout);
 
 		for (j = 0; j < 16; j++) {
 			knp = kbp->kb_nodes + j;
 			waitcb_clean(&knp->kn_timeout);
 		}
-
-		waitcb_clean(&kbp->kb_timeout);
 	}
 }
 
