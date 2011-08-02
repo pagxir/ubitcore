@@ -27,6 +27,7 @@ struct kad_item:
 
 struct kad_bucket {
 	struct waitcb kb_timeout;
+	struct kad_item *kb_pinged;
 	struct kad_item kb_nodes[16];
 };
 
@@ -316,6 +317,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 		printf("replace node: %d\n", kbp - _r_bucket);
 		callout_reset(&kbp->kb_timeout, MIN15);
 		kip->kn_flag |= NF_ITEM;
+		nitem++;
 	}
 
 	/* find a node need to ping. */
@@ -380,8 +382,10 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 	}
 
 	if (good == 0) {
-		if (kip2 != NULL)
+		if (kip2 != NULL) {
 			do_node_ping(kip2);
+			kbp->kb_pinged = kip2;
+		}
 		return 0;
 	}
 
@@ -398,6 +402,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 	}
 
 	do_node_ping(kip1);
+	kbp->kb_pinged = kip1;
 	return 0;
 }
 
@@ -433,8 +438,10 @@ static int do_node_insert(struct kad_node *knp)
 			}
 
 		if ((now == kip->kn_seen) &&
-				(kip->kn_flag & NF_ITEM))
+				(kip->kn_flag & NF_ITEM) && kip == kbp->kb_pinged) {
 		   	callout_reset(&kbp->kb_timeout, MIN15);
+			kbp->kb_pinged = 0;
+		}
 	   	kad_bucket_adjust(kbp);
 	   	return 0;
 	}
@@ -569,7 +576,7 @@ int kad_krpc_closest(const char *ident, char *buf, size_t len)
 		if (len >= 26 && knp->kn_type) {
 			memcpy(bufp, knp->kn_ident, IDENT_LEN);
 			memcpy(bufp + 20, &knp->kn_addr.kc_addr, 4);
-			memcpy(bufp + 20, &knp->kn_addr.kc_port, 2);
+			memcpy(bufp + 24, &knp->kn_addr.kc_port, 2);
 			bufp += 26;
 			len -= 26;
 		}
@@ -747,9 +754,11 @@ static void module_init(void)
 		kbp = _r_bucket + i;
 
 		waitcb_init(&kbp->kb_timeout, kad_bucket_failure, kbp);
+		kbp->kb_pinged = 0;
 		for (j = 0; j < 16; j++) {
 			knp = kbp->kb_nodes + j;
 			waitcb_init(&knp->kn_timeout, kad_node_failure, knp);
+			knp->kn_flag = 0;
 		}
 	}
 
