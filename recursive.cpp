@@ -359,30 +359,3 @@ int kad_recursive(int type, const char *ident)
 	return 0;
 }
 
-int kad_recursive2(int type, const char *ident, const char *peer)
-{
-	int i;
-	int error;
-	struct sockaddr_in so_addr;
-	struct recursive_node *rnp;
-	struct recursive_context *rcp;
-
-	error = getaddrbyname(peer, &so_addr);
-	if (error != 0) {
-		fprintf(stderr, "getaddrbyname failure\n");
-		return 0;
-	}
-
-	rcp = kad_recursivecb_new(type, ident);
-	assert(rcp != NULL);
-
-	rnp = &rcp->rc_nodes[0];
-	rnp->rn_flags = 1;
-	rnp->kn_addr.kc_addr = so_addr.sin_addr;
-	rnp->kn_addr.kc_port = so_addr.sin_port;
-
-	kad_recursive_output(rcp);
-	return 0;
-}
-
-

@@ -151,6 +151,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			idp = 0;
 			found = 0;
 			memcpy(&idp, query_ident, elen);
+			if (elen != 4) {
+				printf("elen = %d\n", elen);
+				printf("addr: %s:%d\n", inet_ntoa(in_addrp->sin_addr), htons(in_addrp->sin_port));
+			}
+
 		   	for (waitcbp = _kad_slot; waitcbp;
 				   	waitcbp = waitcbp->wt_next) {
 			   	if (!memcmp(waitcbp->wt_data, query_ident, elen)) {
@@ -281,28 +286,28 @@ static void udp_routine(void *upp)
  * router.utorrent.com
  * router.bittorrent.com:6881
  */
-int kad_setident(const char *ident)
+int kad_setup(const char *ident)
 {
 	kad_set_ident(ident);
 	return 0;
 }
 
-int kad_bootup(const char *server)
-{
-	const char *ident;
-	char curr_ident[20];
-	kad_get_ident(&ident);
-	memcpy(curr_ident, ident, IDENT_LEN);
-	curr_ident[19] ^= 0x1;
-	kad_recursive2(RC_TYPE_FIND_NODE, curr_ident, server);
-	return 0;
-}
-
 int kad_pingnode(const char *server)
 {
-	static char just_keep_it[20] = "just keep it";
-	kad_recursive2(RC_TYPE_PING_NODE, just_keep_it, server);
-	return 0;
+    int error;
+	struct kad_node knode;
+    struct sockaddr_in so_addr;
+
+    error = getaddrbyname(server, &so_addr);
+    if (error != 0) {
+        fprintf(stderr, "getaddrbyname failure\n");
+        return 0;
+    }
+
+	knode.kn_addr.kc_addr = so_addr.sin_addr;
+	knode.kn_addr.kc_port = so_addr.sin_port;
+
+	return send_node_ping(&knode);
 }
 
 int kad_getpeers(const char *ident)

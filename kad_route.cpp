@@ -174,20 +174,20 @@ static int do_node_ping(struct kad_item *kip)
 	unsigned now = GetTickCount();
 
 	if (kip->kn_seen + MIN15 < now ||
-		   	(kip->kn_flag & NF_HELO) == 0) {
-	   	if (!waitcb_active(&kip->kn_timeout)) {
-		   	callout_reset(&kip->kn_timeout, 2000);
-		   	send_node_ping(kip);
-	   	}
-	   	return 1;
-   	}
+			(kip->kn_flag & NF_HELO) == 0) {
+		if (!waitcb_active(&kip->kn_timeout)) {
+			callout_reset(&kip->kn_timeout, 2000);
+			send_node_ping(kip);
+		}
+		return 1;
+	}
 
 	return 0;
 }
 
 static kad_item *kad_find_replace(kad_bucket *kbp, kad_node *knp)
 {
-   	int oldflag = 0;
+	int oldflag = 0;
 	kad_item *kip, *oldkip = NULL;
 
 	for (int i = 0; i < 16; i++) {
@@ -205,33 +205,33 @@ static kad_item *kad_find_replace(kad_bucket *kbp, kad_node *knp)
 		}
 
 		if ((oldflag & NF_ITEM) !=
-			(kip->kn_flag & NF_ITEM)) {
-				if ((oldflag & NF_ITEM) >
+				(kip->kn_flag & NF_ITEM)) {
+			if ((oldflag & NF_ITEM) >
 					(kip->kn_flag & NF_ITEM)) {
-						oldflag = kip->kn_flag;
-						oldkip = kip;
-				}
-				continue;
+				oldflag = kip->kn_flag;
+				oldkip = kip;
+			}
+			continue;
 		}
 
 		if ((oldflag & NF_HELO) !=
-			(kip->kn_flag & NF_HELO)) {
-				if ((oldflag & NF_HELO) >
+				(kip->kn_flag & NF_HELO)) {
+			if ((oldflag & NF_HELO) >
 					(kip->kn_flag & NF_HELO)) {
-						oldflag = kip->kn_flag;
-						oldkip = kip;
-				}
-				continue;
+				oldflag = kip->kn_flag;
+				oldkip = kip;
+			}
+			continue;
 		}
 
 		if ((oldflag & NF_NODE) !=
-			(kip->kn_flag & NF_NODE)) {
-				if ((oldflag & NF_NODE) >
+				(kip->kn_flag & NF_NODE)) {
+			if ((oldflag & NF_NODE) >
 					(kip->kn_flag & NF_NODE)) {
-						oldflag = kip->kn_flag;
-						oldkip = kip;
-				}
-				continue;
+				oldflag = kip->kn_flag;
+				oldkip = kip;
+			}
+			continue;
 		}
 
 		if (oldkip->kn_fail < kip->kn_fail) {
@@ -258,7 +258,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 	int nitem = 0;
 	kad_item *kip;
 	kad_item *kip1;
-   	kad_item *kip2;
+	kad_item *kip2;
 	kad_bucket *lastkbp;
 
 	now = GetTickCount();
@@ -272,8 +272,8 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 			if (kip->kn_fail >= 3) { 
 				kip1 = kad_node_perf(kbp);
 				if (kip1 != NULL) {
-				   	callout_reset(&kbp->kb_timeout, MIN15);
-				   	kip1->kn_flag |= NF_ITEM;
+					callout_reset(&kbp->kb_timeout, kad_rand(MIN15, MIN15/3));
+					kip1->kn_flag |= NF_ITEM;
 					kip->kn_flag = 0;
 				}
 			}
@@ -304,7 +304,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 		}
 
 		callout_reset(&lastkbp->kb_timeout, kad_rand(MIN15, MIN15/3));
-		callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
+		callout_reset(&_r_bootup, kad_rand(MIN15, MIN15/3));
 		kad_bucket_adjust(lastkbp);
 		kad_bucket_adjust(kbp);
 		return 0;
@@ -315,7 +315,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 		if (kip == NULL)
 			break;
 		printf("replace node: %d\n", kbp - _r_bucket);
-		callout_reset(&kbp->kb_timeout, MIN15);
+		callout_reset(&kbp->kb_timeout, kad_rand(MIN15, MIN15/3));
 		kip->kn_flag |= NF_ITEM;
 		nitem++;
 	}
@@ -330,27 +330,27 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 		const int mask = NF_NODE| NF_HELO| NF_ITEM;
 
 		if ((kip->kn_fail == 0) &&
-			   	(kip->kn_seen + MIN15 > now) &&
+				(kip->kn_seen + MIN15 > now) &&
 				((kip->kn_flag & mask) == want)) {
-		   	good++;
+			good++;
 		}
 
 		while (kip->kn_flag & NF_ITEM) {
 			if (kip1 == NULL) {
-			   	kip1 = kip;
+				kip1 = kip;
 				break;
 			}
 
 			if ((kip1->kn_flag & NF_HELO) !=
-				(kip->kn_flag & NF_HELO)) {
-					if ((kip1->kn_flag & NF_HELO) >
+					(kip->kn_flag & NF_HELO)) {
+				if ((kip1->kn_flag & NF_HELO) >
 						(kip->kn_flag & NF_HELO))
-						kip1 = kip;
-					break;
+					kip1 = kip;
+				break;
 			}
 
 			if (kip1->kn_seen > kip->kn_seen) {
-			   	kip1 = kip;
+				kip1 = kip;
 				break;
 			}
 
@@ -361,19 +361,19 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 		const int mask1 = NF_NODE| NF_ITEM;
 		while ((kip->kn_flag & mask1) == want1) {
 			if (kip2 == NULL) {
-			   	kip2 = kip;
+				kip2 = kip;
 				break;
 			}
 			if ((kip2->kn_flag & NF_HELO) !=
-				(kip->kn_flag & NF_HELO)) {
-					if ((kip2->kn_flag & NF_HELO) >
+					(kip->kn_flag & NF_HELO)) {
+				if ((kip2->kn_flag & NF_HELO) >
 						(kip->kn_flag & NF_HELO))
-						kip1 = kip;
-					break;
+					kip1 = kip;
+				break;
 			}
 
 			if (kip2->kn_seen > kip->kn_seen) {
-			   	kip2 = kip;
+				kip2 = kip;
 				break;
 			}
 
@@ -393,7 +393,7 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 			((kip1->kn_flag & NF_HELO) &&
 			 (kip1->kn_seen + MIN15 > now))) {
 		for (int i = 0; i < 16; i++) {
-		   	kip = &kbp->kb_nodes[i];
+			kip = &kbp->kb_nodes[i];
 			if (kip->kn_flag & NF_ITEM)
 				continue;
 			kip->kn_flag = 0;
@@ -417,38 +417,38 @@ static int do_node_insert(struct kad_node *knp)
 
 	kip = kad_find_replace(kbp, knp);
 	if ((kip != NULL) &&
-		   	(kip->kn_flag & NF_NODE) &&
-		   	!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
-	   	int oldflag = kip->kn_flag;
+			(kip->kn_flag & NF_NODE) &&
+			!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
+		int oldflag = kip->kn_flag;
 
 		switch (knp->kn_type) {
-		   	case KN_SEEN:
-			   	if (oldflag & NF_HELO) {
-				   	kip->kn_seen = now;
-				   	kip->kn_fail = 0;
-			   	}
-			   	break;
+			case KN_SEEN:
+				if (oldflag & NF_HELO) {
+					kip->kn_seen = now;
+					kip->kn_fail = 0;
+				}
+				break;
 
 			case KN_GOOD:
-			   	waitcb_cancel(&kip->kn_timeout);
-			   	kip->kn_flag |= NF_HELO;
-			   	kip->kn_seen = now;
-			   	kip->kn_fail = 0;
-			   	break;
-			}
+				waitcb_cancel(&kip->kn_timeout);
+				kip->kn_flag |= NF_HELO;
+				kip->kn_seen = now;
+				kip->kn_fail = 0;
+				break;
+		}
 
 		if ((now == kip->kn_seen) &&
 				(kip->kn_flag & NF_ITEM) && kip == kbp->kb_pinged) {
-		   	callout_reset(&kbp->kb_timeout, MIN15);
+			callout_reset(&kbp->kb_timeout, kad_rand(MIN15, MIN15/3));
 			kbp->kb_pinged = 0;
 		}
-	   	kad_bucket_adjust(kbp);
-	   	return 0;
+		kad_bucket_adjust(kbp);
+		return 0;
 	}
 
 	if (kip != NULL && !(kip->kn_flag & NF_ITEM)) {
 		if ((kip->kn_flag & NF_NODE) &&
-			   	knp->kn_type != KN_GOOD) {
+				knp->kn_type != KN_GOOD) {
 			if (NF_HELO & ~kip->kn_flag)
 				send_node_ping(knp);
 			return 0;
@@ -628,9 +628,11 @@ static void kad_node_failure(void *upp)
 	knp = (struct kad_item *)upp;
 	knp->kn_fail++;
 
-	if (++_r_failure > 480) {
-		// TODO: do failure rollback;
-		printf("network down!\n");
+	if (knp->kn_flag & NF_HELO) {
+		if (++_r_failure > 48) {
+			// TODO: do failure rollback;
+			printf("network down!\n");
+		}
 	}
 
 	kbp = kad_get_bucket(knp);
@@ -713,7 +715,20 @@ static void kad_bucket_failure(void *upp)
 	callout_reset(&kbp->kb_timeout, kad_rand(MIN15/2, MIN15/3));
 }
 
-int kad_route_dump(void)
+static const char *convert_flags(int flags)
+{
+	char *p;
+	static char buf[8] = "";
+
+	p = buf;
+	*p++ = (flags & NF_ITEM)? 'I': '_';
+	*p++ = (flags & NF_HELO)? 'H': '_';
+	*p++ = 0;
+	
+	return buf;
+}
+
+int kad_route_dump(int index)
 {
 	int i, j;
 	KAC *kacp;
@@ -722,18 +737,33 @@ int kad_route_dump(void)
 	struct kad_bucket *kbp;
 
 	int now = GetTickCount();
+	if (index < _r_count && index >= 0) {
+		kbp = _r_bucket + index;
+
+		for (j = 0; j < 16; j++) {
+			knp = kbp->kb_nodes + j;
+			if (knp->kn_flag & NF_NODE) {
+				kacp = &knp->kn_addr;
+				printf("%s %s  %4d(%d) %s:%d\n",
+						convert_flags(knp->kn_flag),
+						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
+						(GetTickCount() - knp->kn_seen) / 1000, knp->kn_flag,
+						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
+			}
+		}
+
+		return 0;
+	}
+
 	for (i = 0; i < _r_count; i++) {
 		kbp = _r_bucket + i;
-
-		printf("route: %d/%d %d@%d\n", i,
-				_r_count, (kbp->kb_timeout.wt_value - now) / 1000, 
-				waitcb_active(&kbp->kb_timeout));
+		printf("route-%02d %d\n", i, (kbp->kb_timeout.wt_value - now) / 1000);
 
 		for (j = 0; j < 16; j++) {
 			knp = kbp->kb_nodes + j;
 			if (knp->kn_flag & NF_ITEM) {
 				kacp = &knp->kn_addr;
-				printf(" %s  %4d %s:%d\n",
+				printf("%s  %4d %s:%d\n",
 						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
 						(GetTickCount() - knp->kn_seen) / 1000,
 						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));

@@ -33,5 +33,7 @@ int kad_get_token(const char **token);
 int kad_krpc_closest(const char *target, char *buf, size_t len);
 int kad_krpc_closest(const char *target, kad_node *nodes, size_t count);
 
+int kad_route_dump(int index);
+
 #endif
 

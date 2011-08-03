@@ -1,11 +1,10 @@
 #ifndef _UDP_DAEMON_H_
 #define _UDP_DAEMON_H_
 
-int kad_setident(const char *ident);
+int kad_setup(const char *ident);
 int kad_getpeers(const char *ident);
 int kad_findnode(const char *ident);
 
-int kad_bootup(const char *peer);
 int kad_pingnode(const char *peer);
 int send_node_ping(struct kad_node *knp);
 int send_bucket_update(const char *node);

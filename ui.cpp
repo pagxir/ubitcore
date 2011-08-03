@@ -10,6 +10,7 @@
 #include "slotwait.h"
 #include "slotipc.h"
 #include "slotsock.h"
+#include "kad_route.h"
 #include "udp_daemon.h"
 
 static ipccb_t _ipccb_console;
@@ -88,6 +89,7 @@ static unsigned __stdcall input_routine(void *upp)
 		   
 			ipccb_switch(&ui.ui_ipccb);
 		   	WaitForSingleObject(ui.ui_event, INFINITE);
+			Sleep(30);
 		}
 		fclose(rc_fp);
 	}
@@ -141,7 +143,6 @@ ui_quited:
 }
 
 static uintptr_t h_input;
-int kad_route_dump(void);
 static void parse_request(void *upp)
 {
 	int count;
@@ -152,31 +153,28 @@ static void parse_request(void *upp)
 
 	uip = (struct _user_input *)upp;
 
-	if (!strncmp(uip->ui_buf, "bootup ", 7)) {
-	   	count = sscanf(uip->ui_buf, "%*s %s", server);
-		fprintf(stderr, "bootup %s\n", server);
-		kad_bootup(server);
-	}else if (!strncmp(uip->ui_buf, "setident ", 9)) {
+	count = -1;
+	if (!strncmp(uip->ui_buf, "myid ", 5)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
-	   	kad_setident(ident1);
-   	} else if (!strncmp(uip->ui_buf, "get_peers ", 9)) {
+	   	kad_setup(ident1);
+   	} else if (!strncmp(uip->ui_buf, "peer ", 5)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
-	   	fprintf(stderr, "kad_getpeers\n");
 	   	kad_getpeers(ident1);
-   	} else if (!strncmp(uip->ui_buf, "find_node ", 9)) {
+   	} else if (!strncmp(uip->ui_buf, "find ", 5)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", ident0);
 	   	hex_decode(ident0, ident1, sizeof(ident1));
-	   	fprintf(stderr, "kad_findnode\n");
 	   	kad_findnode(ident1);
-   	} else if (!strncmp(uip->ui_buf, "dump", 4)) {
-	   	fprintf(stderr, "kad_route_dump\n");
-		kad_route_dump();
-   	} else if (!strncmp(uip->ui_buf, "ping_node ", 9)) {
+   	} else if (!strncmp(uip->ui_buf, "blur ", 5)) {
+	   	sscanf(uip->ui_buf, "%*s %d", &count);
+		printf("blur bucket: %d\n", count);
+   	} else if (!strncmp(uip->ui_buf, "ping ", 5)) {
 	   	count = sscanf(uip->ui_buf, "%*s %s", server);
-	   	fprintf(stderr, "kad_pingnode\n");
 	   	kad_pingnode(server);
+   	} else if (!strncmp(uip->ui_buf, "dump", 4)) {
+	   	sscanf(uip->ui_buf, "%*s %d", &count);
+		kad_route_dump(count);
    	}
    
 	SetEvent(uip->ui_event);
