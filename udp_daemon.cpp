@@ -38,8 +38,10 @@ static void dump_peer_values(btcodec & codec)
 	   	for (value = values; elen >= 6; value += 6, elen -= 6) {
 		   	memcpy(&in_addr1, value + 0, sizeof(in_addr1));
 		   	memcpy(&in_port1, value + 4, sizeof(in_port1));
+#if 0
 		   	fprintf(stderr, "value %s:%d\n",
 				   	inet_ntoa(in_addr1), ntohs(in_port1));
+#endif
 		   	fprintf(_log_file, "value %s:%d\n",
 				   	inet_ntoa(in_addr1), ntohs(in_port1));
 	   	}
@@ -49,18 +51,14 @@ static void dump_peer_values(btcodec & codec)
 	return;
 }
 
-static void dump_node_ident(const char *peer_ident, struct sockaddr_in *inp)
+static void dump_node_ident(const char *title, const char *peer_ident, struct sockaddr_in *inp)
 {
-	size_t elen;
-	uint8_t *u_peer_ident;
-	u_peer_ident = (uint8_t *)peer_ident;
+	char buf[41];
 
-	fprintf(stderr, "peer_ident: ");
-	elen = 20;
-	while (elen-- > 0)
-		fprintf(stderr, "%02X", *u_peer_ident++);
-	fprintf(stderr, " %s:%d\n",
+	fprintf(stderr, "%16s: %s %s:%d\n",
+			title, hex_encode(buf, peer_ident, IDENT_LEN),
 		   	inet_ntoa(inp->sin_addr), htons(inp->sin_port));
+	return;
 }
 
 int send_node_ping(struct kad_node *knp)
@@ -75,7 +73,7 @@ int send_node_ping(struct kad_node *knp)
 	in_addr1.sin_port = knp->kn_addr.kc_port;
 	in_addr1.sin_addr = knp->kn_addr.kc_addr;
 
-	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x55AA0000);
+	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x55AA0001);
    	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
 	return 0;
 }
@@ -147,16 +145,18 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 
 			tid = 0;
 			memcpy(&tid, query_ident, elen);
-			if (tid < 0x1000000)
+			if (tid < 0x1000000) {
+				char title[64];
+				sprintf(title, "[S-%d:%d]", tid, elen);
 				kad_search_update(tid, peer_ident, &codec);
+				dump_node_ident(title, peer_ident, in_addrp);
+				dump_peer_values(codec);
+			}
 
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
 			kad_node_good(&knode);
-
-			dump_node_ident(peer_ident, in_addrp);
-			dump_peer_values(codec);
 			break;
 
 		case 'q':
@@ -216,7 +216,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				return;
 			}
 
-			dump_node_ident(peer_ident, in_addrp);
+			dump_node_ident(query_type, peer_ident, in_addrp);
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
@@ -323,7 +323,7 @@ int kad_proto_out(int tid, int type, const char *target, const struct sockaddr_i
 			break;
 
 		case RC_TYPE_PING_NODE:
-			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)tid);
+			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x5ACCA551);
 			break;
 
 		default:

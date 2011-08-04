@@ -12,7 +12,7 @@
 #include "kad_proto.h"
 #include "udp_daemon.h"
 
-#define SEARCH_TIMER 3000
+#define SEARCH_TIMER 5000
 
 static slotcb _search_slot = 0;
 
@@ -87,7 +87,7 @@ static void kad_recursive_output(void *upp)
 				error = 0, pending += (rnp->rn_type == 1);
 			} else if (!kad_bound_check(rcp, rnp)) {
 				continue;
-			} else if (rnp->rn_nout < 3) {
+			} else if (rnp->rn_nout < 3 && rnp->rn_type == 1) {
 				kad_node_perf(rnp->kn_ident, rnp, perf, MAX_SEND_OUT);
 			}
 		}
@@ -99,6 +99,8 @@ static void kad_recursive_output(void *upp)
 			so_addr.sin_family = AF_INET;
 			so_addr.sin_port   = rnp->kn_addr.kc_port;
 			so_addr.sin_addr   = rnp->kn_addr.kc_addr;
+			assert(rnp->rn_type == 1);
+			assert(rnp->rn_access + SEARCH_TIMER <= curtick);
 			error = kad_proto_out(rcp->rc_tid, rcp->rc_type, rcp->rc_target, &so_addr);
 
 			if (error == -1)
@@ -272,9 +274,14 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
+			printf("peer response on %d\n", rnp->rn_nout);
 			rnp->rn_type = 2;
 			break;
 		}
+	}
+
+	if (i == MAX_PEER_COUNT) {
+		printf("cannot found ident in this search!\n");
 	}
 
 	rcp->rc_acked++;
@@ -295,14 +302,15 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 		}
 	}
 
-	kad_recursive_output(rcp);
+	waitcb_cancel(&rcp->rc_timeout);
+	waitcb_switch(&rcp->rc_timeout);
 	return 0;
 }
 
 struct recursive_context *kad_recursivecb_new(int type, const char *ident)
 {
 	int i;
-	static int tid = 0;
+	static int tid = 0x5A;
 	struct recursive_node * rnp;
 	struct recursive_context *rcp;
 
