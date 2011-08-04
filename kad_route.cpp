@@ -130,8 +130,8 @@ static kad_item *kad_node_find(struct kad_node *knp)
 static int kad_rand(int base, int adjust)
 {
 	int update = rand();
-	if (base > adjust)
-		base -= adjust;
+	if (base > (adjust / 2))
+		base -= (adjust / 2);
 	if (adjust > 0)
 		update %= adjust;
 	return base + update;
@@ -589,6 +589,8 @@ int kad_node_good(struct kad_node *knp)
 {
 	knp->kn_type = KN_GOOD;
 	do_node_insert(knp);
+	if (_r_failure >= 48) 
+		printf("network recover\n");
 	_r_failure = 0;
 	return 0;
 }
@@ -597,6 +599,8 @@ int kad_node_seen(struct kad_node *knp)
 {
 	knp->kn_type = KN_SEEN;
 	do_node_insert(knp);
+	if (_r_failure >= 48) 
+		printf("network recover\n");
 	_r_failure = 0;
 	return 0;
 }
@@ -629,7 +633,7 @@ static void kad_node_failure(void *upp)
 	knp->kn_fail++;
 
 	if (knp->kn_flag & NF_HELO) {
-		if (++_r_failure > 48) {
+		if (++_r_failure == 48) {
 			// TODO: do failure rollback;
 			printf("network down!\n");
 		}
@@ -687,7 +691,7 @@ static void kad_bootup_update(void *upp)
 	node[IDENT_LEN - 1] ^= 0x1;
 	send_bucket_update(node);
 
-	callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
+	callout_reset(&_r_bootup, kad_rand(MIN15, MIN15/3));
 }
 
 static void kad_bucket_failure(void *upp)
@@ -747,7 +751,7 @@ int kad_route_dump(int index)
 				printf("%s %s  %4d(%d) %s:%d\n",
 						convert_flags(knp->kn_flag),
 						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
-						(GetTickCount() - knp->kn_seen) / 1000, knp->kn_flag,
+						(GetTickCount() - knp->kn_seen) / 1000, knp->kn_fail,
 						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
 			}
 		}
@@ -797,7 +801,7 @@ static void module_init(void)
 	callout_reset(&kbp->kb_timeout, MIN15);
 
 	waitcb_init(&_r_bootup, kad_bootup_update, NULL);
-	callout_reset(&_r_bootup, kad_rand(MIN15/2, MIN15/3));
+	callout_reset(&_r_bootup, kad_rand(MIN15/5, MIN15/6));
 }
 
 static void module_clean(void)

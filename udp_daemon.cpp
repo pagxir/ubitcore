@@ -151,10 +151,6 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			idp = 0;
 			found = 0;
 			memcpy(&idp, query_ident, elen);
-			if (elen != 4) {
-				printf("elen = %d\n", elen);
-				printf("addr: %s:%d\n", inet_ntoa(in_addrp->sin_addr), htons(in_addrp->sin_port));
-			}
 
 		   	for (waitcbp = _kad_slot; waitcbp;
 				   	waitcbp = waitcbp->wt_next) {
