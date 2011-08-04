@@ -125,7 +125,6 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	const char *query_ident = 0;
 
 	codec.load(buf, len);
-	fwrite(buf, len, 1, _log_file);
 	type = btfv(&codec).bget("y").c_str(&elen);
 	if (type == NULL || elen != 1) {
 		fprintf(stderr, "[packet missing query type] %d\n", elen);
@@ -136,13 +135,13 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 		case 'r':
 		   	peer_ident = btfv(&codec).bget("r").bget("id").c_str(&elen);
 			if (peer_ident == NULL || elen != IDENT_LEN) {
-			   	fprintf(stderr, "answer packet missing peer ident\n");
+			   	fprintf(stderr, "answer packet missing peer ident %d\n", len);
 				return;
 			}
 		   
 			query_ident = btfv(&codec).bget("t").c_str(&elen);
 		   	if (query_ident == NULL || elen > sizeof(uint32_t)) {
-			   	fprintf(stderr, "packet missing packet ident\n");
+			   	fprintf(stderr, "packet missing packet ident: %d\n", elen);
 			   	return;
 		   	}
 
@@ -249,6 +248,7 @@ static void udp_routine(void *upp)
 			   	0, (struct sockaddr *)&in_addr1, &in_len1);
 		if (count >= 0) {
 			kad_proto_input(sockbuf, count, &in_addr1);
+			fwrite(&count, sizeof(count), 1, _dmp_file);
 			fwrite(sockbuf, count, 1, _dmp_file);
 		} else if (WSAGetLastError() == WSAEWOULDBLOCK) {
 			sock_read_wait(_udp_sockcbp, &_sockcb);

@@ -270,6 +270,7 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 	}
 
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
+		rnp = &rcp->rc_nodes[i];
 		if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
 			rnp->rn_type = 2;
 			break;
