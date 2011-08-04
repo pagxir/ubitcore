@@ -274,14 +274,9 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 	for (i = 0; i < MAX_PEER_COUNT; i++) {
 		rnp = &rcp->rc_nodes[i];
 		if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
-			printf("peer response on %d\n", rnp->rn_nout);
 			rnp->rn_type = 2;
 			break;
 		}
-	}
-
-	if (i == MAX_PEER_COUNT) {
-		printf("cannot found ident in this search!\n");
 	}
 
 	rcp->rc_acked++;
