@@ -23,8 +23,6 @@ static struct waitcb _sockcb;
 static struct waitcb _stopcb;
 static struct waitcb _startcb;
 
-static slotcb _kad_slot = 0;
-static int _id_gen = 0x1982;
 static void dump_peer_values(btcodec & codec)
 {
 	int i;
@@ -51,8 +49,7 @@ static void dump_peer_values(btcodec & codec)
 	return;
 }
 
-static void dump_kad_peer_ident(const char *peer_ident,
-	   	struct sockaddr_in *inp)
+static void dump_node_ident(const char *peer_ident, struct sockaddr_in *inp)
 {
 	size_t elen;
 	uint8_t *u_peer_ident;
@@ -78,7 +75,7 @@ int send_node_ping(struct kad_node *knp)
 	in_addr1.sin_port = knp->kn_addr.kc_port;
 	in_addr1.sin_addr = knp->kn_addr.kc_addr;
 
-	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
+	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x55AA0000);
    	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
 	return 0;
 }
@@ -111,7 +108,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	int err;
 	int found;
 
-   	void *idp;
+   	int tid;
 	size_t elen;
 	btcodec codec;
 	btfastvisit btfv;
@@ -119,6 +116,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	struct kad_node knode;
    	struct waitcb *waitcbp;
 
+	const char *type;
    	const char *info_hash;
 	const char *node, *nodes;
 	const char *value, *values;
@@ -127,7 +125,8 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	const char *query_ident = 0;
 
 	codec.load(buf, len);
-	const char *type = btfv(&codec).bget("y").c_str(&elen);
+	fwrite(buf, len, 1, _log_file);
+	type = btfv(&codec).bget("y").c_str(&elen);
 	if (type == NULL || elen != 1) {
 		fprintf(stderr, "[packet missing query type] %d\n", elen);
 		return;
@@ -136,7 +135,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	switch (*type) {
 		case 'r':
 		   	peer_ident = btfv(&codec).bget("r").bget("id").c_str(&elen);
-			if (peer_ident == NULL || elen != 20) {
+			if (peer_ident == NULL || elen != IDENT_LEN) {
 			   	fprintf(stderr, "answer packet missing peer ident\n");
 				return;
 			}
@@ -144,40 +143,26 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			query_ident = btfv(&codec).bget("t").c_str(&elen);
 		   	if (query_ident == NULL || elen > sizeof(uint32_t)) {
 			   	fprintf(stderr, "packet missing packet ident\n");
-				fwrite(buf, len, 1, _log_file);
 			   	return;
 		   	}
 
-			idp = 0;
-			found = 0;
-			memcpy(&idp, query_ident, elen);
+			tid = 0;
+			memcpy(&tid, query_ident, elen);
+			if (tid < 0x1000000)
+				kad_search_update(tid, peer_ident, &codec);
 
-		   	for (waitcbp = _kad_slot; waitcbp;
-				   	waitcbp = waitcbp->wt_next) {
-			   	if (!memcmp(waitcbp->wt_data, query_ident, elen)) {
-				   	assert(len < waitcbp->wt_count);
-				   	waitcbp->wt_count = len;
-				   	memcpy(waitcbp->wt_data, buf, len);
-				   	waitcb_cancel(waitcbp);
-				   	waitcb_switch(waitcbp);
-					found = 1;
-				   	break;
-				}
-		   	}
-		   
-			knode.kn_type = 1; 
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
 			kad_node_good(&knode);
 
-			//dump_kad_peer_ident(peer_ident, in_addrp);
+			dump_node_ident(peer_ident, in_addrp);
 			dump_peer_values(codec);
 			break;
 
 		case 'q':
 		   	peer_ident = btfv(&codec).bget("a").bget("id").c_str(&elen);
-			if (peer_ident == NULL || elen != 20) {
+			if (peer_ident == NULL || elen != IDENT_LEN) {
 			   	fprintf(stderr, "query packet missing peer ident\n");
 				return;
 			}
@@ -189,7 +174,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			}
 
 			if (elen == 13 && !strncmp(query_type, "announce_peer", 13)) {
-			   	//fprintf(stderr, "announce_peer packet\n");
+				struct sockaddr *so_addrp;
+				btentity *entity = btfv(&codec).bget("t").bget();
+				so_addrp = (struct sockaddr *)in_addrp;
+				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
+				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
 			} else if (elen == 9 && !strncmp(query_type, "find_node", 9)) {
 				int siz;
 				char buf[1024];
@@ -199,9 +188,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				info_hash = btfv(&codec).bget("a").bget("target").c_str(&elen);
 				siz = kad_krpc_closest(info_hash, buf, sizeof(buf));
 				len = kad_find_node_answer(out_buf, sizeof(out_buf), entity, buf, siz);
-				err = sendto(_udp_sockfd, out_buf, len,
-					   	0, so_addrp, sizeof(*in_addrp));
-			   	//fprintf(stderr, "find_node packet: %d\n", err);
+				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
 			} else if (elen == 9 && !strncmp(query_type, "get_peers", 9)) {
 				int siz;
 				char buf[1024];
@@ -211,30 +198,30 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				info_hash = btfv(&codec).bget("a").bget("info_hash").c_str(&elen);
 				siz = kad_krpc_closest(info_hash, buf, sizeof(buf));
 				len = kad_get_peers_answer(out_buf, sizeof(out_buf), entity, buf, siz);
-				err = sendto(_udp_sockfd, out_buf, len,
-					   	0, so_addrp, sizeof(*in_addrp));
+				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
 				dump_info_hash(info_hash, elen);
 			} else if (elen == 4 && !strncmp(query_type, "ping", 4)) {
 				struct sockaddr *so_addrp;
 				btentity *entity = btfv(&codec).bget("t").bget();
 				so_addrp = (struct sockaddr *)in_addrp;
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
-				err = sendto(_udp_sockfd, out_buf, len,
-					   	0, so_addrp, sizeof(*in_addrp));
-#if 0
-			   	//fprintf(stderr, "ping packet\n");
+				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
+			} else if (elen == 4 && !strncmp(query_type, "vote", 4)) {
+				struct sockaddr *so_addrp;
+				btentity *entity = btfv(&codec).bget("t").bget();
+				so_addrp = (struct sockaddr *)in_addrp;
+				len = kad_error_node_answer(out_buf, sizeof(out_buf), entity);
+				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
 			} else {
-				//fprintf(stderr, "query packet have an unkown query type: %.8s\n", query_type);
+				fprintf(stderr, "packet have an unkown query type: %.8s\n", query_type);
 				return;
-#endif
 			}
 
-			knode.kn_type = 1; 
+			dump_node_ident(peer_ident, in_addrp);
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
 			kad_node_seen(&knode);
-			//dump_kad_peer_ident(peer_ident, in_addrp);
 			break;
 
 		default:
@@ -318,9 +305,7 @@ int kad_findnode(const char *ident)
 	return 0;
 }
 
-int kad_proto_out(int type, const char *target,
-		const struct sockaddr_in *soap, char *outp,
-	   	size_t size, struct waitcb *waitcbp)
+int kad_proto_out(int tid, int type, const char *target, const struct sockaddr_in *soap)
 {
 	int len;
 	int error;
@@ -329,18 +314,16 @@ int kad_proto_out(int type, const char *target,
 	switch (type) {
 		case RC_TYPE_FIND_NODE:
 			len = kad_find_node(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)++_id_gen, (uint8_t *)target);
+				   	(uint32_t)tid, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_GET_PEERS:
 			len = kad_get_peers(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)++_id_gen, (uint8_t *)target);
+				   	(uint32_t)tid, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_PING_NODE:
-			printf("ping_node: %s:%d\n",
-				   	inet_ntoa(soap->sin_addr), htons(soap->sin_port));
-			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)++_id_gen);
+			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)tid);
 			break;
 
 		default:
@@ -353,14 +336,6 @@ int kad_proto_out(int type, const char *target,
 
 	if (error != len)
 		return -1;
-
-	assert(outp != NULL);
-	assert(sizeof(_id_gen) < size);
-	memcpy(outp, &_id_gen, sizeof(_id_gen));
-
-	waitcbp->wt_data = outp;
-   	waitcbp->wt_count = size;
-   	slot_record(&_kad_slot, waitcbp);
 
 	return 0;
 }

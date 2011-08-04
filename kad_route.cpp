@@ -751,7 +751,7 @@ int kad_route_dump(int index)
 				printf("%s %s  %4d(%d) %s:%d\n",
 						convert_flags(knp->kn_flag),
 						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
-						(GetTickCount() - knp->kn_seen) / 1000, knp->kn_fail,
+						(now - knp->kn_seen) / 1000, knp->kn_fail,
 						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
 			}
 		}
@@ -769,12 +769,14 @@ int kad_route_dump(int index)
 				kacp = &knp->kn_addr;
 				printf("%s  %4d %s:%d\n",
 						hex_encode(identstr, knp->kn_ident, IDENT_LEN),
-						(GetTickCount() - knp->kn_seen) / 1000,
+						(now - knp->kn_seen) / 1000,
 						inet_ntoa(kacp->kc_addr), htons(kacp->kc_port));
 			}
 		}
 	}
 
+	printf("route total %d, bootup %d, failure %d\n",
+		_r_count, (_r_bootup.wt_value - now) / 1000, _r_failure);
 	return 0;
 }
 

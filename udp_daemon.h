@@ -9,9 +9,7 @@ int kad_pingnode(const char *peer);
 int send_node_ping(struct kad_node *knp);
 int send_bucket_update(const char *node);
 
-int kad_proto_out(int type, const char *target,
-	   	const struct sockaddr_in *soap, char *outp,
-	   	size_t size, struct waitcb *waitcbp);
+int kad_proto_out(int tid, int type, const char *target, const struct sockaddr_in *soap);
 
 #endif
 

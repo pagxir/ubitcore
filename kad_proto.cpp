@@ -158,6 +158,23 @@ int kad_get_peers_answer(void *buf, size_t len,
 	return codec.encode(buf, len);
 }
 
+int kad_error_node_answer(void *buf, size_t len, btentity *pid)
+{
+	btcodec codec;
+	btentity *entity;
+	btfastvisit btfv;
+	const char *ident;
+
+	const char example[] = {
+		"d1:t3:!!!1:y1:e1:eli201e5:erroree"
+	};
+
+	codec.load(example, sizeof(example));
+	entity = codec.str(&pid, sizeof(pid));
+	btfv(&codec).bget("t").replace(entity);
+	return codec.encode(buf, len);
+}
+
 int kad_less_than(const char *bp, const char *lp, const char *rp)
 {
 	int i;
