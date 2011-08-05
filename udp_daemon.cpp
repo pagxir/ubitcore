@@ -181,11 +181,11 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			strcpy(out_buf, tid == 'P'? "ping": tid == 'F'? "find": "unkown");
 			if ((tid & 0x80) == 0x80) {
 				sprintf(out_buf, "[S-%d:%d]", tid, elen);
-				kad_search_update(tid, peer_ident, &codec);
 				dump_peer_values(codec);
 			}
 
 			dump_node_ident(out_buf, peer_ident, in_addrp);
+			kad_search_update(tid, peer_ident, &codec);
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
