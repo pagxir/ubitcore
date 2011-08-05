@@ -255,11 +255,13 @@ static int do_node_insert(struct kad_node *knp)
 			if (kip->kn_flag != 0 &&
 				kad_get_bucket(kip) != kbp) {
 				(kbp + 1)->kb_nodes[i] = *kip;
-				assert((kbp + 1)->kb_nodes[i].kn_flag);
 				kip->kn_flag = 0;
 			}
 		}
 
+		callout_reset(&_r_bootup, kad_rand(100000, 20000));
+		callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
+		callout_reset(&(kbp + 1)->kb_find, kad_rand(60000, 30000));
 		do_node_insert(knp);
 		return 0;
 	}
