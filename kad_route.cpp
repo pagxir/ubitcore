@@ -183,7 +183,6 @@ static int do_node_insert(struct kad_node *knp)
 				if (oldflag & NF_HELO) {
 					kip->kn_seen = now;
 					kip->kn_query = 0;
-					kip->kn_access = 0;
 				}
 				break;
 
@@ -199,7 +198,6 @@ static int do_node_insert(struct kad_node *knp)
 			kbp->kb_pinging = NULL;
 			waitcb_cancel(&kbp->kb_ping);
 			callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
-			assert(kbp->kb_cache.kn_type);
 			node = kbp->kb_cache;
 			node.kn_type = KN_UNKOWN;
 			kbp->kb_cache.kn_type = 0;
@@ -213,7 +211,6 @@ static int do_node_insert(struct kad_node *knp)
 		kip = (kip1? kip1: kip2);
 		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 		kip->kn_flag = knode_copy(kip, knp);
-		assert(kip->kn_flag);
 		kip->kn_seen = now;
 		kip->kn_query = 0;
 		kip->kn_access = 0;
@@ -225,6 +222,7 @@ static int do_node_insert(struct kad_node *knp)
 		if (kip3->kn_access + 5000 < now) {
 			send_node_ping(kip3);
 			kip3->kn_access = now;
+			kip3->kn_flag |= NF_PING;
 			kip3->kn_query++;
 		}
 
@@ -421,6 +419,7 @@ int kad_node_timed(struct kad_node *knp)
 	if (i < K) { 
 		now = GetTickCount() / 1000;
 		kip->kn_access = now;
+		kip->kn_flag |= NF_PING;
 		kip->kn_query++;
 	}
 
@@ -443,6 +442,7 @@ static void kad_ping_failure(void *upp)
 		node = kbp->kb_cache;
 		node.kn_type = KN_UNKOWN;
 		kbp->kb_cache.kn_type = 0;
+		kbp->kb_pinging = NULL;
 		do_node_insert(&node);
 	}
 
@@ -553,12 +553,9 @@ int kad_route_dump(int index)
 
 		for (j = 0; j < K; j++) {
 			knp = kbp->kb_nodes + j;
-#if 0
 			if (knp->kn_flag == 0) {
-				printf("empty\n");
 				continue;
 			}
-#endif
 
 			if ((knp->kn_query == 0) &&
 				(knp->kn_flag & NF_HELO) &&
