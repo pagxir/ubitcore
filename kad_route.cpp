@@ -169,6 +169,12 @@ static int do_node_insert(struct kad_node *knp)
 			continue;
 		}
 
+		if (kip2 == NULL && !(kip->kn_flag & NF_HELO) &&
+			(kip->kn_query && kip->kn_access + 5 < now)) {
+			kip2 = kip;
+			continue;
+		}
+
 		if ((knp->kn_type != KN_UNKOWN) &&
 			kip2 == NULL && !(kip->kn_flag & NF_HELO)) {
 			kip2 = kip;
