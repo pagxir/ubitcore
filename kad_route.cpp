@@ -192,16 +192,16 @@ static kad_item *kad_find_replace(kad_bucket *kbp, kad_node *knp)
 
 	for (int i = 0; i < 16; i++) {
 		kip = &kbp->kb_nodes[i];
-		if (oldkip == NULL) {
-			oldflag = kip->kn_flag;
-			oldkip = kip;
-			continue;
-		}
-
 		if (knp != NULL &&
 				!memcmp(kip->kn_ident, knp->kn_ident, IDENT_LEN)) {
 			oldflag = kip->kn_flag;
 			return kip;
+		}
+
+		if (oldkip == NULL) {
+			oldflag = kip->kn_flag;
+			oldkip = kip;
+			continue;
 		}
 
 		if ((oldflag & NF_ITEM) !=
@@ -449,9 +449,15 @@ static int do_node_insert(struct kad_node *knp)
 
 	if (kip != NULL && !(kip->kn_flag & NF_ITEM)) {
 		if ((kip->kn_flag & NF_NODE) &&
-				knp->kn_type != KN_GOOD) {
-			if (NF_HELO & ~kip->kn_flag)
+				(kip->kn_fail < 3) && knp->kn_type != KN_GOOD) {
+			unsigned now = GetTickCount();
+			if ((NF_HELO & ~kip->kn_flag) || (kip->kn_seen + MIN15 < now)) {
+				 if (!waitcb_active(&kip->kn_timeout)) {
+					 send_node_ping(kip);
+					return 0;
+				}
 				send_node_ping(knp);
+			}
 			return 0;
 		}
 
