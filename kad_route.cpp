@@ -448,15 +448,16 @@ static int do_node_insert(struct kad_node *knp)
 	}
 
 	if (kip != NULL && !(kip->kn_flag & NF_ITEM)) {
-		if ((kip->kn_flag & NF_NODE) &&
-				(kip->kn_fail < 3) && knp->kn_type != KN_GOOD) {
-			unsigned now = GetTickCount();
+		unsigned now = GetTickCount();
+
+		if ((kip->kn_fail == 0) &&
+				(kip->kn_flag & NF_NODE) && knp->kn_type != KN_GOOD) {
 			if ((NF_HELO & ~kip->kn_flag) || (kip->kn_seen + MIN15 < now)) {
-				 if (!waitcb_active(&kip->kn_timeout)) {
-					 send_node_ping(kip);
-					return 0;
+				if (!waitcb_active(&kip->kn_timeout)) {
+					send_node_ping(kip);
+				} else if (knp->kn_type == KN_SEEN) {
+					send_node_ping(knp);
 				}
-				send_node_ping(knp);
 			}
 			return 0;
 		}
@@ -735,7 +736,7 @@ static const char *convert_flags(int flags)
 	*p++ = (flags & NF_ITEM)? 'I': '_';
 	*p++ = (flags & NF_HELO)? 'H': '_';
 	*p++ = 0;
-	
+
 	return buf;
 }
 
@@ -783,7 +784,7 @@ int kad_route_dump(int index)
 	}
 
 	printf("route total %d, bootup %d, failure %d\n",
-		_r_count, (_r_bootup.wt_value - now) / 1000, _r_failure);
+			_r_count, (_r_bootup.wt_value - now) / 1000, _r_failure);
 	return 0;
 }
 
