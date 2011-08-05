@@ -169,7 +169,7 @@ static int do_node_insert(struct kad_node *knp)
 			continue;
 		}
 
-		if ((knp->kn_type == KN_GOOD) &&
+		if ((knp->kn_type != KN_UNKOWN) &&
 			kip2 == NULL && !(kip->kn_flag & NF_HELO)) {
 			kip2 = kip;
 			continue;
