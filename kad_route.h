@@ -1,7 +1,7 @@
 #ifndef _KAD_ROUTE_H_
 #define _KAD_ROUTE_H_
 
-#define NF_NODE       0x01
+#define NF_PING       0x01
 #define NF_HELO       0x02
 #define NF_ITEM       0x04
 
