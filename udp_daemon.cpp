@@ -28,25 +28,25 @@ static void dump_peer_values(btcodec & codec)
 	int i;
 	size_t elen;
 	u_short in_port1;
-   	in_addr in_addr1;
+	in_addr in_addr1;
 	btfastvisit btfv;
 	const char *value, *values;
-   
+
 	i = 0;
 	values = btfv(&codec).bget("r").bget("values").bget(i++).c_str(&elen);
-   	while (values != NULL) {
-	   	for (value = values; elen >= 6; value += 6, elen -= 6) {
-		   	memcpy(&in_addr1, value + 0, sizeof(in_addr1));
-		   	memcpy(&in_port1, value + 4, sizeof(in_port1));
+	while (values != NULL) {
+		for (value = values; elen >= 6; value += 6, elen -= 6) {
+			memcpy(&in_addr1, value + 0, sizeof(in_addr1));
+			memcpy(&in_port1, value + 4, sizeof(in_port1));
 #if 0
-		   	fprintf(stderr, "value %s:%d\n",
-				   	inet_ntoa(in_addr1), ntohs(in_port1));
+			fprintf(stderr, "value %s:%d\n",
+					inet_ntoa(in_addr1), ntohs(in_port1));
 #endif
-		   	fprintf(_log_file, "value %s:%d\n",
-				   	inet_ntoa(in_addr1), ntohs(in_port1));
-	   	}
-	   	values = btfv(&codec).bget("r").bget("values").bget(i++).c_str(&elen);
-   	}
+			fprintf(_log_file, "value %s:%d\n",
+					inet_ntoa(in_addr1), ntohs(in_port1));
+		}
+		values = btfv(&codec).bget("r").bget("values").bget(i++).c_str(&elen);
+	}
 
 	return;
 }
@@ -57,7 +57,7 @@ static void dump_node_ident(const char *title, const char *peer_ident, struct so
 
 	fprintf(stderr, "%16s: %s %s:%d\n",
 			title, hex_encode(buf, peer_ident, IDENT_LEN),
-		   	inet_ntoa(inp->sin_addr), htons(inp->sin_port));
+			inet_ntoa(inp->sin_addr), htons(inp->sin_port));
 	return;
 }
 
@@ -65,25 +65,58 @@ int send_node_ping(struct kad_node *knp)
 {
 	int err, len;
 	char sockbuf[1024];
-   	struct sockaddr *so_addrp;
-   	struct sockaddr_in in_addr1;
+	struct sockaddr *so_addrp;
+	struct sockaddr_in in_addr1;
 
 	so_addrp = (struct sockaddr *)&in_addr1;
 	in_addr1.sin_family = AF_INET;
 	in_addr1.sin_port = knp->kn_addr.kc_port;
 	in_addr1.sin_addr = knp->kn_addr.kc_addr;
 
-	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x55AA0001);
-   	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
+	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)'P');
+	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
 	return 0;
 }
 
 int send_bucket_update(const char *node)
 {
+	int i;
+	int len;
+	int error;
+	int found = 8;
 	char identstr[41];
+	char sockbuf[8192];
+	struct sockaddr_in soa;
+	struct kad_node node2s[8];
+
 	printf("send_bucket_update: %s\n",
-		   hex_encode(identstr, node, IDENT_LEN));	
-	kad_findnode(node);
+			hex_encode(identstr, node, IDENT_LEN));	
+
+	error = kad_krpc_closest(node, node2s, 8);
+	for (i = 0; i < 8; i++) {
+		if (!node2s[i].kn_type)
+			continue;
+
+		found = i;
+		soa.sin_family = AF_INET;
+		soa.sin_addr = node2s[i].kn_addr.kc_addr;
+		soa.sin_port = node2s[i].kn_addr.kc_port;
+
+		if ((rand() % 8) < 4)
+			break;
+	}
+
+	if (found < 8) {
+		len = kad_find_node(sockbuf, sizeof(sockbuf),
+				(uint32_t)'F', (uint8_t *)node);
+		error = sendto(_udp_sockfd, sockbuf, len, 0,
+				(const struct sockaddr *)&soa, sizeof(soa));
+		if (error == len) {
+			kad_node_timed(&node2s[found]);
+			return 0;
+		}
+	}
+
 	return 0;
 }
 
@@ -106,16 +139,16 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	int err;
 	int found;
 
-   	int tid;
+	int tid;
 	size_t elen;
 	btcodec codec;
 	btfastvisit btfv;
 	char out_buf[2048];
 	struct kad_node knode;
-   	struct waitcb *waitcbp;
+	struct waitcb *waitcbp;
 
 	const char *type;
-   	const char *info_hash;
+	const char *info_hash;
 	const char *node, *nodes;
 	const char *value, *values;
 	const char *peer_ident = 0;
@@ -131,28 +164,28 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 
 	switch (*type) {
 		case 'r':
-		   	peer_ident = btfv(&codec).bget("r").bget("id").c_str(&elen);
+			peer_ident = btfv(&codec).bget("r").bget("id").c_str(&elen);
 			if (peer_ident == NULL || elen != IDENT_LEN) {
-			   	fprintf(stderr, "answer packet missing peer ident %d\n", len);
+				fprintf(stderr, "answer packet missing peer ident %d\n", len);
 				return;
 			}
-		   
+
 			query_ident = btfv(&codec).bget("t").c_str(&elen);
-		   	if (query_ident == NULL || elen > sizeof(uint32_t)) {
-			   	fprintf(stderr, "packet missing packet ident: %d\n", elen);
-			   	return;
-		   	}
+			if (query_ident == NULL || elen > sizeof(uint32_t)) {
+				fprintf(stderr, "packet missing packet ident: %d\n", elen);
+				return;
+			}
 
 			tid = 0;
 			memcpy(&tid, query_ident, elen);
-			if (tid < 0x1000000) {
-				char title[64];
-				sprintf(title, "[S-%d:%d]", tid, elen);
+			strcpy(out_buf, tid == 'P'? "ping": tid == 'F'? "find": "unkown");
+			if ((tid & 0x80) == 0x80) {
+				sprintf(out_buf, "[S-%d:%d]", tid, elen);
 				kad_search_update(tid, peer_ident, &codec);
-				dump_node_ident(title, peer_ident, in_addrp);
 				dump_peer_values(codec);
 			}
 
+			dump_node_ident(out_buf, peer_ident, in_addrp);
 			knode.kn_addr.kc_addr = in_addrp->sin_addr;
 			knode.kn_addr.kc_port = in_addrp->sin_port;
 			memcpy(knode.kn_ident, peer_ident, IDENT_LEN);
@@ -160,15 +193,15 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			break;
 
 		case 'q':
-		   	peer_ident = btfv(&codec).bget("a").bget("id").c_str(&elen);
+			peer_ident = btfv(&codec).bget("a").bget("id").c_str(&elen);
 			if (peer_ident == NULL || elen != IDENT_LEN) {
-			   	fprintf(stderr, "query packet missing peer ident\n");
+				fprintf(stderr, "query packet missing peer ident\n");
 				return;
 			}
 
 			query_type = btfv(&codec).bget("q").c_str(&elen);
 			if (query_type == NULL) {
-			   	fprintf(stderr, "query packet missing query type\n");
+				fprintf(stderr, "query packet missing query type\n");
 				return;
 			}
 
@@ -225,7 +258,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 
 		default:
 			if (*type == 'e') {
-			   	fprintf(stderr, "peer return error\n");
+				fprintf(stderr, "peer return error\n");
 				break;
 			}
 			break;
@@ -244,8 +277,8 @@ static void udp_routine(void *upp)
 	waitcb_cancel(&_sockcb);
 	for ( ; ; ) {
 		int in_len1 = sizeof(in_addr1);
-	   	count = recvfrom(sockfd, sockbuf, sizeof(sockbuf),
-			   	0, (struct sockaddr *)&in_addr1, &in_len1);
+		count = recvfrom(sockfd, sockbuf, sizeof(sockbuf),
+				0, (struct sockaddr *)&in_addr1, &in_len1);
 		if (count >= 0) {
 			kad_proto_input(sockbuf, count, &in_addr1);
 			fwrite(&count, sizeof(count), 1, _dmp_file);
@@ -256,7 +289,7 @@ static void udp_routine(void *upp)
 		} else if (count == -1) {
 #if 0
 			fprintf(stderr, "recv error %d from %s:%d\n",
-				   	GetLastError(), inet_ntoa(in_addr1.sin_addr), ntohs(in_addr1.sin_port));
+					GetLastError(), inet_ntoa(in_addr1.sin_addr), ntohs(in_addr1.sin_port));
 #endif
 			continue;
 		}
@@ -277,15 +310,15 @@ int kad_setup(const char *ident)
 
 int kad_pingnode(const char *server)
 {
-    int error;
+	int error;
 	struct kad_node knode;
-    struct sockaddr_in so_addr;
+	struct sockaddr_in so_addr;
 
-    error = getaddrbyname(server, &so_addr);
-    if (error != 0) {
-        fprintf(stderr, "getaddrbyname failure\n");
-        return 0;
-    }
+	error = getaddrbyname(server, &so_addr);
+	if (error != 0) {
+		fprintf(stderr, "getaddrbyname failure\n");
+		return 0;
+	}
 
 	knode.kn_addr.kc_addr = so_addr.sin_addr;
 	knode.kn_addr.kc_port = so_addr.sin_port;
@@ -314,16 +347,16 @@ int kad_proto_out(int tid, int type, const char *target, const struct sockaddr_i
 	switch (type) {
 		case RC_TYPE_FIND_NODE:
 			len = kad_find_node(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)tid, (uint8_t *)target);
+					(uint32_t)tid, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_GET_PEERS:
 			len = kad_get_peers(sockbuf, sizeof(sockbuf),
-				   	(uint32_t)tid, (uint8_t *)target);
+					(uint32_t)tid, (uint8_t *)target);
 			break;
 
 		case RC_TYPE_PING_NODE:
-			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)0x5ACCA551);
+			len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)tid);
 			break;
 
 		default:
@@ -355,16 +388,16 @@ static void udp_daemon_control(void *upp)
 		_udp_sockcbp = sock_attach(_udp_sockfd);
 
 		so_addrp = (struct sockaddr *)&addr_in1;
-	   	addr_in1.sin_family = AF_INET;
-	   	addr_in1.sin_addr.s_addr = htonl(INADDR_ANY);
+		addr_in1.sin_family = AF_INET;
+		addr_in1.sin_addr.s_addr = htonl(INADDR_ANY);
 
 		i = 0;
 		do {
 			assert(i < 2);
-		   	addr_in1.sin_port   = htons(ports[i++]);
-		   	error = bind(_udp_sockfd, so_addrp, sizeof(addr_in1));
+			addr_in1.sin_port   = htons(ports[i++]);
+			error = bind(_udp_sockfd, so_addrp, sizeof(addr_in1));
 		} while (error != 0);
-		
+
 		waitcb_init(&_sockcb, udp_routine, 0);
 		udp_routine(NULL);
 		return;

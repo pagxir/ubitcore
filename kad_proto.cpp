@@ -24,6 +24,7 @@ int kad_get_token(const char **token)
 
 int kad_get_peers(void *buf, size_t len, uint32_t pid, const uint8_t *info_hash)
 {
+	uint8_t tid;
 	btcodec codec;
 	btentity *entity;
 	btfastvisit btfv;
@@ -33,9 +34,10 @@ int kad_get_peers(void *buf, size_t len, uint32_t pid, const uint8_t *info_hash)
 		"d1:ad2:id2:!!9:info_hash2:!!e1:q9:get_peers1:t2:!!1:y1:qe"
 	};
 
+	tid = pid;
 	kad_get_ident(&ident);
 	codec.load(example, sizeof(example));
-	entity = codec.str(&pid, sizeof(pid));
+	entity = codec.str(&tid, sizeof(tid));
 	btfv(&codec).bget("t").replace(entity);
 	entity = codec.str(ident, IDENT_LEN);
 	btfv(&codec).bget("a").bget("id").replace(entity);
@@ -47,6 +49,7 @@ int kad_get_peers(void *buf, size_t len, uint32_t pid, const uint8_t *info_hash)
 
 int kad_find_node(void *buf, size_t len, uint32_t pid, const uint8_t *target)
 {
+	uint8_t tid;
 	btcodec codec;
 	btentity *entity;
 	btfastvisit btfv;
@@ -56,9 +59,10 @@ int kad_find_node(void *buf, size_t len, uint32_t pid, const uint8_t *target)
 		"d1:ad2:id2:!!6:target2:!!e1:q9:find_node1:t2:!!1:y1:qe"
 	};
 
+	tid = pid;
 	kad_get_ident(&ident);
 	codec.load(example, sizeof(example));
-	entity = codec.str(&pid, sizeof(pid));
+	entity = codec.str(&tid, sizeof(tid));
 	btfv(&codec).bget("t").replace(entity);
 	entity = codec.str(ident, IDENT_LEN);
 	btfv(&codec).bget("a").bget("id").replace(entity);
@@ -70,6 +74,7 @@ int kad_find_node(void *buf, size_t len, uint32_t pid, const uint8_t *target)
 
 int kad_ping_node(void *buf, size_t len, uint32_t pid)
 {
+	uint8_t tid;
 	btcodec codec;
 	btentity *entity;
 	btfastvisit btfv;
@@ -79,9 +84,10 @@ int kad_ping_node(void *buf, size_t len, uint32_t pid)
 		"d1:ad2:id2:!!e1:q4:ping1:t2:!!1:y1:qe"
 	};
 
+	tid = pid;
 	kad_get_ident(&ident);
 	codec.load(example, sizeof(example));
-	entity = codec.str(&pid, sizeof(pid));
+	entity = codec.str(&tid, sizeof(tid));
 	btfv(&codec).bget("t").replace(entity);
 	entity = codec.str(ident, IDENT_LEN);
 	btfv(&codec).bget("a").bget("id").replace(entity);

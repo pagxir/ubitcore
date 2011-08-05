@@ -303,7 +303,8 @@ static int kad_bucket_adjust(struct kad_bucket *kbp)
 			}
 		}
 
-		callout_reset(&lastkbp->kb_timeout, kad_rand(MIN15, MIN15/3));
+		callout_reset(&lastkbp->kb_timeout, kad_rand(60 * 1000, 30 * 1000));
+		callout_reset(&kbp->kb_timeout, kad_rand(60 * 1000, 30 * 1000));
 		callout_reset(&_r_bootup, kad_rand(MIN15, MIN15/3));
 		kad_bucket_adjust(lastkbp);
 		kad_bucket_adjust(kbp);
@@ -620,7 +621,7 @@ int kad_node_timed(struct kad_node *knp)
 	if (kip == NULL)
 		return -1;
 
-	callout_reset(&kip->kn_timeout, 2000);
+	callout_reset(&kip->kn_timeout, 5000);
 	return 0;
 }
 
@@ -716,7 +717,7 @@ static void kad_bucket_failure(void *upp)
 
 	send_bucket_update(node);
 	printf("kad_bucket_failure: %d\n", ind);
-	callout_reset(&kbp->kb_timeout, kad_rand(MIN15/2, MIN15/3));
+	callout_reset(&kbp->kb_timeout, kad_rand(60 * 1000, 30 * 1000));
 }
 
 static const char *convert_flags(int flags)
