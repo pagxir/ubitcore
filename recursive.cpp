@@ -121,8 +121,8 @@ static void kad_recursive_output(void *upp)
 	callout_reset(&rcp->rc_timeout, 1000);
 
 	if (error == -1) {
-		fprintf(stderr, "krpc finish: total %d, send %d, ack %d\n",
-				rcp->rc_total, rcp->rc_sentout, rcp->rc_acked);
+		fprintf(stderr, "krpc end: tid %d, total %d, send %d, ack %d\n",
+				rcp->rc_tid, rcp->rc_total, rcp->rc_sentout, rcp->rc_acked);
 		waitcb_clean(&rcp->rc_timeout);
 		waitcb_clean(&rcp->rc_linked);
 		delete rcp;
