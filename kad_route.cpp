@@ -164,7 +164,7 @@ static int do_node_insert(struct kad_node *knp)
 		}
 
 		if ((kip2 == NULL || kip->kn_query > kip2->kn_query) &&
-			kip->kn_query > MAX_FAILURE && kip->kn_access + 5000 < now) {
+			kip->kn_query > MAX_FAILURE && kip->kn_access + 5 < now) {
 			kip2 = kip;
 			continue;
 		}
@@ -219,7 +219,7 @@ static int do_node_insert(struct kad_node *knp)
 
 	if (kip3 != NULL && 
 		(kip3->kn_seen + MIN15 < now || (kip3->kn_flag & NF_HELO) == 0)) {
-		if (kip3->kn_access + 5000 < now) {
+		if (kip3->kn_access + 5 < now) {
 			send_node_ping(kip3);
 			kip3->kn_access = now;
 			kip3->kn_flag |= NF_PING;
@@ -524,14 +524,17 @@ static void kad_find_failure(void *upp)
 	callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
 }
 
-static const char *kad_flag(int flags)
+static const char *kad_flag(struct kad_item *kip)
 {
+	int now;
 	char *p;
 	static char buf[8] = "";
 
 	p = buf;
-	*p++ = (flags & NF_PING)? 'P': '_';
-	*p++ = (flags & NF_HELO)? 'H': '_';
+	now = GetTickCount() / 1000;
+	*p++ = (kip->kn_flag & NF_PING)? 'P': '_';
+	*p++ = (kip->kn_flag & NF_HELO)? 'H': '_';
+	*p++ = (kip->kn_query && kip->kn_access + 5 < now)? 'F': '_';
 	*p++ = 0;
 
 	return buf;
@@ -564,8 +567,7 @@ int kad_route_dump(int index)
 
 			addr = knp->kn_addr.kc_addr;
 			port = knp->kn_addr.kc_port;
-			printf("%s %s  %4d %s:%d\n",
-					kad_flag(knp->kn_flag),
+			printf("%s %s  %4d %s:%d\n", kad_flag(knp),
 					hex_encode(identstr, knp->kn_ident, IDENT_LEN),
 					(now - knp->kn_seen), inet_ntoa(addr), htons(port));
 		}
