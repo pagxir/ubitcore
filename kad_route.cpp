@@ -452,13 +452,17 @@ static int do_node_insert(struct kad_node *knp)
 
 		if ((kip->kn_fail == 0) &&
 				(kip->kn_flag & NF_NODE) && knp->kn_type != KN_GOOD) {
+#if 0
 			if ((NF_HELO & ~kip->kn_flag) || (kip->kn_seen + MIN15 < now)) {
 				if (!waitcb_active(&kip->kn_timeout)) {
+					callout_reset(&kip->kn_timeout, 5000);
 					send_node_ping(kip);
-				} else if (knp->kn_type == KN_SEEN) {
+				}
+				if (knp->kn_type == KN_SEEN) {
 					send_node_ping(knp);
 				}
 			}
+#endif
 			return 0;
 		}
 
