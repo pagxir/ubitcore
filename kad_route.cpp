@@ -530,7 +530,7 @@ static void kad_bootup_update(void *upp)
 	kad_get_ident(&ident);
 	memcpy(node, ident, IDENT_LEN);
 	node[IDENT_LEN - 1] ^= 0x1;
-	send_bucket_update(node);
+	kad_findnode(node);
 
 	callout_reset(&_r_bootup, kad_rand(MIN15U, MIN15U/3));
 }

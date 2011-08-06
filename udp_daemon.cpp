@@ -105,6 +105,9 @@ int send_bucket_update(const char *node)
 	}
 
 	if (found < 8) {
+		soa.sin_family = AF_INET;
+		soa.sin_addr   = node2s[found].kn_addr.kc_addr;
+		soa.sin_port   = node2s[found].kn_addr.kc_port;
 		len = kad_find_node(sockbuf,
 			 sizeof(sockbuf), 'F', (uint8_t *)node);
 		error = sendto(_udp_sockfd, sockbuf, len, 0,
