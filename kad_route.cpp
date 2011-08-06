@@ -12,9 +12,11 @@
 #include "udp_daemon.h"
 
 #define K 8
-#define KN_UNKOWN     0x01
-#define KN_SEEN       0x02
-#define KN_GOOD       0x03
+#define KN_DEAD       0x01
+#define KN_UNKOWN     0x02
+#define KN_QUIET      0x03
+#define KN_SEEN       0x04
+#define KN_GOOD       0x05
 
 #define MAX_FAILURE 3
 #define MAX_BUCKET_COUNT 40
@@ -281,6 +283,7 @@ static int closest_update(const char *ident,
 		kad_node *closest, size_t count, const kad_node *knp)
 {
 	int i;
+	int num;
 	int index = -1;
 	struct kad_node bad;
 	struct kad_node *knp2;
@@ -290,7 +293,7 @@ static int closest_update(const char *ident,
 		if (knp2->kn_type == 0) {
 			memcpy(knp2->kn_ident, knp->kn_ident, 20);
 			knode_copy(knp2, knp);
-			return 0;
+			goto calculate;
 		}
 	}
 
@@ -312,10 +315,17 @@ static int closest_update(const char *ident,
 	if (index != -1) {
 		knp2 = &closest[index];
 		knode_copy(&bad, knp);
-		return 0;
 	}
 
-	return 0;
+calculate:
+	num = 0;
+	for (i = 0; i < count; i++) {
+		knp2 = &closest[i];
+		if (knp2->kn_type >= KN_QUIET)
+			num = num + 1;
+	}
+
+	return num;
 }
 
 int kad_krpc_closest(const char *ident, struct kad_node *closest, size_t count)
@@ -335,13 +345,15 @@ int kad_krpc_closest(const char *ident, struct kad_node *closest, size_t count)
 		kbp = _r_bucket + ind;
 		for (j = 0; j < K; j++) {
 			knp = &kbp->kb_nodes[j];
-			if ((knp->kn_flag & NF_ITEM) && knp->kn_query < MAX_FAILURE) {
+			if (knp->kn_flag & NF_ITEM) {
 				knp->kn_type = KN_GOOD;
-				if ((knp->kn_flag & NF_HELO) &&
-						(knp->kn_seen + MIN15) < now)
+				if (knp->kn_seen + MIN15 < now)
+					knp->kn_type = KN_QUIET;
+				if ((knp->kn_flag & NF_HELO) == 0)
 					knp->kn_type = KN_UNKOWN;
-				closest_update(ident, closest, count, knp);
-				total++;
+				if (knp->kn_query > MAX_FAILURE)
+					knp->kn_type = KN_DEAD;
+				total = closest_update(ident, closest, count, knp);
 			}
 		}
 
@@ -362,13 +374,15 @@ int kad_krpc_closest(const char *ident, struct kad_node *closest, size_t count)
 		kbp = &_r_bucket[i - 1];
 		for (j = 0; j < K; j++) {
 			knp = &kbp->kb_nodes[j];
-			if ((knp->kn_flag & NF_ITEM) && knp->kn_query < MAX_FAILURE){
+			if (knp->kn_flag & NF_ITEM) {
 				knp->kn_type = KN_GOOD;
-				if ((knp->kn_flag & NF_HELO) &&
-						(knp->kn_seen + MIN15) < now)
+				if (knp->kn_seen + MIN15 < now)
+					knp->kn_type = KN_QUIET;
+				if ((knp->kn_flag & NF_HELO) == 0)
 					knp->kn_type = KN_UNKOWN;
-				closest_update(ident, closest, count, knp);
-				total++;
+				if (knp->kn_query > MAX_FAILURE)
+					knp->kn_type = KN_DEAD;
+				total = closest_update(ident, closest, count, knp);
 			}
 		}
 	}
@@ -562,6 +576,7 @@ static const char *kad_flag(struct kad_item *kip)
 	return buf;
 }
 
+int store_value_dump(void);
 int kad_route_dump(int index)
 {
 	int i, j, now;
@@ -600,6 +615,7 @@ int kad_route_dump(int index)
 
 	printf("route total %d, bootup %d, failure %d\n",
 			_r_count, (_r_bootup.wt_value/1000 - now), _r_failure);
+	store_value_dump();
 	return 0;
 }
 

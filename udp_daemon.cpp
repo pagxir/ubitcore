@@ -87,13 +87,40 @@ int send_node_ping(struct kad_node *knp)
 
 int send_bucket_update(const char *node)
 {
-	kad_recursive(RC_TYPE_FIND_NODE, node);
+	int i;
+	int len;
+	int error;
+	int found = 8;
+	char sockbuf[8192];
+	struct sockaddr_in soa;
+	struct kad_node node2s[8];
+
+	error = kad_krpc_closest(node, node2s, 8);
+	for (i = 0; i < 8; i++) {
+		if (node2s[i].kn_type) {
+			found = i;
+			if (4 > rand() % 8)
+				break;
+		}
+	}
+
+	if (found < 8) {
+		len = kad_find_node(sockbuf,
+			 sizeof(sockbuf), 'F', (uint8_t *)node);
+		error = sendto(_udp_sockfd, sockbuf, len, 0,
+				(const struct sockaddr *)&soa, sizeof(soa));
+		return error == -1? error: 0;
+	}
+	
 	return 0;
 }
 
 static void dump_info_hash(const char *info_hash, size_t elen)
 {
-#if 1
+	char buf[41];
+
+	printf("info_hash: %s\n", hex_encode(buf, info_hash, elen));
+#if 0
 	struct sockaddr_in in_addr0;
 	in_addr0.sin_family = AF_INET;
 	in_addr0.sin_port   = htons(8866);
@@ -124,11 +151,6 @@ static int store_save_peer_value(btcodec *codecp, struct sockaddr *soaddrp)
 		memcpy(valbuf + sizeof(soaddr.sin_addr), &swaped, sizeof(swaped));
 		printf("announce_peer: info_hash = %s, port = %d\n", hex_encode(buf, info_hash, 20), port);
 		announce_value(info_hash, valbuf, sizeof(soaddr.sin_addr) + sizeof(swaped));
-
-		size_t siz1;
-		char buf1[1024];
-		siz1 = kad_get_values(info_hash, buf1, sizeof(buf1));
-		printf("siz1 = %d %s\n", siz1, buf1);
 	}
 
 	return 0;

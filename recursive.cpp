@@ -103,8 +103,11 @@ static void kad_recursive_output(void *upp)
 			assert(rnp->rn_access + SEARCH_TIMER <= curtick);
 			error = kad_proto_out(rcp->rc_tid, rcp->rc_type, rcp->rc_target, &so_addr);
 
-			if (error == -1)
+			if (error == -1) {
+				printf("kad_proto_out send error: %d\n", WSAGetLastError());
+				assert(0);
 				break;
+			}
 
 			if (error == 1)
 				return;
@@ -279,7 +282,9 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 					for (i = 0; i < MAX_PEER_COUNT; i++) {
 						rnp = &rcp->rc_nodes[i];
 						if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
+							printf("update ident by %d\n", rnp->rn_nout);
 							rnp->rn_type = 2;
+							updated = 1;
 							break;
 						}
 					}
@@ -287,7 +292,6 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 					waitcb_switch(&rcp->rc_timeout);
 					kad_bound_update(rcp, ident);
 					rcp->rc_acked++;
-					updated = 1;
 				}
 			}
 

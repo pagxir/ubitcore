@@ -88,7 +88,7 @@ int kad_get_values(const char *info_hash, char *value, size_t len)
 		*p++ = 'l';
 		peer = hash->t_peers;
 		 while (peer != NULL) {
-			if (peer->t_len > 0 && peer->t_tick + 15 > now()) {
+			if (peer->t_len > 0 && peer->t_tick + 15 * 60 > now()) {
 				p += sprintf(p, "%d:", peer->t_len);
 				memcpy(p, peer->t_value, peer->t_len);
 				p += peer->t_len;
@@ -104,6 +104,23 @@ int kad_get_values(const char *info_hash, char *value, size_t len)
 
 int store_value_dump(void)
 {
+	struct info_peer *peer;
+	struct info_hash *hash;
+
+	hash = _info_hash_list;
+	while (hash != NULL) {
+		for (int i = 0; i < 20; i++)
+			printf("%02X", hash->t_hash[i] & 0xFF);
+		printf("\n");
+		peer = hash->t_peers;
+		 while (peer != NULL) {
+			unsigned char *value = (unsigned char *)peer->t_value;
+			printf("%d.%d.%d.%d:%d\n",
+				value[0], value[1], value[2], value[3], (value[4] << 8) + value[6]);
+			peer = peer->t_next;
+		}
+		hash = hash->t_next;
+	}
 	return 0;
 }
 
