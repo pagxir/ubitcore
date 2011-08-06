@@ -116,7 +116,7 @@ int store_value_dump(void)
 		 while (peer != NULL) {
 			unsigned char *value = (unsigned char *)peer->t_value;
 			printf("%d.%d.%d.%d:%d\n",
-				value[0], value[1], value[2], value[3], (value[4] << 8) + value[6]);
+				value[0], value[1], value[2], value[3], (value[4] << 8) + value[5]);
 			peer = peer->t_next;
 		}
 		hash = hash->t_next;

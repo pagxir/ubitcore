@@ -112,6 +112,7 @@ int send_bucket_update(const char *node)
 			 sizeof(sockbuf), 'F', (uint8_t *)node);
 		error = sendto(_udp_sockfd, sockbuf, len, 0,
 				(const struct sockaddr *)&soa, sizeof(soa));
+		kad_node_timed(node2s + found);
 		return error == -1? error: 0;
 	}
 	
