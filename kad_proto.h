@@ -12,7 +12,8 @@ int kad_ping_node_answer(void *buf, size_t len, btentity *tp);
 int kad_error_node_answer(void *buf, size_t len, btentity *tp);
 
 int kad_find_node_answer(void *buf, size_t len, btentity *tp, const char *inp, size_t inl);
-int kad_get_peers_answer(void *buf, size_t len, btentity *tp, const char *inp, size_t inl);
+int kad_get_peers_answer(void *buf, size_t len, btentity *tp,
+				const char *inp, size_t inl, const char *valp, size_t vall);
 
 #endif
 

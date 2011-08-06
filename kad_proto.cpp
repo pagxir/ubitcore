@@ -139,20 +139,28 @@ int kad_find_node_answer(void *buf, size_t len,
 }
 
 int kad_get_peers_answer(void *buf, size_t len,
-		btentity *pid, const char *inp, size_t inl)
+		btentity *pid, const char *inp, size_t inl, const char *valp, size_t vall)
 {
 	btcodec codec;
+	btcodec ecodec;
 	btentity *entity;
 	btfastvisit btfv;
 	const char *ident, *token;
 
 	const char answer[] = {
+		"d1:rd2:id2:!!5:token2:!!6:valuesle5:nodes2:!!e1:t3:!!!1:y1:re"
+	};
+
+	const char answer_nofound[] = {
 		"d1:rd2:id2:!!5:token2:!!5:nodes2:!!e1:t3:!!!1:y1:re"
 	};
 
 	kad_get_ident(&ident);
 	kad_get_token(&token);
-	codec.load(answer, sizeof(answer));
+	if (vall == 0)
+		codec.load(answer_nofound, sizeof(answer_nofound));
+	else
+		codec.load(answer, sizeof(answer));
 	btfv(&codec).bget("t").replace(pid);
 	entity = codec.str(inp, inl);
 	btfv(&codec).bget("r").bget("nodes").replace(entity);
@@ -160,6 +168,12 @@ int kad_get_peers_answer(void *buf, size_t len,
 	btfv(&codec).bget("r").bget("id").replace(entity);
 	entity = codec.str(token, TOKEN_LEN);
 	btfv(&codec).bget("r").bget("token").replace(entity);
+
+	if (vall > 0) {
+		ecodec.load(valp, vall);
+		entity = ecodec.root();
+		btfv(&codec).bget("r").bget("values").replace(entity);
+	}
 
 	return codec.encode(buf, len);
 }

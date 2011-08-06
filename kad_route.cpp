@@ -164,24 +164,24 @@ static int do_node_insert(struct kad_node *knp)
 		}
 
 		if ((kip2 == NULL || kip->kn_query > kip2->kn_query) &&
-			kip->kn_query > MAX_FAILURE && kip->kn_access + 5 < now) {
+				kip->kn_query > MAX_FAILURE && kip->kn_access + 5 < now) {
 			kip2 = kip;
 			continue;
 		}
 
 		if (kip2 == NULL && !(kip->kn_flag & NF_HELO) &&
-			(kip->kn_query && kip->kn_access + 5 < now)) {
+				(kip->kn_query && kip->kn_access + 5 < now)) {
 			kip2 = kip;
 			continue;
 		}
 
 		if ((knp->kn_type == KN_GOOD) &&
-			kip2 == NULL && !(kip->kn_flag & NF_HELO)) {
+				kip2 == NULL && !(kip->kn_flag & NF_HELO)) {
 			kip2 = kip;
 			continue;
 		}
 
-		if (kip3 == NULL || kip3->kn_seen < kip->kn_seen) {
+		if (kip3 == NULL || kip3->kn_seen > kip->kn_seen) {
 			kip3 = kip;
 			continue;
 		}
@@ -223,14 +223,21 @@ static int do_node_insert(struct kad_node *knp)
 		kip = (kip1? kip1: kip2);
 		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 		kip->kn_flag = knode_copy(kip, knp);
-		kip->kn_seen = now;
+		kip->kn_seen = (knp->kn_type == KN_GOOD? now: 0);
 		kip->kn_query = 0;
 		kip->kn_access = 0;
+
+		if (knp->kn_type != KN_GOOD) {
+			send_node_ping(kip);
+			kip->kn_access = now;
+			kip->kn_flag |= NF_PING;
+			kip->kn_query++;
+		}
 		return 0;
 	}
 
 	if (kip3 != NULL && 
-		(kip3->kn_seen + MIN15 < now || (kip3->kn_flag & NF_HELO) == 0)) {
+			(kip3->kn_seen + MIN15 < now || (kip3->kn_flag & NF_HELO) == 0)) {
 		if (kip3->kn_access + 5 < now) {
 			send_node_ping(kip3);
 			kip3->kn_access = now;
@@ -240,10 +247,11 @@ static int do_node_insert(struct kad_node *knp)
 
 		kip3->kn_flag |= NF_PING;
 		kbp->kb_pinging = kip3;
+		printf("ping_bucket %d\n", kbp - _r_bucket);
 		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 
 		if (knp->kn_type == KN_GOOD ||
-			kbp->kb_cache.kn_type == 0)
+				kbp->kb_cache.kn_type == 0)
 			kbp->kb_cache = *knp;
 		return 0;
 	}
@@ -253,7 +261,7 @@ static int do_node_insert(struct kad_node *knp)
 		for (i = 0; i < K; i++) {
 			kip = &kbp->kb_nodes[i];
 			if (kip->kn_flag != 0 &&
-				kad_get_bucket(kip) != kbp) {
+					kad_get_bucket(kip) != kbp) {
 				(kbp + 1)->kb_nodes[i] = *kip;
 				kip->kn_flag = 0;
 			}
@@ -575,8 +583,8 @@ int kad_route_dump(int index)
 			}
 
 			if ((knp->kn_query == 0) &&
-				(knp->kn_flag & NF_HELO) &&
-				(knp->kn_seen + MIN15 > now))
+					(knp->kn_flag & NF_HELO) &&
+					(knp->kn_seen + MIN15 > now))
 				good++;
 
 			addr = knp->kn_addr.kc_addr;
@@ -586,7 +594,8 @@ int kad_route_dump(int index)
 					(now - knp->kn_seen), inet_ntoa(addr), htons(port));
 		}
 
-		printf("route-%02d %d%s\n", i, now - kbp->kb_tick, good == K? "(FULL)": "");
+		kbp->kb_tick = kbp->kb_find.wt_value / 1000;
+		printf("route-%02d %d%s\n", i, kbp->kb_tick - now, good == K? "(FULL)": "");
 	}
 
 	printf("route total %d, bootup %d, failure %d\n",
