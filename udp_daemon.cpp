@@ -36,6 +36,7 @@ static void dump_peer_values(btcodec & codec)
 	i = 0;
 	values = btfv(&codec).bget("r").bget("values").bget(i++).c_str(&elen);
 	while (values != NULL) {
+		value = values;
 		if (elen == 6) {
 			memcpy(&in_addr1, value + 0, sizeof(in_addr1));
 			memcpy(&in_port1, value + 4, sizeof(in_port1));
@@ -110,17 +111,24 @@ static int store_save_peer_value(btcodec *codecp, struct sockaddr *soaddrp)
 	size_t elen;
 	char valbuf[20];
 	btfastvisit btfv;
-	const char *info_hash;
+	const char *info_hash = 0;
 	struct sockaddr_in soaddr;
 
 	err = btfv(codecp).bget("a").bget("port").bget(&port);
 	info_hash = btfv(codecp).bget("a").bget("info_hash").c_str(&elen);
 	if (err == 0 && info_hash != NULL && elen == IDENT_LEN) {
+		char buf[41];
 		unsigned short swaped = htons(port);
 		memcpy(&soaddr, soaddrp, sizeof(soaddr));
 		memcpy(valbuf, &soaddr.sin_addr, sizeof(soaddr.sin_addr));
 		memcpy(valbuf + sizeof(soaddr.sin_addr), &swaped, sizeof(swaped));
+		printf("announce_peer: info_hash = %s, port = %d\n", hex_encode(buf, info_hash, 20), port);
 		announce_value(info_hash, valbuf, sizeof(soaddr.sin_addr) + sizeof(swaped));
+
+		size_t siz1;
+		char buf1[1024];
+		siz1 = kad_get_values(info_hash, buf1, sizeof(buf1));
+		printf("siz1 = %d %s\n", siz1, buf1);
 	}
 
 	return 0;
@@ -202,9 +210,9 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 				struct sockaddr *so_addrp;
 				btentity *entity = btfv(&codec).bget("t").bget();
 				so_addrp = (struct sockaddr *)in_addrp;
+				store_save_peer_value(&codec, so_addrp);
 				len = kad_ping_node_answer(out_buf, sizeof(out_buf), entity);
 				err = sendto(_udp_sockfd, out_buf, len, 0, so_addrp, sizeof(*in_addrp));
-				store_save_peer_value(&codec, so_addrp);
 			} else if (elen == 9 && !strncmp(query_type, "find_node", 9)) {
 				int siz;
 				char buf[1024];

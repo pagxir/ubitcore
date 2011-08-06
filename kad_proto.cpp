@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
@@ -138,6 +139,14 @@ int kad_find_node_answer(void *buf, size_t len,
 	return codec.encode(buf, len);
 }
 
+static void dubug_print(const char *buf, int len)
+{
+	while (len-- > 0) {
+		printf("%c", isprint(*buf)? *buf: '.');
+		buf++;
+	}
+}
+
 int kad_get_peers_answer(void *buf, size_t len,
 		btentity *pid, const char *inp, size_t inl, const char *valp, size_t vall)
 {
@@ -173,6 +182,8 @@ int kad_get_peers_answer(void *buf, size_t len,
 		ecodec.load(valp, vall);
 		entity = ecodec.root();
 		btfv(&codec).bget("r").bget("values").replace(entity);
+		vall = codec.encode(buf, len);
+		dubug_print((char *)buf, vall);
 	}
 
 	return codec.encode(buf, len);

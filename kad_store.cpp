@@ -57,8 +57,8 @@ int announce_value(const char *info_hash, const char *value, size_t len)
 		hash = hash->t_next;
 	}
 
-	if (hash = NULL) {
-		hash = (struct info_hash *)malloc(sizeof(info_hash));
+	if (hash == NULL) {
+		hash = (struct info_hash *)malloc(sizeof(struct info_hash));
 		assert(hash != NULL);
 		memcpy(hash->t_hash, info_hash, 20);
 		hash->t_peers = NULL;
