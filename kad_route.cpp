@@ -537,10 +537,12 @@ static void kad_bootup_update(void *upp)
 
 static void kad_find_failure(void *upp)
 {
+	int now;
 	int ind;
 	int mask;
 	char node[20];
 	const char *ident;
+	struct kad_item *kip;
 	struct kad_bucket *kbp;
 
 	kbp = (struct kad_bucket *)upp;
@@ -555,9 +557,21 @@ static void kad_find_failure(void *upp)
 	node[ind / 8] |= (ident[ind / 8] & ~(mask - 1));
 	node[ind / 8] ^= mask;
 
-	send_bucket_update(node);
-	printf("kad_bucket_failure: %d\n", ind);
-	callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
+	now = GetTickCount() / 1000;
+	for (int i = 0; i < K; i++) {
+		kip = &kbp->kb_nodes[i];
+		if (kip->kn_query > MAX_FAILURE ||
+				kip->kn_seen + MIN15 < now ||
+				(kip->kn_flag & NF_HELO) == 0) {
+			send_bucket_update(node);
+			printf("kad_bucket_failure: %d\n", ind);
+			callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
+			return;
+		}
+	}
+
+	callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
+	return;
 }
 
 static const char *kad_flag(struct kad_item *kip)
