@@ -105,7 +105,6 @@ static void kad_recursive_output(void *upp)
 
 			if (error == -1) {
 				printf("kad_proto_out send error: %d\n", WSAGetLastError());
-				assert(0);
 				break;
 			}
 

@@ -223,7 +223,6 @@ static int do_node_insert(struct kad_node *knp)
 
 	if (kip2 != NULL || kip1 != NULL) {
 		kip = (kip1? kip1: kip2);
-		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 		kip->kn_flag = knode_copy(kip, knp);
 		kip->kn_seen = (knp->kn_type == KN_GOOD? now: 0);
 		kip->kn_query = 0;
@@ -231,10 +230,15 @@ static int do_node_insert(struct kad_node *knp)
 
 		if (knp->kn_type != KN_GOOD) {
 			send_node_ping(kip);
+			kbp->kb_pinging = kip;
 			kip->kn_access = now;
 			kip->kn_flag |= NF_PING;
 			kip->kn_query++;
+			callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
+			return 0;
 		}
+
+		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 		return 0;
 	}
 
@@ -243,14 +247,13 @@ static int do_node_insert(struct kad_node *knp)
 		if (kip3->kn_access + 5 < now) {
 			send_node_ping(kip3);
 			kip3->kn_access = now;
-			kip3->kn_flag |= NF_PING;
 			kip3->kn_query++;
 		}
 
 		kip3->kn_flag |= NF_PING;
 		kbp->kb_pinging = kip3;
 		printf("ping_bucket %d\n", kbp - _r_bucket);
-		callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
+		callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
 
 		if (knp->kn_type == KN_GOOD ||
 				kbp->kb_cache.kn_type == 0)
