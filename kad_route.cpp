@@ -255,8 +255,12 @@ static int do_node_insert(struct kad_node *knp)
 		printf("ping_bucket %d\n", kbp - _r_bucket);
 		callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
 
-		if (knp->kn_type == KN_GOOD ||
-				kbp->kb_cache.kn_type == 0)
+		int kn_type = kbp->kb_cache.kn_type;
+		if (knp->kn_type == KN_GOOD)
+			kbp->kb_cache = *knp;
+		else if (kn_type == 0)
+			kbp->kb_cache = *knp;
+		else if (9 > rand() % 17 && kn_type != KN_GOOD)
 			kbp->kb_cache = *knp;
 		return 0;
 	}
