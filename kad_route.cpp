@@ -269,7 +269,7 @@ static int do_node_insert(struct kad_node *knp)
 
 		kip3->kn_flag |= NF_PING;
 		kbp->kb_pinging = kip3;
-		printf("ping_bucket %d\n", kbp - _r_bucket);
+		//printf("ping_bucket %d\n", kbp - _r_bucket);
 		callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
 
 		int kn_type = kbp->kb_cache.kn_type;

@@ -12,6 +12,7 @@ struct info_peer {
 struct info_hash {
 	int t_tick;
 	char t_hash[20];
+	struct waitcb t_delay;
 	struct info_hash *t_next;
 	struct info_peer *t_peers;
 };
@@ -22,14 +23,61 @@ static int now(void)
 	return GetTickCount() / 1000;
 }
 
+static void store_clean(void *upp)
+{
+	struct info_hash *hash;
+	struct info_peer *peer;
+	struct info_peer **tailer;
+
+
+	hash = (struct info_hash *)upp;
+
+	peer = hash->t_peers;
+	tailer = &hash->t_peers;
+
+	while (peer != NULL) {
+		if (peer->t_tick + 15 * 60 < now()) {
+			*tailer = peer->t_next;
+			delete peer;
+			peer = *tailer;
+			continue;
+		}
+
+		tailer = &peer->t_next;
+		peer = peer->t_next;
+	}
+
+	if (hash->t_peers == NULL) {
+		callout_clean(&hash->t_delay);
+		delete hash;
+		return;
+	}
+
+	callout_reset(&hash->t_delay, 15 * 60 *1000);
+	return;
+}
+
 static int update_peer(struct info_hash *hash, const char *value, size_t len)
 {
-	struct info_peer *peer = hash->t_peers;
+	struct info_peer *peer;
+	struct info_peer **tailer;
+
+	peer = hash->t_peers;
+	tailer = &hash->t_peers;
 
 	while (peer != NULL) {
 		if (len == peer->t_len &&
 			 !memcmp(peer->t_value, value, len))
 			break;
+
+		if (peer->t_tick + 15 * 60 < now()) {
+			*tailer = peer->t_next;
+			delete peer;
+			peer = *tailer;
+			continue;
+		}
+
+		tailer = &peer->t_next;
 		peer = peer->t_next;
 	}
 
@@ -40,6 +88,7 @@ static int update_peer(struct info_hash *hash, const char *value, size_t len)
 		hash->t_peers = peer;
 	}
 
+	callout_reset(&hash->t_delay, 15 * 60 *1000);
 	memcpy(peer->t_value, value, len);
 	peer->t_len = len;
 	hash->t_tick = now();
@@ -64,6 +113,7 @@ int announce_value(const char *info_hash, const char *value, size_t len)
 		hash->t_peers = NULL;
 		hash->t_next = _info_hash_list;
 		_info_hash_list = hash;
+		waitcb_init(&hash->t_delay, store_clean, hash);
 	}
 
 	update_peer(hash, value, len);
