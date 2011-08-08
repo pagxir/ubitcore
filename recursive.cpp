@@ -14,7 +14,7 @@
 
 #define SEARCH_TIMER 5000
 
-static slotcb _search_slot = 0;
+static struct recursive_context *_search_slot = 0;
 
 static void knode_copy(struct kad_node *dp, const struct kad_node *src)
 {
@@ -26,18 +26,26 @@ static void knode_copy(struct kad_node *dp, const struct kad_node *src)
 static int kad_bound_check(struct recursive_context *rcp, const struct kad_node *knp)
 {
 	int i;
+	int count = 0;
 	kad_node *rwp;
 
 	for (i = 0; i < 8; i++) {
-		if (rcp->rc_well_nodes[i].kn_type == 0)
-			return 1;
+		if (rcp->rc_well_nodes[i].kn_type == 0) {
+			count++;
+			continue;
+		}
 
 		rwp = &rcp->rc_well_nodes[i];
-		if (kad_less_than(rcp->rc_target, knp->kn_ident, rwp->kn_ident))
-			return 1;
+		if (!memcmp(rwp->kn_ident, knp->kn_ident, IDENT_LEN)) {
+			return 0;
+		}
+
+		if (kad_less_than(rcp->rc_target, knp->kn_ident, rwp->kn_ident)) {
+			count++;
+		}
 	}
 
-	return 0;
+	return (count > 0);
 }
 
 static void kad_node_perf(const char *ident,
@@ -125,8 +133,10 @@ static void kad_recursive_output(void *upp)
 	if (error == -1) {
 		fprintf(stderr, "krpc end: tid %d, total %d, send %d, ack %d\n",
 				rcp->rc_tid, rcp->rc_total, rcp->rc_sentout, rcp->rc_acked);
+		if (rcp->rc_next != NULL)
+			rcp->rc_next->rc_prev = rcp->rc_prev;
+		*rcp->rc_prev = rcp->rc_next;
 		waitcb_clean(&rcp->rc_timeout);
-		waitcb_clean(&rcp->rc_linked);
 		delete rcp;
 	}
 
@@ -259,12 +269,12 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 	struct kad_node knode;
 	struct recursive_node * rnp;
 	struct recursive_context * rcp;
-	struct waitcb *searchp = _search_slot;
 
 	elen = 0;
 	updated = 0;
 	kad_get_ident(&self);
 	nodes = btfv(codec).bget("r").bget("nodes").c_str(&elen);
+
 	for (node = nodes; elen >= 26; node += 26, elen -= 26) {
 		memcpy(&in_addr1, node + 20, sizeof(in_addr1));
 		memcpy(&in_port1, node + 24, sizeof(in_port1));
@@ -274,16 +284,14 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 			knode.kn_addr.kc_port = in_port1;
 			memcpy(knode.kn_ident, node, IDENT_LEN);
 
-			for (searchp = _search_slot; searchp; searchp = searchp->wt_next) {
-				rcp = (struct recursive_context *)searchp->wt_udata;
+			for (rcp = _search_slot; rcp; rcp = rcp->rc_next) {
 				kad_recursive_update(rcp, &knode);
 				if (rcp->rc_tid == tid && updated == 0) {
 					for (i = 0; i < MAX_PEER_COUNT; i++) {
 						rnp = &rcp->rc_nodes[i];
 						if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
-							printf("update ident by %d\n", rnp->rn_nout);
+							printf("update ident by %d %d\n", rnp->rn_nout, rcp->rc_sentout);
 							rnp->rn_type = 2;
-							updated = 1;
 							break;
 						}
 					}
@@ -291,6 +299,7 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 					waitcb_switch(&rcp->rc_timeout);
 					kad_bound_update(rcp, ident);
 					rcp->rc_acked++;
+					updated = 1;
 				}
 			}
 
@@ -332,8 +341,11 @@ struct recursive_context *kad_recursivecb_new(int type, const char *ident)
 		rnp->rn_nout = 0;
 	}
 
-	waitcb_init(&rcp->rc_linked, kad_recursive_output, rcp);
-	slot_record(&_search_slot, &rcp->rc_linked);
+	rcp->rc_next = _search_slot;
+	rcp->rc_prev = &_search_slot;
+	if (_search_slot != NULL)
+		_search_slot->rc_prev = &rcp->rc_next;
+	_search_slot = rcp;
 	return rcp;
 }
 

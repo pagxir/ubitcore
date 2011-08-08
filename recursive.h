@@ -24,10 +24,12 @@ struct recursive_context {
 	int rc_sentout;
 
 	char rc_target[20];
-	struct waitcb rc_linked;
 	struct waitcb rc_timeout;
 	struct kad_node rc_well_nodes[8];
 	struct recursive_node rc_nodes[MAX_PEER_COUNT];
+
+	struct recursive_context *rc_next;
+	struct recursive_context **rc_prev;
 };
 
 int kad_recursive(int type, const char *ident);
