@@ -82,6 +82,7 @@ int send_node_ping(struct kad_node *knp)
 
 	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)'P');
 	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
+	kad_node_timed(knp);
 	return 0;
 }
 

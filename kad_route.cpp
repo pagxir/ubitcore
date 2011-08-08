@@ -137,13 +137,13 @@ static kad_bucket *kad_get_bucket(const kad_node *kp)
 
 static int knode_copy(struct kad_node *dp, const struct kad_node *src)
 {
+	int flag;
+
 	dp->kn_type = src->kn_type;
 	dp->kn_addr = src->kn_addr;
+	flag = (dp->kn_type == KN_GOOD);
 	memcpy(dp->kn_ident, src->kn_ident, IDENT_LEN);
-	if (dp->kn_type == KN_GOOD)
-		return (NF_HELO| NF_ITEM);
-
-	return NF_ITEM;
+	return NF_ITEM| (flag? NF_HELO: 0);
 }
 
 static int kad_rand(int base, int adjust)
@@ -228,7 +228,6 @@ static int do_node_insert(struct kad_node *knp)
 		if (oldflag != kip->kn_flag && kip == kbp->kb_pinging) {
 			callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 			kbp->kb_pinging = NULL;
-			waitcb_cancel(&kbp->kb_ping);
 			node = kbp->kb_cache;
 			node.kn_type = KN_UNKOWN;
 			kbp->kb_cache.kn_type = 0;
@@ -251,7 +250,6 @@ static int do_node_insert(struct kad_node *knp)
 			kip->kn_access = now;
 			kip->kn_flag |= NF_PING;
 			kip->kn_query++;
-			callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
 			return 0;
 		}
 
@@ -270,7 +268,6 @@ static int do_node_insert(struct kad_node *knp)
 		kip3->kn_flag |= NF_PING;
 		kbp->kb_pinging = kip3;
 		//printf("ping_bucket %d\n", kbp - _r_bucket);
-		callout_reset(&kbp->kb_ping, kad_rand(15000, 5000));
 
 		int kn_type = kbp->kb_cache.kn_type;
 		if (knp->kn_type == KN_GOOD)
@@ -295,7 +292,7 @@ static int do_node_insert(struct kad_node *knp)
 
 		callout_reset(&_r_bootup, kad_rand(100000, 20000));
 		callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
-		callout_reset(&(kbp + 1)->kb_find, kad_rand(60000, 30000));
+		callout_reset(&kbp[1].kb_find, kad_rand(60000, 30000));
 		do_node_insert(knp);
 		return 0;
 	}
@@ -477,6 +474,7 @@ int kad_node_timed(struct kad_node *knp)
 	}
 
 	if (i < K) { 
+		callout_reset(&kbp->kb_ping, kad_rand(10000, 5000));
 		now = GetTickCount() / 1000;
 		kip->kn_access = now;
 		kip->kn_flag |= NF_PING;
@@ -590,6 +588,7 @@ static void kad_find_failure(void *upp)
 			callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
 			printf("kad_bucket_failure: %d\n", ind);
 			send_bucket_update(node);
+			++_r_failure;
 			return;
 		}
 	}
