@@ -112,10 +112,11 @@ static int wire_linkup(void)
 	_r_failure = 0;
 	kbp = _r_bucket + _r_count;
 	while (kbp-- > _r_bucket) {
+		kbp->kb_pinging = 0;
 		kip = kbp->kb_nodes + K;
-		while (kip-- > _kbp->kb_nodes) {
-			kbp->kn_access = 0;
-			kbp->kn_query = 0;
+		while (kip-- > kbp->kb_nodes) {
+			kip->kn_access = 0;
+			kip->kn_query = 0;
 		}
 	}
 
