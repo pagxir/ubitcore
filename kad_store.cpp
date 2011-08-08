@@ -2,6 +2,9 @@
 #include <windows.h>
 #include <assert.h>
 
+#include "callout.h"
+#include "slotwait.h"
+
 struct info_peer {
 	int t_tick;
 	int t_len;
@@ -48,7 +51,7 @@ static void store_clean(void *upp)
 	}
 
 	if (hash->t_peers == NULL) {
-		callout_clean(&hash->t_delay);
+		waitcb_clean(&hash->t_delay);
 		delete hash;
 		return;
 	}
