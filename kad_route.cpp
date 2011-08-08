@@ -100,9 +100,25 @@ static int kad_xor_dist(const char *ident)
 
 static int wire_linkup(void)
 {
-	if (_r_failure > 48)
+	struct kad_item *kip;
+	struct kad_bucket *kbp;
+
+	if (_r_failure > 48) {
 		printf("network change to linkup\n");
+		_r_failure = 0;
+		return 0;
+	}
+
 	_r_failure = 0;
+	kbp = _r_bucket + _r_count;
+	while (kbp-- > _r_bucket) {
+		kip = kbp->kb_nodes + K;
+		while (kip-- > _kbp->kb_nodes) {
+			kbp->kn_access = 0;
+			kbp->kn_query = 0;
+		}
+	}
+
 	return 0;
 }
 
@@ -153,7 +169,7 @@ static int do_node_insert(struct kad_node *knp)
 	kbp = kad_get_bucket(knp);
 
 	kip1 = kip2 = kip3 = NULL;
-	for (i = 0; i < K; i++) {
+	while (kip-- > kbp->kb_nodes) {
 		kip = &kbp->kb_nodes[i];
 		if (kip->kn_flag == 0) {
 			kip1 = kip;
@@ -189,7 +205,7 @@ static int do_node_insert(struct kad_node *knp)
 		}
 	}
 
-	if (i < K) {
+	if (kip + 1 > kbp->kb_nodes) {
 		int oldflag = kip->kn_flag;
 
 		switch (knp->kn_type) {
@@ -209,9 +225,9 @@ static int do_node_insert(struct kad_node *knp)
 		}
 
 		if (oldflag != kip->kn_flag && kip == kbp->kb_pinging) {
+			callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 			kbp->kb_pinging = NULL;
 			waitcb_cancel(&kbp->kb_ping);
-			callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 			node = kbp->kb_cache;
 			node.kn_type = KN_UNKOWN;
 			kbp->kb_cache.kn_type = 0;
@@ -570,9 +586,9 @@ static void kad_find_failure(void *upp)
 		if (kip->kn_query > MAX_FAILURE ||
 				kip->kn_seen + MIN15 < now ||
 				(kip->kn_flag & NF_HELO) == 0) {
-			send_bucket_update(node);
-			printf("kad_bucket_failure: %d\n", ind);
 			callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
+			printf("kad_bucket_failure: %d\n", ind);
+			send_bucket_update(node);
 			return;
 		}
 	}
