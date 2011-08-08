@@ -588,7 +588,6 @@ static void kad_find_failure(void *upp)
 			callout_reset(&kbp->kb_find, kad_rand(60000, 30000));
 			printf("kad_bucket_failure: %d\n", ind);
 			send_bucket_update(node);
-			++_r_failure;
 			return;
 		}
 	}
