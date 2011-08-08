@@ -172,7 +172,6 @@ static int do_node_insert(struct kad_node *knp)
 	kip1 = kip2 = kip3 = NULL;
 	kip = kbp->kb_nodes + K;
 	while (kip-- > kbp->kb_nodes) {
-		kip = &kbp->kb_nodes[i];
 		if (kip->kn_flag == 0) {
 			kip1 = kip;
 			continue;
