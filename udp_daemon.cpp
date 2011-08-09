@@ -82,7 +82,7 @@ int send_node_ping(struct kad_node *knp)
 
 	len = kad_ping_node(sockbuf, sizeof(sockbuf), (uint32_t)'P');
 	err = sendto(_udp_sockfd, sockbuf, len, 0, so_addrp, sizeof(in_addr1));
-	kad_node_timed(knp);
+	kad_node_timed(knp, "ping");
 	return 0;
 }
 
@@ -113,7 +113,7 @@ int send_bucket_update(const char *node)
 			 sizeof(sockbuf), 'F', (uint8_t *)node);
 		error = sendto(_udp_sockfd, sockbuf, len, 0,
 				(const struct sockaddr *)&soa, sizeof(soa));
-		kad_node_timed(node2s + found);
+		kad_node_timed(node2s + found, "find");
 		return error == -1? error: 0;
 	}
 	
@@ -350,6 +350,7 @@ int kad_pingnode(const char *server)
 		return 0;
 	}
 
+	memset(&knode.kn_ident, 0x5A, IDENT_LEN);
 	knode.kn_addr.kc_addr = so_addr.sin_addr;
 	knode.kn_addr.kc_port = so_addr.sin_port;
 

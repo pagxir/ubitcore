@@ -119,7 +119,7 @@ static void kad_recursive_output(void *upp)
 			if (error == 1)
 				return;
 
-			kad_node_timed(rnp);
+			kad_node_timed(rnp, "search");
 			rcp->rc_touch = curtick;
 			rcp->rc_sentout++;
 			rnp->rn_access = curtick;
@@ -225,9 +225,9 @@ static void kad_recursive_update(struct recursive_context *rcp, struct kad_node 
 				(rnp->rn_type == 2 && rnp->rn_access + SEARCH_TIMER < GetTickCount())) {
 			rcp->rc_total++;
 			knode_copy(rnp, knp);
+			rnp->rn_access = 0;
 			rnp->rn_type = 1;
 			rnp->rn_nout = 0;
-			rnp->rn_access = 0;
 			return;
 		}
 	}
@@ -275,40 +275,51 @@ int kad_search_update(int tid, const char *ident, btcodec *codec)
 	kad_get_ident(&self);
 	nodes = btfv(codec).bget("r").bget("nodes").c_str(&elen);
 
-	for (node = nodes; elen >= 26; node += 26, elen -= 26) {
-		memcpy(&in_addr1, node + 20, sizeof(in_addr1));
-		memcpy(&in_port1, node + 24, sizeof(in_port1));
+	rcp = _search_slot;
+	while (rcp != NULL) {
+		if (rcp->rc_tid == tid)
+			break;
+		rcp = rcp->rc_next;
+	}
+
+	if (rcp != NULL) {
+		kad_bound_update(rcp, ident);
+		rnp = rcp->rc_nodes + MAX_PEER_COUNT;
+		while (rnp-- > rcp->rc_nodes) {
+			if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
+				//printf("update ident by %d %d\n", rnp->rn_nout, rcp->rc_sentout);
+				rnp->rn_type = 2;
+				break;
+			}
+		}
+
+		waitcb_cancel(&rcp->rc_timeout);
+		waitcb_switch(&rcp->rc_timeout);
+		rcp->rc_acked++;
+	}
+
+	node = nodes + elen;
+	while (node >= nodes + 26) {
+		node -= sizeof(in_port1);
+		memcpy(&in_port1, node, sizeof(in_port1));
+		node -= sizeof(in_addr1);
+		memcpy(&in_addr1, node, sizeof(in_addr1));
+		node -= IDENT_LEN;
+
 		if (in_addr1.s_addr && in_port1 && memcmp(self, node, IDENT_LEN)) {
 			knode.kn_type = 1;
 			knode.kn_addr.kc_addr = in_addr1;
 			knode.kn_addr.kc_port = in_port1;
 			memcpy(knode.kn_ident, node, IDENT_LEN);
 
-			for (rcp = _search_slot; rcp; rcp = rcp->rc_next) {
+			rcp = _search_slot;
+			while (rcp != NULL) {
 				kad_recursive_update(rcp, &knode);
-				if (rcp->rc_tid == tid && updated == 0) {
-					for (i = 0; i < MAX_PEER_COUNT; i++) {
-						rnp = &rcp->rc_nodes[i];
-						if (memcmp(rnp->kn_ident, ident, IDENT_LEN) == 0) {
-							//printf("update ident by %d %d\n", rnp->rn_nout, rcp->rc_sentout);
-							rnp->rn_type = 2;
-							break;
-						}
-					}
-					waitcb_cancel(&rcp->rc_timeout);
-					waitcb_switch(&rcp->rc_timeout);
-					kad_bound_update(rcp, ident);
-					rcp->rc_acked++;
-					updated = 1;
-				}
+				rcp = rcp->rc_next;
 			}
 
 			kad_node_insert(&knode);
 		}
-	}
-
-	if (updated == 0 && (tid & 0x80) == 0x80) {
-		printf("ident cannot update: %d\n", tid);
 	}
 
 	return 0;
@@ -353,21 +364,21 @@ int kad_recursive(int type, const char *ident)
 {
 	int i;
 	int error;
-	struct kad_node node2s[8];
+	struct kad_node nodes[8];
 	struct recursive_node *rnp;
 	struct recursive_context *rcp;
 
 	rcp = kad_recursivecb_new(type, ident);
 	assert(rcp != NULL);
 
-	error = kad_krpc_closest(ident, node2s, 8);
+	error = kad_krpc_closest(ident, nodes, 8);
 	for (i = 0; i < 8; i++) {
-		if (!node2s[i].kn_type) 
+		if (!nodes[i].kn_type) 
 			continue;
 
 		rnp = &rcp->rc_nodes[i];
 		rnp->rn_type = 1;
-		knode_copy(rnp, &node2s[i]);
+		knode_copy(rnp, &nodes[i]);
 	}
 
 	kad_recursive_output(rcp);

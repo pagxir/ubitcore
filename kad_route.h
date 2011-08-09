@@ -22,7 +22,7 @@ struct kad_node {
 
 int kad_node_seen(struct kad_node *knp);
 int kad_node_good(struct kad_node *knp);
-int kad_node_timed(struct kad_node *knp);
+int kad_node_timed(struct kad_node *knp, const char *title);
 int kad_node_insert(struct kad_node *knp);
 
 int kad_set_ident(const char *ident);

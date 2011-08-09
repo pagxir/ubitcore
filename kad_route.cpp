@@ -195,7 +195,7 @@ static int do_node_insert(struct kad_node *knp)
 		}
 
 		if ((knp->kn_type == KN_GOOD) &&
-				kip2 == NULL && !(kip->kn_flag & NF_HELO)) {
+				(kip2 == NULL) && !(kip->kn_flag & NF_HELO)) {
 			kip2 = kip;
 			continue;
 		}
@@ -225,7 +225,7 @@ static int do_node_insert(struct kad_node *knp)
 				break;
 		}
 
-		if (oldflag != kip->kn_flag && kip == kbp->kb_pinging) {
+		if (oldflag != kip->kn_flag && NULL != kbp->kb_pinging) {
 			callout_reset(&kbp->kb_find, kad_rand(MIN15U, MIN15U/5));
 			kbp->kb_pinging = NULL;
 			node = kbp->kb_cache;
@@ -312,7 +312,6 @@ static int closest_update(const char *ident,
 	for (i = 0; i < count; i++) {
 		knp2 = &closest[i];
 		if (knp2->kn_type == 0) {
-			memcpy(knp2->kn_ident, knp->kn_ident, 20);
 			knode_copy(knp2, knp);
 			goto calculate;
 		}
@@ -457,7 +456,7 @@ int kad_node_insert(struct kad_node *knp)
 	return 0;
 }
 
-int kad_node_timed(struct kad_node *knp)
+int kad_node_timed(struct kad_node *knp, const char *title)
 {
 	int i;
 	int now;
@@ -481,6 +480,10 @@ int kad_node_timed(struct kad_node *knp)
 		kip->kn_query++;
 	}
 
+	char buf[41];
+	printf("[O] %s %s %s:%d\n",
+		title, hex_encode(buf, knp->kn_ident, IDENT_LEN),
+		inet_ntoa(knp->kn_addr.kc_addr), htons(knp->kn_addr.kc_port));
 	return 0;
 }
 
