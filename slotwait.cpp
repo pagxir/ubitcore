@@ -234,8 +234,14 @@ void slotwait_atstart(struct waitcb *waitcbp)
 static struct waitcb *_stop_slot = 0;
 void slotwait_stop(void)
 {
-	slot_wakeup(&_stop_slot);
 	_requst_quited = 1;
+	SetEvent(slotwait_handle());
+	return;
+}
+
+void slotwait_stoped(void)
+{
+	slot_wakeup(&_stop_slot);
 	return;
 }
 

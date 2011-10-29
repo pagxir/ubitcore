@@ -247,7 +247,6 @@ static int do_node_insert(struct kad_node *knp)
 		if (knp->kn_type != KN_GOOD) {
 			send_node_ping(kip);
 			kbp->kb_pinging = kip;
-			kip->kn_access = now;
 			kip->kn_flag |= NF_PING;
 			kip->kn_query++;
 			return 0;
@@ -261,7 +260,6 @@ static int do_node_insert(struct kad_node *knp)
 			(kip3->kn_seen + MIN15 < now || (kip3->kn_flag & NF_HELO) == 0)) {
 		if (kip3->kn_access + 5 < now) {
 			send_node_ping(kip3);
-			kip3->kn_access = now;
 			kip3->kn_query++;
 		}
 

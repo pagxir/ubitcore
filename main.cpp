@@ -28,6 +28,9 @@ int main(int argc, char *argv[])
 	slotwait_start();
 	while (slotwait_step());
 
+	slotwait_stoped();
+	while (slotwait_step());
+
 	cleanup_modules(module_stub_list);
 	WSACleanup();
 	return 0;

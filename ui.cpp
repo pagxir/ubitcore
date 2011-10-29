@@ -13,19 +13,12 @@
 #include "kad_route.h"
 #include "udp_daemon.h"
 
-static ipccb_t _ipccb_console;
 static void parse_request(void *upp);
 
 static BOOL WINAPI console_closed(DWORD ctrl_type)
 {
-   	ipccb_switch(&_ipccb_console);
-	return TRUE;
-}
-
-static void stop_wrapper(void *upp)
-{
 	slotwait_stop();
-	return;
+	return TRUE;
 }
 
 struct _user_input {
@@ -136,7 +129,7 @@ ui_quited:
 		fclose(rc_fp);
 	}
 
-   	ipccb_switch(&_ipccb_console);
+	slotwait_stop();
 	CloseHandle(ui.ui_event);
 	_endthreadex( 0 );
     return 0;
@@ -210,7 +203,6 @@ static void module_init(void)
 {
 	waitcb_init(&_ui_start, ui_stat_routine, &_ui_start);
 	waitcb_init(&_ui_stop, ui_stat_routine, &_ui_stop);
-	ipccb_init(&_ipccb_console, stop_wrapper, 0);
 
 	slotwait_atstart(&_ui_start);
 	slotwait_atstop(&_ui_stop);
@@ -218,7 +210,6 @@ static void module_init(void)
 
 static void module_clean(void)
 {
-	ipccb_clean(&_ipccb_console);
 	waitcb_clean(&_ui_start);
 	waitcb_clean(&_ui_stop);
 }

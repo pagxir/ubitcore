@@ -95,7 +95,7 @@ static void kad_recursive_output(void *upp)
 				error = 0, pending += (rnp->rn_type == 1);
 			} else if (!kad_bound_check(rcp, rnp)) {
 				continue;
-			} else if (rnp->rn_nout < 3 && rnp->rn_type == 1) {
+			} else if (rnp->rn_nout < 2 && rnp->rn_type == 1) {
 				kad_node_perf(rnp->kn_ident, rnp, perf, MAX_SEND_OUT);
 			}
 		}
@@ -119,6 +119,7 @@ static void kad_recursive_output(void *upp)
 			if (error == 1)
 				return;
 
+			printf("send search %d\n", rnp->rn_nout);
 			kad_node_timed(rnp, "search");
 			rcp->rc_touch = curtick;
 			rcp->rc_sentout++;

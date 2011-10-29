@@ -38,6 +38,7 @@ int slotwait_step(void);
 
 void slotwait_atstart(struct waitcb *waitcbp);
 void slotwait_atstop(struct waitcb *waitcbp);
+void slotwait_stoped(void);
 void slotwait_start(void);
 void slotwait_stop(void);
 
