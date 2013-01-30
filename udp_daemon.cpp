@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
-#include <winsock.h>
+#include <string.h>
+#include <stdlib.h>
+#include <wait/platform.h>
+#include <wait/module.h>
+#include <wait/callout.h>
+#include <wait/slotwait.h>
+#include <wait/slotsock.h>
 
 #include "utils.h"
-#include "module.h"
-#include "callout.h"
 #include "btcodec.h"
-#include "slotwait.h"
-#include "slotsock.h"
 #include "kad_proto.h"
 #include "kad_store.h"
 #include "kad_route.h"
@@ -186,7 +188,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 	codec.load(buf, len);
 	type = btfv(&codec).bget("y").c_str(&elen);
 	if (type == NULL || elen != 1) {
-		fprintf(stderr, "[packet missing query type] %d\n", elen);
+		fprintf(stderr, "[packet missing query type] %ld\n", elen);
 		return;
 	}
 
@@ -194,13 +196,13 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 		case 'r':
 			peer_ident = btfv(&codec).bget("r").bget("id").c_str(&elen);
 			if (peer_ident == NULL || elen != IDENT_LEN) {
-				fprintf(stderr, "answer packet missing peer ident %d\n", len);
+				fprintf(stderr, "answer packet missing peer ident %ld\n", len);
 				return;
 			}
 
 			query_ident = btfv(&codec).bget("t").c_str(&elen);
 			if (query_ident == NULL || elen > sizeof(uint32_t)) {
-				fprintf(stderr, "packet missing packet ident: %d\n", elen);
+				fprintf(stderr, "packet missing packet ident: %ld\n", elen);
 				return;
 			}
 
@@ -208,7 +210,7 @@ static void kad_proto_input(char *buf, size_t len, struct sockaddr_in *in_addrp)
 			memcpy(&tid, query_ident, elen);
 			strcpy(out_buf, tid == 'P'? "ping": tid == 'F'? "find": "unkown");
 			if ((tid & 0x80) == 0x80) {
-				sprintf(out_buf, "[S-%d:%d]", tid, elen);
+				sprintf(out_buf, "[S-%d:%ld]", tid, elen);
 				dump_peer_values(codec);
 			}
 
@@ -306,7 +308,7 @@ static void udp_routine(void *upp)
 	sockfd = _udp_sockfd;
 	waitcb_cancel(&_sockcb);
 	for ( ; ; ) {
-		int in_len1 = sizeof(in_addr1);
+		socklen_t in_len1 = sizeof(in_addr1);
 		count = recvfrom(sockfd, sockbuf, sizeof(sockbuf),
 				0, (struct sockaddr *)&in_addr1, &in_len1);
 		if (count >= 0) {

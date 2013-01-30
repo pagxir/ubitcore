@@ -1,15 +1,18 @@
 #include <stdio.h>
 #include <assert.h>
-#include <winsock.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include <list>
 #include <string>
 
+#include <wait/platform.h>
+#include <wait/module.h>
+#include <wait/callout.h>
+#include <wait/slotwait.h>
+#include <wait/slotsock.h>
+
 #include "base64.h"
-#include "module.h"
-#include "callout.h"
-#include "slotwait.h"
-#include "slotsock.h"
 
 static int _webcrack_ref = 0;
 static int _total_bytes_in = 0;

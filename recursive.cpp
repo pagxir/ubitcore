@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
-#include <winsock.h>
+#include <string.h>
+#include <wait/platform.h>
+#include <wait/callout.h>
+#include <wait/slotwait.h>
+#include <wait/slotsock.h>
 
-#include "callout.h"
 #include "btcodec.h"
-#include "slotwait.h"
-#include "slotsock.h"
 #include "kad_route.h"
 #include "recursive.h"
 #include "kad_proto.h"
@@ -75,7 +76,7 @@ static void kad_recursive_output(void *upp)
 	int i, j;
 	int error = -1;
 	int pending = 0;
-	DWORD curtick = 0;
+	unsigned int curtick = 0;
 	struct sockaddr_in so_addr;
 	struct recursive_node *rnp;
 	struct recursive_node *perf[8];

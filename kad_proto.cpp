@@ -3,7 +3,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
-#include <winsock.h>
+
+#include <wait/platform.h>
 
 #include "btcodec.h"
 #include "kad_proto.h"

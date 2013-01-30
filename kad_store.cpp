@@ -1,9 +1,11 @@
 #include <stdio.h>
-#include <windows.h>
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "callout.h"
-#include "slotwait.h"
+#include <wait/platform.h>
+#include <wait/callout.h>
+#include <wait/slotwait.h>
 
 struct info_peer {
 	int t_tick;

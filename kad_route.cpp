@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
-#include <winsock.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <wait/platform.h>
+#include <wait/module.h>
+#include <wait/callout.h>
+#include <wait/slotwait.h>
 
 #include "utils.h"
-#include "module.h"
-#include "callout.h"
-#include "slotwait.h"
 #include "kad_proto.h"
 #include "kad_route.h"
 #include "udp_daemon.h"
