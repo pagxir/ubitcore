@@ -2,6 +2,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <string>
 
@@ -29,7 +30,7 @@ int load_session(const char *path)
     if (fileguard != NULL){
         printf(".fileguard: %s\n", std::string(fileguard, len).c_str());
     }
-    int val;
+    int64_t val;
     int age = codec.bget().bget("age").bget(&val);
     if (val != -1){
         time_t now = age;

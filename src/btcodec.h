@@ -1,15 +1,16 @@
 #ifndef __BTCODEC_H__
 #define __BTCODEC_H__
+#include <stdint.h>
+
 class bentity
 {
     public:
         virtual ~bentity();
-        virtual int bget(int *ival);
+        virtual int bget(int64_t *vval);
         virtual bentity &bget(int index);
         virtual bentity &bget(const char *name);
         virtual const char *b_str(size_t *len);
         virtual const char *c_str(size_t *len);
-        virtual int b_val(int *ival, int *rest, int base);
 };
 
 class btcodec
@@ -18,7 +19,6 @@ class btcodec
         btcodec();
         ~btcodec();
         bentity &bget();
-        bentity *balloc(int off=0);
         int bload(const char *buffer, int len);
         const char *b_str(int off, size_t *len);
 
@@ -26,6 +26,14 @@ class btcodec
         int b_len;
         char *b_text;
         bentity *b_entity;
+
+    private:
+        int b_off;
+        int getbyte();
+
+    public:
+        bentity *bobject(int offset);
+        bentity *bobject();
 };
 
 #endif

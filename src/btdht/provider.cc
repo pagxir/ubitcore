@@ -60,8 +60,9 @@ bdhtcodec::bload(const char *buffer, size_t length)
         return error;
     }
     b_type = *p;
-    const char *t = b_codec.bget().bget("t").b_str(&elen);
-    if (t==NULL || elen<3){
+    const char *t = b_codec.bget().bget("t").c_str(&elen);
+    if (t==NULL || elen<1){
+        printf("invalidate type string!\n");
         return error;
     }
     b_ident = std::string(t, elen);
@@ -154,7 +155,22 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
     if (query == NULL || tlen < 4){
         return;
     }
-    if (memcmp(query, "get_peers", tlen) == 0){
+    if (memcmp(query, "announce_peer", tlen) == 0){
+        size_t target_len = 0;
+        const char *target = btc.bget().bget("a").bget("info_hash").c_str(&target_len);
+        if (target_len==20 && target!=NULL)
+            printf("info_hash: %s\n", idstr(target));
+        size_t peerid_len = 0;
+        const char *peerid = btc.bget().bget("a").bget("id").c_str(&peerid_len);
+        if (peerid_len==20 && peerid!=NULL)
+            printf("peerid: %s\n", idstr(peerid));
+        const char *token = btc.bget().bget("a").bget("token").c_str(&peerid_len);
+        if (token!=NULL && peerid_len==5)
+            printf("token: %s\n", idstr(token));
+        int64_t port;
+        if (-1 != btc.bget().bget("a").bget("port").bget(&port))
+            printf("port: %d\n", port);
+    }else if (memcmp(query, "get_peers", tlen) == 0){
         size_t target_len = 0;
         const char *target = btc.bget().bget("a").bget("info_hash").c_str(&target_len);
         if (target_len==20 && target!=NULL){
@@ -167,9 +183,11 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
             };
             getkadid(&buff[12+14]);
             int n1 = padto(&buff[39+14], items, n);
-            const char *t = btc.bget().bget("t").b_str(&tlen);
+            const char *t = btc.bget().bget("t").c_str(&tlen);
             memcpy(&buff[n1+39+14], "e1:t", 4);
-            memcpy(&buff[n1+43+14], t, tlen);
+            int nx2 = sprintf(&buff[n1+43+14], "%d:", tlen);
+            memcpy(&buff[n1+43+14+nx2], t, tlen);
+            tlen += nx2;
             memcpy(&buff[n1+43+14+tlen], "1:y1:re", 7);
             b_socket.bsendto(buff, 14+n1+43+7+tlen, host, port);
             memcpy(item.kadid, kadid, 20);
@@ -189,9 +207,11 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
             };
             getkadid(&buff[12]);
             int n1 = padto(&buff[39], items, n);
-            const char *t = btc.bget().bget("t").b_str(&tlen);
+            const char *t = btc.bget().bget("t").c_str(&tlen);
             memcpy(&buff[n1+39], "e1:t", 4);
-            memcpy(&buff[n1+43], t, tlen);
+            int nx2 = sprintf(&buff[n1+43], "%d:", tlen);
+            memcpy(&buff[n1+43+nx2], t, tlen);
+            tlen += nx2;
             memcpy(&buff[n1+43+tlen], "1:y1:re", 7);
             b_socket.bsendto(buff, n1+43+7+tlen, host, port);
             memcpy(item.kadid, kadid, 20);
@@ -204,8 +224,10 @@ bdhtnet::query_expand(bdhtcodec *codec, const void *ibuf, size_t len,
     }else if (memcmp(query, "ping", tlen) == 0){
         char buff[] = "d1:rd2:id20:mnopqrstuvwxyz123456e1:t1:01:y1:re";
         getkadid(&buff[12]);
-        const char *t = btc.bget().bget("t").b_str(&tlen);
-        memcpy(&buff[36], t, tlen);
+        const char *t = btc.bget().bget("t").c_str(&tlen);
+        int nx2 = sprintf(&buff[36], "%d:", tlen);
+        memcpy(&buff[36+nx2], t, tlen);
+        tlen += nx2;
         memcpy(&buff[36+tlen], "1:y1:re", 7);
         b_socket.bsendto(buff, 36+7+tlen, host, port);
         /* printf("ping sended\n"); */

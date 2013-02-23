@@ -22,6 +22,7 @@
 #include "bsocket.h"
 #include "bidle.h"
 #include "netdb.h"
+#include "btdht/kutils.h"
 #include "btdht/btkad.h"
 #include "btdht/loadsess.h"
 
@@ -65,8 +66,9 @@ btseed_load(const char *buf, int len)
 
 #if 1
     bentity &nodes = codec.bget().bget("nodes");
-    for (i=0; nodes.bget(i).b_str(&eln); i++){
-        int port = nodes.bget(i).bget(1).bget(&err);
+    int64_t port64;
+    for (i=0; -1!=nodes.bget(i).bget(1).bget(&port64); i++){
+        int port = port64;
         const char* ip = nodes.bget(i).bget(0).c_str(&eln);
         std::string ipstr(ip, eln);
         in_addr_t host = inet_addr(ipstr.c_str());
@@ -103,6 +105,20 @@ main(int argc, char *argv[])
         btseed_load(btseed.c_str(), btseed.size());
     }
 
+    kitem_t item;
+
+    hostent *phost = gethostbyname("router.bittorrent.com"); 
+    if (phost != NULL){
+        item.host = *(in_addr_t*)phost->h_addr;
+        item.port = htons(6881);
+        update_contact(&item, false);
+    }
+    phost = gethostbyname("im678.net"); 
+    if (phost != NULL){
+        item.host = *(in_addr_t*)phost->h_addr;
+        item.port = htons(61657);
+        update_contact(&item, false);
+    }
     load_session("dhtsess.dat");
 
     biorun();
